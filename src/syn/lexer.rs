@@ -2,8 +2,10 @@ use crate::{
     common::span::*,
     syn::{error::*, token::*},
 };
+use maplit::hashmap;
 use matches::matches;
-use std::{mem, str::Chars};
+use lazy_static::lazy_static;
+use std::{mem, str::Chars, collections::HashMap};
 
 type Result<T> = std::result::Result<T, LexerError>;
 
@@ -42,6 +44,14 @@ pub struct Lexer<'text> {
     end: Pos,
 }
 
+lazy_static! {
+    static ref KEYWORDS: HashMap<&'static str, TokenKind> = {
+        hashmap! {
+            "fn" => TokenKind::KwFn,
+        }
+    };
+}
+
 impl<'text> Lexer<'text> {
     pub fn new(text: &'text str) -> Self {
         let char_len = if let Some(c) = text.chars().next() {
@@ -68,6 +78,14 @@ impl<'text> Lexer<'text> {
 
     pub fn is_eof(&self) -> bool {
         self.curr_char().is_none()
+    }
+
+    pub fn text_at(&self, span: Span) -> &'text str {
+        &self.text[span.start.byte..span.end.byte]
+    }
+
+    pub fn text(&self) -> &'text str {
+        self.text_at(self.span())
     }
 
     fn catchup(&mut self) -> Span {
@@ -101,11 +119,17 @@ impl<'text> Lexer<'text> {
     }
 
     pub fn next_ident(&mut self) -> Result<Token> {
-        unimplemented!()
+        self.expect_predicate(is_ident_start_char, "identifier start character")?;
+        while self.match_predicate(is_ident_char).is_some() {}
+        let text = self.text();
+        let kind = KEYWORDS.get(text)
+            .copied()
+            .unwrap_or(TokenKind::Ident);
+        Ok(self.make_token(kind))
     }
 
     pub fn next_number(&mut self) -> Result<Token> {
-        let first = self.expect_any_char_message(NUM_START_CHARS, "number character")?;
+        let first = self.expect_any_char(NUM_START_CHARS, "number character")?;
 
         if self.is_eof() {
             return Ok(self.make_token(TokenKind::DecInt));
@@ -125,7 +149,7 @@ impl<'text> Lexer<'text> {
 
         if kind != TokenKind::DecInt {
             self.adv_char();
-            self.expect_any_char_message(match_chars, message)?;
+            self.expect_any_char(match_chars, message)?;
         }
 
         loop {
@@ -165,7 +189,7 @@ impl<'text> Lexer<'text> {
             if self.is_any_match(&['-', '+']) {
                 self.adv_char();
             }
-            self.expect_any_char_message(DEC_NUM_CHARS, "scientific notation value")?;
+            self.expect_any_char(DEC_NUM_CHARS, "scientific notation value")?;
             while self.match_any_char(DEC_NUM_CHARS).is_some() {}
         }
 
@@ -218,11 +242,11 @@ impl<'text> Lexer<'text> {
         }
     }
 
-    fn expect_any_char_message(&mut self, chars: &[char], expected: impl ToString) -> Result<char> {
+    fn expect_any_char(&mut self, chars: &[char], expected: impl ToString) -> Result<char> {
         self.expect_predicate(|c| chars.contains(&c), expected)
     }
 
-    fn expect_char_message(&mut self, ch: char, expected: impl ToString) -> Result<char> {
+    fn expect_char(&mut self, ch: char, expected: impl ToString) -> Result<char> {
         self.expect_predicate(|c| c == ch, expected)
     }
 
@@ -416,6 +440,38 @@ mod test {
             TokenKind::DecInt, "123e-4",
             TokenKind::Real, "12345.6E+5",
         }
+        verify_eof!(lexer);
+    }
+
+    #[test]
+    fn test_idents() {
+        let mut lexer = Lexer::new(
+            r#"
+            foo bar baz
+            foo_bar_baz
+            f00_b4r_b4z
+            _foo_bar_baz
+            "#
+        );
+        verify! {
+            lexer,
+            TokenKind::Ident;
+            "foo", "bar", "baz",
+            "foo_bar_baz",
+            "f00_b4r_b4z",
+            "_foo_bar_baz",
+        };
+        verify_eof!(lexer);
+    }
+
+    #[test]
+    fn test_keywords() {
+        let mut lexer = Lexer::new(
+            r#"
+            fn
+            "#
+        );
+        verify!(lexer, TokenKind::KwFn, "fn");
         verify_eof!(lexer);
     }
 }
