@@ -105,7 +105,71 @@ impl<'text> Lexer<'text> {
     }
 
     pub fn next_number(&mut self) -> Result<Token> {
-        unimplemented!()
+        let first = self.expect_any_char_message(NUM_START_CHARS, "number character")?;
+
+        if self.is_eof() {
+            return Ok(self.make_token(TokenKind::DecInt));
+        }
+
+        let second = self.curr_char().unwrap();
+        let (match_chars, message, mut kind) = match (first, second) {
+            ('0', 'x') => (
+                HEX_NUM_CHARS,
+                "hex digit (0-9, a-f, or A-F)",
+                TokenKind::HexInt,
+            ),
+            ('0', 'b') => (BIN_NUM_CHARS, "binary digit (0 or 1)", TokenKind::BinInt),
+            ('0', 'o') => (OCT_NUM_CHARS, "octal digit (0-7)", TokenKind::OctInt),
+            _ => (DEC_NUM_CHARS, "decimal number (0-9)", TokenKind::DecInt),
+        };
+
+        if kind != TokenKind::DecInt {
+            self.adv_char();
+            self.expect_any_char_message(match_chars, message)?;
+        }
+
+        loop {
+            if self.curr_char() == Some('.') && self.is_any_match(NUM_START_CHARS) {
+                match kind {
+                    // double decimal error
+                    TokenKind::Real => {
+                        return Err(LexerError::Invalid {
+                            span: self.span(),
+                            what: "real number".into(),
+                            why: "found two decimal points, followed by a number".into(),
+                        })
+                    }
+                    // regular decimal number
+                    TokenKind::DecInt => {
+                        kind = TokenKind::Real;
+                        self.adv_char();
+                    }
+                    // no decimals allowed for this kind of token
+                    _ => {
+                        return Err(LexerError::Invalid {
+                            span: self.span(),
+                            what: "number".into(),
+                            why: "found decimal point on non-base 10 number; this is not allowed"
+                                .into(),
+                        })
+                    }
+                }
+            } else if self.match_any_char(match_chars) == None {
+                break;
+            }
+        }
+
+        if (kind == TokenKind::DecInt || kind == TokenKind::Real) && self.is_any_match(&['e', 'E'])
+        {
+            self.adv_char();
+            if self.is_any_match(&['-', '+']) {
+                self.adv_char();
+            }
+            self.expect_any_char_message(DEC_NUM_CHARS, "scientific notation value")?;
+            while self.match_any_char(DEC_NUM_CHARS).is_some() {}
+        }
+
+        Ok(self.make_token(kind))
     }
 
     fn next_char_token(&mut self, c: char, kind: TokenKind) -> Result<Token> {
