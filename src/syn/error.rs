@@ -2,7 +2,7 @@ use crate::common::span::Span;
 use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
-pub enum LexerError {
+pub enum SyntaxError {
     #[snafu(display("expected {}, but got {} instead", expected, got))]
     ExpectedGot {
         span: Span,
@@ -22,10 +22,6 @@ pub enum LexerError {
         what: String,
         why: String,
     },
-
-    #[snafu(display("unknown {}", what))]
-    Unknown {
-        span: Span,
-        what: String,
-    },
 }
+
+pub type Result<T> = std::result::Result<T, SyntaxError>;

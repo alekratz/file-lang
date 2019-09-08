@@ -1,6 +1,10 @@
-use crate::common::span::*;
+use crate::{
+    common::span::*,
+    syn::op::OpKind,
+};
+use std::fmt::{self, Display};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub enum TokenKind {
     Eol,
     Eof,
@@ -13,43 +17,60 @@ pub enum TokenKind {
     HexInt,
     Real,
 
-    UnOp,
-    BinOp,
+    Op,
 
     LParen,
     RParen,
     LBrace,
     RBrace,
+    Comma,
 
     KwFn,
 }
 
+impl Display for TokenKind {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TokenKind::Eol => write!(fmt, "line end"),
+            TokenKind::Eof => write!(fmt, "end of file"),
+
+            TokenKind::Ident => write!(fmt, "identifier"),
+            TokenKind::String => write!(fmt, "string"),
+
+            TokenKind::DecInt
+            | TokenKind::BinInt
+            | TokenKind::OctInt
+            | TokenKind::HexInt => write!(fmt, "integer"),
+            | TokenKind::Real => write!(fmt, "real number"),
+
+            TokenKind::Op => write!(fmt, "operator"),
+
+            TokenKind::LParen => write!(fmt, "left paren"),
+            TokenKind::RParen => write!(fmt, "right paren"),
+            TokenKind::LBrace => write!(fmt, "left brace"),
+            TokenKind::RBrace => write!(fmt, "right brace"),
+            TokenKind::Comma => write!(fmt, "comma"),
+
+            TokenKind::KwFn => write!(fmt, "`fn` keyword"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 #[cfg_attr(not(test), derive(PartialEq))]
-pub struct Token<'text> {
+pub struct Token {
     kind: TokenKind,
-    text: &'text str,
     span: Span,
 }
 
-impl<'text> Token<'text> {
-    pub fn new(kind: TokenKind, text: &'text str, span: Span) -> Self {
-        Token {
-            kind,
-            text,
-            span,
-        }
+impl Token {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
+        Token { kind, span }
     }
 
     pub fn kind(&self) -> TokenKind {
         self.kind
     }
-
-    pub fn text(&self) -> &'text str {
-        self.text
-    }
-
-    pub fn span(&self) -> Span {
-        self.span
-    }
 }
+
+spanned!(Token, span);

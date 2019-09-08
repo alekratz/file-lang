@@ -1,13 +1,11 @@
 use crate::{
     common::span::*,
-    syn::{error::*, token::*},
+    syn::{error::*, op::*, token::*},
 };
+use lazy_static::lazy_static;
 use maplit::hashmap;
 use matches::matches;
-use lazy_static::lazy_static;
-use std::{mem, str::Chars, collections::HashMap};
-
-type Result<T> = std::result::Result<T, LexerError>;
+use std::{collections::HashMap, mem, str::Chars};
 
 macro_rules! char_types {
     (
@@ -37,6 +35,7 @@ const HEX_NUM_CHARS: &[char] = &[
 const OCT_NUM_CHARS: &[char] = &['0', '1', '2', '3', '4', '5', '6', '7'];
 const BIN_NUM_CHARS: &[char] = &['0', '1'];
 
+#[derive(Debug, Clone)]
 pub struct Lexer<'text> {
     text: &'text str,
     chars: Chars<'text>,
@@ -45,10 +44,8 @@ pub struct Lexer<'text> {
 }
 
 lazy_static! {
-    static ref KEYWORDS: HashMap<&'static str, TokenKind> = {
-        hashmap! {
-            "fn" => TokenKind::KwFn,
-        }
+    static ref KEYWORDS: HashMap<&'static str, TokenKind> = hashmap! {
+        "fn" => TokenKind::KwFn,
     };
 }
 
@@ -95,7 +92,11 @@ impl<'text> Lexer<'text> {
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(_) = self.match_any_char(&[' ', '\n', '\t', '\r']) {}
+        while let Some(c) = self.match_any_char(&[' ', '\n', '\t', '\r']) {
+            if c == '\n' {
+                self.end.adv_line();
+            }
+        }
         self.catchup();
     }
 
@@ -109,12 +110,19 @@ impl<'text> Lexer<'text> {
         match c {
             'a'..='z' | 'A'..='Z' | '_' => self.next_ident(),
             '0'..='9' => self.next_number(),
+            '\'' | '"' => unimplemented!("TODO: string"),
             ';' => self.next_char_token(';', TokenKind::Eol),
             '(' => self.next_char_token('(', TokenKind::LParen),
             ')' => self.next_char_token(')', TokenKind::RParen),
             '{' => self.next_char_token('{', TokenKind::LBrace),
             '}' => self.next_char_token('}', TokenKind::RBrace),
-            c => unimplemented!("unknown character {:?}", c),
+            ',' => self.next_char_token(',', TokenKind::Comma),
+            c if OpKind::CHARS.contains(&c) => self.next_op(),
+            c => Err(SyntaxError::Invalid {
+                span: self.span(),
+                what: format!("character {}", c.escape_debug()),
+                why: "this character does not start any valid token".into(),
+            }),
         }
     }
 
@@ -122,9 +130,7 @@ impl<'text> Lexer<'text> {
         self.expect_predicate(is_ident_start_char, "identifier start character")?;
         while self.match_predicate(is_ident_char).is_some() {}
         let text = self.text();
-        let kind = KEYWORDS.get(text)
-            .copied()
-            .unwrap_or(TokenKind::Ident);
+        let kind = KEYWORDS.get(text).copied().unwrap_or(TokenKind::Ident);
         Ok(self.make_token(kind))
     }
 
@@ -157,7 +163,7 @@ impl<'text> Lexer<'text> {
                 match kind {
                     // double decimal error
                     TokenKind::Real => {
-                        return Err(LexerError::Invalid {
+                        return Err(SyntaxError::Invalid {
                             span: self.span(),
                             what: "real number".into(),
                             why: "found two decimal points, followed by a number".into(),
@@ -170,7 +176,7 @@ impl<'text> Lexer<'text> {
                     }
                     // no decimals allowed for this kind of token
                     _ => {
-                        return Err(LexerError::Invalid {
+                        return Err(SyntaxError::Invalid {
                             span: self.span(),
                             what: "number".into(),
                             why: "found decimal point on non-base 10 number; this is not allowed"
@@ -196,8 +202,13 @@ impl<'text> Lexer<'text> {
         Ok(self.make_token(kind))
     }
 
+    pub fn next_op(&mut self) -> Result<Token> {
+        while self.match_any_char(OpKind::CHARS).is_some() {}
+        Ok(self.make_token(TokenKind::Op))
+    }
+
     fn next_char_token(&mut self, c: char, kind: TokenKind) -> Result<Token> {
-        self.match_char(c).ok_or_else(|| LexerError::ExpectedGot {
+        self.match_char(c).ok_or_else(|| SyntaxError::ExpectedGot {
             span: self.span(),
             expected: format!("character {}", c.escape_debug()),
             got: "EOF".into(),
@@ -207,8 +218,7 @@ impl<'text> Lexer<'text> {
 
     fn make_token(&mut self, kind: TokenKind) -> Token {
         let span = self.catchup();
-        let text = &self.text[span.start.byte..span.end.byte];
-        Token::new(kind, text, span)
+        Token::new(kind, span)
     }
 
     fn expect_predicate(
@@ -224,7 +234,7 @@ impl<'text> Lexer<'text> {
         let got = if let Some(c) = self.curr_char() {
             c
         } else {
-            return Err(LexerError::ExpectedGot {
+            return Err(SyntaxError::ExpectedGot {
                 span: self.span(),
                 expected: expected.to_string(),
                 got: "EOF".to_string(),
@@ -234,7 +244,7 @@ impl<'text> Lexer<'text> {
         if (predicate)(got) {
             Ok(self.adv_char().unwrap())
         } else {
-            Err(LexerError::ExpectedGot {
+            Err(SyntaxError::ExpectedGot {
                 span: self.span(),
                 expected: expected.to_string(),
                 got: format!("character {}", got.escape_debug()),
@@ -299,7 +309,8 @@ mod test {
         ($lexer:expr, $($kind:expr, $text:expr),* $(,)?) => {{
             $(
                 let _token = $lexer.next_token().expect("token error");
-                assert_eq!(_token, Token::new($kind, $text, Span::default()));
+                assert_eq!(_token, Token::new($kind, Span::default()));
+                assert_eq!($lexer.text_at(_token.span()), $text);
             )*
         }};
     }
@@ -310,9 +321,9 @@ mod test {
         }};
     }
 
-    impl PartialEq for Token<'_> {
+    impl PartialEq for Token {
         fn eq(&self, other: &Self) -> bool {
-            self.kind().eq(&other.kind()) && self.text().eq(other.text())
+            self.kind().eq(&other.kind())
         }
     }
 
@@ -451,7 +462,7 @@ mod test {
             foo_bar_baz
             f00_b4r_b4z
             _foo_bar_baz
-            "#
+            "#,
         );
         verify! {
             lexer,
@@ -469,7 +480,7 @@ mod test {
         let mut lexer = Lexer::new(
             r#"
             fn
-            "#
+            "#,
         );
         verify!(lexer, TokenKind::KwFn, "fn");
         verify_eof!(lexer);

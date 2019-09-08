@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Pos {
     pub byte: usize,
     pub char_len: usize,
@@ -9,7 +9,7 @@ pub struct Pos {
 }
 
 impl Pos {
-    //#[inline]
+    #[inline]
     pub fn adv(&mut self, c: char) {
         self.source += 1;
         self.byte += self.char_len;
@@ -22,7 +22,7 @@ impl Pos {
         }
     }
 
-    pub fn line(&mut self) {
+    pub fn adv_line(&mut self) {
         self.line += 1;
     }
 }
@@ -40,7 +40,7 @@ impl Ord for Pos {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Span {
     pub start: Pos,
     pub end: Pos,
@@ -54,4 +54,24 @@ impl Span {
     pub fn len(&self) -> usize {
         self.end.source - self.start.source
     }
+}
+
+pub trait Spanned {
+    fn text<'text>(&self, text: &'text str) -> &'text str {
+        let span = self.span();
+        &text[span.start.byte..span.end.byte]
+    }
+
+    fn span(&self) -> Span;
+}
+
+#[macro_export]
+macro_rules! spanned {
+    ($ty:ty, $span:ident) => {
+        impl $crate::common::span::Spanned for $ty {
+            fn span(&self) -> $crate::common::span::Span {
+                self.$span
+            }
+        }
+    };
 }
