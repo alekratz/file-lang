@@ -14,35 +14,44 @@ impl<'text> Parser<'text> {
         Ok(Parser { lexer, curr })
     }
 
+    pub fn lexer(&self) -> &Lexer<'text> {
+        &self.lexer
+    }
+
+    pub fn text(&self) -> &'text str {
+        self.lexer().text()
+    }
+
     pub fn is_eof(&self) -> bool {
         self.curr.kind() == TokenKind::Eof
     }
 
-    fn next_stmt(&mut self) -> Result<Stmt> {
-        if self.is_any_lookahead::<FunDef>() {
-            self.next_fun_def().map(Stmt::FunDef)
+    pub fn next_stmt(&mut self) -> Result<Stmt> {
+        let stmt = if self.is_any_lookahead::<FunDef>() {
+            Stmt::FunDef(self.next_fun_def()?)
         } else if self.is_any_lookahead::<Expr>() {
-            self.next_expr().map(Stmt::Expr)
+            Stmt::Expr(self.next_expr()?)
         } else if self.is_any_lookahead::<Retn>() {
-            self.next_retn_stmt().map(Stmt::Retn)
+            Stmt::Retn(self.next_retn_stmt()?)
         } else {
-            Err(SyntaxError::ExpectedGot {
+            return Err(SyntaxError::ExpectedGot {
                 span: self.curr.span(),
                 expected: "statement (expression, function definition, or return)".into(),
                 got: format!("{} token", self.curr.kind()),
-            })
+            });
+        };
+        if stmt.expects_eol() {
+            self.expect_token_kind(TokenKind::Eol, "line-end delimiter ';' after statement")?;
         }
+        Ok(stmt)
     }
 
-    fn next_body(&mut self) -> Result<Vec<Stmt>> {
+    pub fn next_body(&mut self) -> Result<Vec<Stmt>> {
         let mut body = Vec::new();
         while self.is_any_lookahead::<Stmt>() {
             let stmt = self.next_stmt()?;
             let expects_eol = stmt.expects_eol();
             body.push(stmt);
-            if expects_eol {
-                self.expect_token_kind(TokenKind::Eol, "line-end delimiter ';'")?;
-            }
         }
         Ok(body)
     }

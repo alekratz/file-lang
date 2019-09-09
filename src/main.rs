@@ -1,5 +1,7 @@
 #[macro_use] mod common;
 mod syn;
+mod compile;
+mod vm;
 
 use crate::common::span::*;
 use syn::prelude::*;
