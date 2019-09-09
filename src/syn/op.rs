@@ -1,5 +1,3 @@
-use crate::syn::token::TokenKind;
-
 macro_rules! ops {
     ($($op:ident => $text:expr),* $(,)?) => {
         /// The kind of operator being represented.
@@ -55,4 +53,5 @@ ops! {
     Eq => '=',
     Plus => '+',
     Dot => '.',
+    Tilde => '~',
 }

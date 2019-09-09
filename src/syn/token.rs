@@ -1,7 +1,4 @@
-use crate::{
-    common::span::*,
-    syn::op::OpKind,
-};
+use crate::common::span::*;
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, Copy, PartialEq, Hash)]
@@ -26,6 +23,7 @@ pub enum TokenKind {
     Comma,
 
     KwFn,
+    KwRetn,
 }
 
 impl Display for TokenKind {
@@ -52,12 +50,12 @@ impl Display for TokenKind {
             TokenKind::Comma => write!(fmt, "comma"),
 
             TokenKind::KwFn => write!(fmt, "`fn` keyword"),
+            TokenKind::KwRetn => write!(fmt, "`retn` keyword"),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-#[cfg_attr(not(test), derive(PartialEq))]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     kind: TokenKind,
     span: Span,

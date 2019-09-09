@@ -46,6 +46,7 @@ pub struct Lexer<'text> {
 lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, TokenKind> = hashmap! {
         "fn" => TokenKind::KwFn,
+        "retn" => TokenKind::KwRetn,
     };
 }
 
@@ -256,10 +257,6 @@ impl<'text> Lexer<'text> {
         self.expect_predicate(|c| chars.contains(&c), expected)
     }
 
-    fn expect_char(&mut self, ch: char, expected: impl ToString) -> Result<char> {
-        self.expect_predicate(|c| c == ch, expected)
-    }
-
     fn match_predicate(&mut self, predicate: impl Fn(char) -> bool) -> Option<char> {
         let c = self.curr_char()?;
         if (predicate)(c) {
@@ -289,10 +286,6 @@ impl<'text> Lexer<'text> {
             .unwrap_or(false)
     }
 
-    fn next_char(&self) -> Option<char> {
-        self.chars.clone().skip(1).next()
-    }
-
     fn curr_char(&self) -> Option<char> {
         self.chars.clone().next()
     }
@@ -319,12 +312,6 @@ mod test {
         ($lexer:expr) => {{
             verify!($lexer, TokenKind::Eof, "");
         }};
-    }
-
-    impl PartialEq for Token {
-        fn eq(&self, other: &Self) -> bool {
-            self.kind().eq(&other.kind())
-        }
     }
 
     #[test]
@@ -480,9 +467,11 @@ mod test {
         let mut lexer = Lexer::new(
             r#"
             fn
+            retn
             "#,
         );
         verify!(lexer, TokenKind::KwFn, "fn");
+        verify!(lexer, TokenKind::KwRetn, "retn");
         verify_eof!(lexer);
     }
 }

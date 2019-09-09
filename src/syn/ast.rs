@@ -5,6 +5,7 @@ use crate::{
         op::*,
     },
 };
+use matches::matches;
 use lazy_static::lazy_static;
 
 pub type Lookaheads = &'static [TokenKind];
@@ -64,7 +65,7 @@ macro_rules! lookahead_builder {
 /// AST item trait.
 ///
 /// All AST items accept visitors.
-pub trait Ast: Spanned {
+pub trait Ast: Spanned + PartialEq {
     fn lookaheads() -> Lookaheads;
 }
 
@@ -77,6 +78,13 @@ impl<T> Accept for T where T: Ast {}
 pub enum Stmt {
     Expr(Expr),
     FunDef(FunDef),
+    Retn(Retn),
+}
+
+impl Stmt {
+    pub fn expects_eol(&self) -> bool {
+        matches!(self, Stmt::Expr(_) | Stmt::Retn(_))
+    }
 }
 
 impl Spanned for Stmt {
@@ -84,13 +92,16 @@ impl Spanned for Stmt {
         match self {
             Stmt::Expr(e) => e.span(),
             Stmt::FunDef(f) => f.span(),
+            Stmt::Retn(r) => r.span(),
         }
     }
 }
 
 impl Ast for Stmt {
     ast_lookaheads! {
+        FunDef::lookaheads(),
         Expr::lookaheads(),
+        Retn::lookaheads(),
     }
 }
 
@@ -111,6 +122,21 @@ impl Ast for FunDef {
     }
 }
 
+/// A return statement, with an optional expression.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Retn {
+    pub span: Span,
+    pub expr: Option<Expr>,
+}
+
+spanned!(Retn, span);
+
+impl Ast for Retn {
+    ast_lookaheads! {
+        TokenKind::KwRetn,
+    }
+}
+
 /// Base expression node.
 ///
 /// To keep the AST from getting too deep and difficult to debug, an expression is either a unary,
@@ -118,40 +144,60 @@ impl Ast for FunDef {
 /// expressions).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    Unary(UnaryExpr),
-    Binary(BinaryExpr),
-    Atom(AtomExpr),
+    FunCall(Box<FunCall>),
+    Un(Box<UnExpr>),
+    Bin(Box<BinExpr>),
+    Atom(Atom),
 }
 
 impl Ast for Expr {
     ast_lookaheads! {
-        BinaryExpr::lookaheads(),
+        FunCall::lookaheads(),
     }
 }
 
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Expr::Unary(u) => u.span(),
-            Expr::Binary(b) => b.span(),
+            Expr::FunCall(f) => f.span(),
+            Expr::Un(u) => u.span(),
+            Expr::Bin(b) => b.span(),
             Expr::Atom(a) => a.span(),
         }
     }
 }
 
-/// A unary expression.
+/// A function call.
 ///
-/// Unary expressions start with an operator and are followed by an expression.
+/// Function calls are composed of an expression (the function), and any number of arguments.
 #[derive(Debug, Clone, PartialEq)]
-pub struct UnaryExpr {
+pub struct FunCall {
     pub span: Span,
-    pub op: Op,
-    pub expr: Box<Expr>,
+    pub fun: Expr,
+    pub args: Vec<Expr>,
 }
 
-spanned!(UnaryExpr, span);
+spanned!(FunCall, span);
 
-impl Ast for UnaryExpr {
+impl Ast for FunCall {
+    ast_lookaheads! {
+        BinExpr::lookaheads(),
+    }
+}
+
+/// A unary expression.
+///
+/// Un(ary) expressions start with an operator and are followed by an expression.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnExpr {
+    pub span: Span,
+    pub op: Op,
+    pub expr: Expr,
+}
+
+spanned!(UnExpr, span);
+
+impl Ast for UnExpr {
     ast_lookaheads! {
         TokenKind::Op,
     }
@@ -159,48 +205,36 @@ impl Ast for UnaryExpr {
 
 /// A binary expression.
 ///
-/// Binary expressions have a left hand expression, an operator, and a right hand expression.
+/// Bin(ary) expressions have a left hand expression, an operator, and a right hand expression.
 #[derive(Debug, Clone, PartialEq)]
-pub struct BinaryExpr {
+pub struct BinExpr {
     pub span: Span,
-    pub lhs: Box<Expr>,
+    pub lhs: Expr,
     pub op: Op,
-    pub rhs: Box<Expr>,
+    pub rhs: Expr,
 }
 
-spanned!(BinaryExpr, span);
+spanned!(BinExpr, span);
 
-impl Ast for BinaryExpr {
+impl Ast for BinExpr {
     ast_lookaheads! {
-        AtomExpr::lookaheads(),
-        UnaryExpr::lookaheads(),
+        Atom::lookaheads(),
+        UnExpr::lookaheads(),
     }
 }
 
-/// An atomic expression.
+/// A literal value.
 ///
-/// Atomic expressions are either a literal (string, identifier, etc), or a parenthesized
-/// expression.
+/// Atom values are identifiers, strings, and numbers.
 #[derive(Debug, Clone, PartialEq)]
-pub enum AtomExpr {
-    Lit(Lit),
-    Expr(Box<Expr>),
+pub struct Atom {
+    pub span: Span,
+    pub kind: AtomKind,
 }
 
-impl Spanned for AtomExpr {
-    fn span(&self) -> Span {
-        match self {
-            AtomExpr::Lit(l) => l.span(),
-            AtomExpr::Expr(e) => e.span(),
-        }
-    }
-}
-
-impl Ast for AtomExpr {
+impl Ast for Atom {
     ast_lookaheads! {
-        // expr
         TokenKind::LParen,
-        // lit
         TokenKind::Ident,
         TokenKind::String,
         TokenKind::DecInt,
@@ -211,19 +245,10 @@ impl Ast for AtomExpr {
     }
 }
 
-/// A literal value.
-///
-/// Literal values are identifiers, strings, and numbers.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Lit {
-    pub span: Span,
-    pub kind: LitKind,
-}
-
-spanned!(Lit, span);
+spanned!(Atom, span);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum LitKind {
+pub enum AtomKind {
     Ident,
     String,
     DecInt,

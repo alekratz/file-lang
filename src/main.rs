@@ -6,7 +6,7 @@ use syn::prelude::*;
 use structopt::StructOpt;
 use std::{fs, path::PathBuf};
 
-type Result<T> = std::result::Result<T, Box<std::error::Error>>;
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "file language")]
@@ -32,7 +32,7 @@ fn dump_tokens(text: &str) -> Result<()> {
     loop {
         let token = lexer.next_token()?;
         let span = token.span();
-        println!("{: <15}line {}, index {}", token.kind().to_string(), span.start.line + 1, span.start.source + 1);
+        println!("{: <15}line {}, index {}", token.kind().to_string(), span.start.line + 1, span.start.source);
         if token.kind() == TokenKind::Eof {
             break;
         }
