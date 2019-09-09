@@ -82,7 +82,7 @@ pub enum Stmt {
 }
 
 impl Stmt {
-    pub fn expects_eol(&self) -> bool {
+    pub (in super) fn expects_eol(&self) -> bool {
         matches!(self, Stmt::Expr(_) | Stmt::Retn(_))
     }
 }
