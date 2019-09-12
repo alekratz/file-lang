@@ -1,5 +1,5 @@
 #[macro_use] mod common;
-mod syn;
+#[macro_use] mod syn;
 mod compile;
 mod vm;
 

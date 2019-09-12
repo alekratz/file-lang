@@ -1,17 +1,24 @@
 use crate::{common::span::*, syn::prelude::*};
-use std::{convert::TryFrom, mem};
+use std::{convert::TryFrom, collections::HashMap, mem};
 
 #[derive(Debug, Clone)]
 pub struct Parser<'text> {
     lexer: Lexer<'text>,
     curr: Token,
+    bindings: Vec<HashMap<String, usize>>,
+    bindings_count: usize,
 }
 
 impl<'text> Parser<'text> {
     pub fn new(text: &'text str) -> Result<Self> {
         let mut lexer = Lexer::new(text);
         let curr = lexer.next_token()?;
-        Ok(Parser { lexer, curr })
+        Ok(Parser {
+            lexer,
+            curr,
+            bindings: vec![Default::default()],
+            bindings_count: Default::default(),
+        })
     }
 
     pub fn lexer(&self) -> &Lexer<'text> {
@@ -30,7 +37,7 @@ impl<'text> Parser<'text> {
         let stmt = if self.is_any_lookahead::<FunDef>() {
             Stmt::FunDef(self.next_fun_def()?)
         } else if self.is_any_lookahead::<Expr>() {
-            Stmt::Expr(self.next_expr()?)
+            self.next_assign_or_expr_stmt()?
         } else if self.is_any_lookahead::<Retn>() {
             Stmt::Retn(self.next_retn_stmt()?)
         } else {
@@ -44,6 +51,18 @@ impl<'text> Parser<'text> {
             self.expect_token_kind(TokenKind::Eol, "line-end delimiter ';' after statement")?;
         }
         Ok(stmt)
+    }
+
+    fn next_assign_or_expr_stmt(&mut self) -> Result<Stmt> {
+        let lhs = self.next_expr()?;
+        if self.curr.kind() == TokenKind::AssignOp {
+            let op = self.next_assign_op()?;
+            let rhs = self.next_expr()?;
+            let span = lhs.span().union(&rhs.span());
+            Ok(Stmt::Assign(Assign { span, lhs, op, rhs }))
+        } else {
+            Ok(Stmt::Expr(lhs))
+        }
     }
 
     pub fn next_body(&mut self) -> Result<Vec<Stmt>> {
@@ -69,7 +88,13 @@ impl<'text> Parser<'text> {
             "function parameter end delimiter (right parenthesis)",
         )?;
         self.expect_token_kind(TokenKind::LBrace, "function body start (left brace)")?;
+        self.bindings.push(Default::default());
+        // Explicitly create bindings for parameter names before going to the function body
+        for name in params.iter().cloned() {
+            self.create_binding(name);
+        }
         let body = self.next_body()?;
+        self.bindings.pop().expect("mismatched bindings stack");
         self.expect_token_kind(TokenKind::RBrace, "function body end (right brace)")?;
 
         let span = first.span().union(&body.span());
@@ -115,7 +140,7 @@ impl<'text> Parser<'text> {
         Ok(Retn { span, expr })
     }
 
-    fn next_expr(&mut self) -> Result<Expr> {
+    pub fn next_expr(&mut self) -> Result<Expr> {
         self.next_fun_call()
     }
 
@@ -184,9 +209,12 @@ impl<'text> Parser<'text> {
             TokenKind::LParen => {
                 let expr = self.next_expr()?;
                 self.expect_token_kind(TokenKind::RParen, "mismatched left paren")?;
-                return Ok(expr);
+                AtomKind::Expr(expr)
             }
-            TokenKind::Ident => AtomKind::Ident,
+            TokenKind::Ident => {
+                let binding = self.get_or_create_binding(self.lexer.text_at(token.span()));
+                AtomKind::Ident(binding)
+            }
             TokenKind::String => AtomKind::String,
             TokenKind::DecInt => AtomKind::DecInt,
             TokenKind::BinInt => AtomKind::BinInt,
@@ -195,10 +223,13 @@ impl<'text> Parser<'text> {
             TokenKind::Real => AtomKind::Real,
             _ => unreachable!(),
         };
-        Ok(Expr::Atom(Atom {
-            span: token.span(),
-            kind,
-        }))
+        Ok(Expr::Atom(
+            Atom {
+                span: token.span(),
+                kind,
+            }
+            .into(),
+        ))
     }
 
     fn next_op(&mut self) -> Result<Op> {
@@ -209,6 +240,19 @@ impl<'text> Parser<'text> {
             .map(|c| OpKind::from_char(c).unwrap())
             .collect();
         Ok(Op {
+            span: token.span(),
+            kind,
+        })
+    }
+
+    fn next_assign_op(&mut self) -> Result<AssignOp> {
+        let token = self.expect_lookahead::<AssignOp, _>("assignment operator")?;
+        let text = self.lexer.text_at(token.span());
+        let kind: Vec<OpKind> = text
+            .chars()
+            .map(|c| OpKind::from_char(c).unwrap())
+            .collect();
+        Ok(AssignOp {
             span: token.span(),
             kind,
         })
@@ -259,6 +303,27 @@ impl<'text> Parser<'text> {
         let token = mem::replace(&mut self.curr, next);
         Ok(token)
     }
+
+    fn get_binding(&self, name: &str) -> Option<usize> {
+        self.bindings.iter()
+            .rev()
+            .filter_map(|map| map.get(name))
+            .next()
+            .copied()
+    }
+
+    fn get_or_create_binding(&mut self, name: &str) -> usize {
+        self.get_binding(name)
+            .unwrap_or_else(|| self.create_binding(name.to_string()))
+    }
+
+    fn create_binding(&mut self, name: String) -> usize {
+        let lexical_bindings = self.bindings.last_mut().expect("no bindings");
+        let next = self.bindings_count;
+        lexical_bindings.insert(name.to_string(), next);
+        self.bindings_count += 1;
+        next
+    }
 }
 
 impl<'text> TryFrom<&'text str> for Parser<'text> {
@@ -273,12 +338,7 @@ impl<'text> TryFrom<&'text str> for Parser<'text> {
 mod test {
     use super::*;
 
-    macro_rules! ast {
-        ($item:ident { $( $field:ident : $value:expr ),* $(,)? }) => {{
-            crate::syn::ast::$item { $($field : $value, )* span: Default::default(), }
-        }}
-    }
-
+    #[macro_export]
     macro_rules! verify {
         ($parser:expr, $( $rule:ident, $expected:expr ),* $(,)?) => {{
             $({
@@ -292,92 +352,24 @@ mod test {
         }
     }
 
+    #[macro_export]
     macro_rules! verify_eof {
         ($parser:expr) => {
             assert!($parser.is_eof());
         };
     }
 
-    /*
-    macro_rules! expr_stmt {
-        ($($tt:tt)*) => {{
-            Stmt::Expr($($tt)*)
-        }}
-    }
-    */
-
-    macro_rules! retn_stmt {
-        () => {{
-            Stmt::Retn(ast! {
-                Retn {
-                    expr: None,
-                }
-            })
-        }};
-
-        ($expr:expr) => {{
-            Stmt::Retn(ast! {
-                Retn {
-                    expr: Some($expr),
-                }
-            })
-        }};
-    }
-
-    macro_rules! un {
-        ($op:expr, $expr:expr) => {{
-            ast!(UnExpr {
-                op: $op,
-                expr: $expr
-            })
-        }};
-    }
-
-    macro_rules! un_expr {
-        ($op:expr, $expr:expr) => {{
-            Expr::Un(un!($op, $expr).into())
-        }};
-    }
-
-    macro_rules! bin {
-        ($lhs:expr, $op:expr, $rhs:expr) => {{
-            ast!(BinExpr {
-                lhs: $lhs,
-                op: $op,
-                rhs: $rhs
-            })
-        }};
-    }
-
-    macro_rules! bin_expr {
-        ($lhs:expr, $op:expr, $rhs:expr) => {{
-            Expr::Bin(bin!($lhs, $op, $rhs).into())
-        }};
-    }
-
-    macro_rules! atom {
-        ($kind:expr) => {{
-            ast!(Atom { kind: $kind })
-        }};
-    }
-
-    macro_rules! atom_expr {
-        ($kind:expr) => {{
-            Expr::Atom(atom!($kind))
-        }};
-    }
-
     #[test]
     fn test_parser_atom() {
         let mut parser = Parser::new(
             r#"
-        (123)
-        (123.456)
-        (0o123)
-        (0b101)
-        (0xaaa)
+        123
+        123.456
+        0o123
+        0b101
+        0xaaa
 
-        (foo_bar_baz)
+        foo_bar_baz
         "#,
         )
         .unwrap();
@@ -388,7 +380,7 @@ mod test {
             atom_expr!(AtomKind::OctInt),
             atom_expr!(AtomKind::BinInt),
             atom_expr!(AtomKind::HexInt),
-            atom_expr!(AtomKind::Ident),
+            atom_expr!(AtomKind::Ident(0)),
         }
         verify_eof!(parser);
     }
@@ -397,14 +389,14 @@ mod test {
     fn test_parser_un_expr() {
         let mut parser = Parser::new(
             r#"
-            (+123)
-            (-123.456)
-            (+0o666)
-            (--0b100)
+            +123
+            -123.456
+            +0o666
+            --0b100
 
-            (~0xaaa)
+            ~0xaaa
 
-            (^foo_bar_baz)
+            ^foo_bar_baz
             "#,
         )
         .unwrap();
@@ -439,7 +431,7 @@ mod test {
 
             un_expr!(
                 ast!(Op { kind: vec![OpKind::Caret] }),
-                atom_expr!(AtomKind::Ident)
+                atom_expr!(AtomKind::Ident(0))
             ),
         }
         verify_eof!(parser);
@@ -449,11 +441,11 @@ mod test {
     fn test_parser_bin_expr() {
         let mut parser = Parser::new(
             r#"
-            (123 + 456)
-            (-123.456 + 789.123)
-            (0o6660 & ~UMASK)
-            (0b100 --0b100)
-            (0b100 - -0b100)
+            123 + 456
+            123.456 + -789.123
+            0o6660 & ~UMASK
+            0b100 --0b100
+            0b100 - -0b100
             "#,
         )
         .unwrap();
@@ -465,19 +457,19 @@ mod test {
                 atom_expr!(AtomKind::DecInt)
             },
             bin_expr! {
+                atom_expr!(AtomKind::Real),
+                ast!(Op { kind: vec![OpKind::Plus] }),
                 un_expr!(
                     ast!(Op { kind: vec![OpKind::Minus] }),
                     atom_expr!(AtomKind::Real)
-                ),
-                ast!(Op { kind: vec![OpKind::Plus] }),
-                atom_expr!(AtomKind::Real)
+                )
             },
             bin_expr! {
                 atom_expr!(AtomKind::OctInt),
                 ast!(Op { kind: vec![OpKind::Amp] }),
                 un_expr! {
                     ast!(Op { kind: vec![OpKind::Tilde] }),
-                    atom_expr!(AtomKind::Ident)
+                    atom_expr!(AtomKind::Ident(0))
                 }
             },
             bin_expr! {
@@ -497,7 +489,53 @@ mod test {
     }
 
     #[test]
-    fn test_parser_stmt() {
+    fn test_parser_assign_stmt() {
+        let mut parser = Parser::new(
+            r#"
+            a += b;
+            b -= c;
+            d = e;
+            "#,
+        )
+        .unwrap();
+
+        verify! {
+            parser, next_stmt;
+            Stmt::Assign(ast! {
+                Assign {
+                    lhs: atom_expr!(AtomKind::Ident(0)),
+                    op: ast! {
+                        AssignOp { kind: vec![OpKind::Plus, OpKind::Eq] }
+                    },
+                    rhs: atom_expr!(AtomKind::Ident(1))
+                }
+            }),
+
+            Stmt::Assign(ast! {
+                Assign {
+                    lhs: atom_expr!(AtomKind::Ident(1)),
+                    op: ast! {
+                        AssignOp { kind: vec![OpKind::Minus, OpKind::Eq] }
+                    },
+                    rhs: atom_expr!(AtomKind::Ident(2))
+                }
+            }),
+
+            Stmt::Assign(ast! {
+                Assign {
+                    lhs: atom_expr!(AtomKind::Ident(3)),
+                    op: ast! {
+                        AssignOp { kind: vec![OpKind::Eq] }
+                    },
+                    rhs: atom_expr!(AtomKind::Ident(4))
+                }
+            }),
+        }
+        verify_eof!(parser);
+    }
+
+    #[test]
+    fn test_parser_fun_def_stmt() {
         let mut parser = Parser::new(
             r#"
             fn add(a, b) { retn a + b; }
@@ -514,9 +552,9 @@ mod test {
                     body: vec![
                         retn_stmt! {
                             bin_expr!(
-                                atom_expr!(AtomKind::Ident),
+                                atom_expr!(AtomKind::Ident(0)),
                                 ast!(Op{ kind: vec![OpKind::Plus] }),
-                                atom_expr!(AtomKind::Ident)
+                                atom_expr!(AtomKind::Ident(1))
                             )
                         }
                     ],

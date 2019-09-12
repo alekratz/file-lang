@@ -29,16 +29,15 @@ impl Pos {
     }
 }
 
-
 impl PartialOrd for Pos {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        self.byte.partial_cmp(&other.byte)
     }
 }
 
 impl Ord for Pos {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.source.cmp(&other.source)
+        self.byte.cmp(&other.byte)
     }
 }
 

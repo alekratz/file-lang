@@ -204,8 +204,25 @@ impl<'text> Lexer<'text> {
     }
 
     pub fn next_op(&mut self) -> Result<Token> {
-        while self.match_any_char(OpKind::CHARS).is_some() {}
-        Ok(self.make_token(TokenKind::Op))
+        self.expect_any_char(OpKind::CHARS, "operator character")?;
+        while let Some(c) = self.match_any_char(OpKind::CHARS) {}
+        let text = self.text_at(self.span());
+        assert!(!text.is_empty());
+
+        // an assignment operator:
+        // 1. ends with a '=' character
+        // 2. is not !=, <=, >=, or entirely composed of = signs (except for "=")
+        let assign_op = text.ends_with('=')
+            && text != "!="
+            && text != "<="
+            && text != ">="
+            && (text == "=" || !text.chars().all(|c| c == '='));
+
+        if assign_op {
+            Ok(self.make_token(TokenKind::AssignOp))
+        } else {
+            Ok(self.make_token(TokenKind::Op))
+        }
     }
 
     fn next_char_token(&mut self, c: char, kind: TokenKind) -> Result<Token> {
@@ -472,6 +489,36 @@ mod test {
         );
         verify!(lexer, TokenKind::KwFn, "fn");
         verify!(lexer, TokenKind::KwRetn, "retn");
+        verify_eof!(lexer);
+    }
+
+    #[test]
+    fn test_ops() {
+        let mut lexer = Lexer::new(
+            r#"
+            + - * /
+            == != <= >=
+            === ==== =====
+            += -= *= /=
+            =
+            "#,
+        );
+        verify!(lexer, TokenKind::Op, "+");
+        verify!(lexer, TokenKind::Op, "-");
+        verify!(lexer, TokenKind::Op, "*");
+        verify!(lexer, TokenKind::Op, "/");
+        verify!(lexer, TokenKind::Op, "==");
+        verify!(lexer, TokenKind::Op, "!=");
+        verify!(lexer, TokenKind::Op, "<=");
+        verify!(lexer, TokenKind::Op, ">=");
+        verify!(lexer, TokenKind::Op, "===");
+        verify!(lexer, TokenKind::Op, "====");
+        verify!(lexer, TokenKind::Op, "=====");
+        verify!(lexer, TokenKind::AssignOp, "+=");
+        verify!(lexer, TokenKind::AssignOp, "-=");
+        verify!(lexer, TokenKind::AssignOp, "*=");
+        verify!(lexer, TokenKind::AssignOp, "/=");
+        verify!(lexer, TokenKind::AssignOp, "=");
         verify_eof!(lexer);
     }
 }

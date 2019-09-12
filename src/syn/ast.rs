@@ -76,6 +76,7 @@ impl<T> Accept for T where T: Ast {}
 /// This akin to a single expression, branch, loop, assignment, and so forth.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
+    Assign(Assign),
     Expr(Expr),
     FunDef(FunDef),
     Retn(Retn),
@@ -83,13 +84,14 @@ pub enum Stmt {
 
 impl Stmt {
     pub (in super) fn expects_eol(&self) -> bool {
-        matches!(self, Stmt::Expr(_) | Stmt::Retn(_))
+        matches!(self, Stmt::Assign(_) | Stmt::Expr(_) | Stmt::Retn(_))
     }
 }
 
 impl Spanned for Stmt {
     fn span(&self) -> Span {
         match self {
+            Stmt::Assign(a) => a.span(),
             Stmt::Expr(e) => e.span(),
             Stmt::FunDef(f) => f.span(),
             Stmt::Retn(r) => r.span(),
@@ -99,9 +101,27 @@ impl Spanned for Stmt {
 
 impl Ast for Stmt {
     ast_lookaheads! {
+        Assign::lookaheads(),
         FunDef::lookaheads(),
         Expr::lookaheads(),
         Retn::lookaheads(),
+    }
+}
+
+/// An assignment statement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Assign {
+    pub span: Span,
+    pub lhs: Expr,
+    pub op: AssignOp,
+    pub rhs: Expr,
+}
+
+spanned!(Assign, span);
+
+impl Ast for Assign {
+    ast_lookaheads! {
+        Expr::lookaheads(),
     }
 }
 
@@ -147,7 +167,7 @@ pub enum Expr {
     FunCall(Box<FunCall>),
     Un(Box<UnExpr>),
     Bin(Box<BinExpr>),
-    Atom(Atom),
+    Atom(Box<Atom>),
 }
 
 impl Ast for Expr {
@@ -249,7 +269,8 @@ spanned!(Atom, span);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AtomKind {
-    Ident,
+    Expr(Expr),
+    Ident(usize),
     String,
     DecInt,
     BinInt,
@@ -271,5 +292,19 @@ spanned!(Op, span);
 impl Ast for Op {
     ast_lookaheads! {
         TokenKind::Op,
+    }
+}
+
+/// An operator used for assignment statements.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AssignOp {
+    pub span: Span,
+    pub kind: Vec<OpKind>,
+}
+
+spanned!(AssignOp, span);
+impl Ast for AssignOp {
+    ast_lookaheads! {
+        TokenKind::AssignOp,
     }
 }

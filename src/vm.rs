@@ -3,26 +3,25 @@ pub type ConstantId = usize;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Addr(usize);
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Int(i64),
-    //Real(f64),
+    Real(f64),
     String(String),
     Addr(Addr),
 }
 
 #[derive(Debug, Clone)]
-pub enum Op {
-    PushConstant(ConstantId),
+pub enum Inst {
+    PushValue(Value),
     Return,
     Halt,
 }
 
 #[derive(Debug, Clone)]
 pub struct Vm {
-    ops: Vec<Op>,
+    ops: Vec<Inst>,
     stack: Vec<Value>,
-    constants: Vec<Value>,
     ip: usize,
 }
 
@@ -37,18 +36,15 @@ impl Vm {
             self.ip += 1;
 
             match op {
-                Op::PushConstant(id) => {
-                    let constant = self.constants[id].clone();
-                    self.push(constant);
-                }
-                Op::Return => {
+                Inst::PushValue(value) => self.push(value),
+                Inst::Return => {
                     if let Some(Value::Addr(Addr(addr))) = self.pop() {
                         self.ip = addr;
                     } else {
                         panic!("could not return; stack is either empty or address not on top of stack");
                     }
                 }
-                Op::Halt => {
+                Inst::Halt => {
                     break;
                 }
             }

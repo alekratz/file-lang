@@ -15,6 +15,7 @@ pub enum TokenKind {
     Real,
 
     Op,
+    AssignOp,
 
     LParen,
     RParen,
@@ -42,6 +43,7 @@ impl Display for TokenKind {
             | TokenKind::Real => write!(fmt, "real number"),
 
             TokenKind::Op => write!(fmt, "operator"),
+            TokenKind::AssignOp => write!(fmt, "assignment operator"),
 
             TokenKind::LParen => write!(fmt, "left paren"),
             TokenKind::RParen => write!(fmt, "right paren"),
