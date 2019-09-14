@@ -1,7 +1,7 @@
 macro_rules! ops {
     ($($op:ident => $text:expr),* $(,)?) => {
         /// The kind of operator being represented.
-        #[derive(Debug, Clone, Copy, PartialEq, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum OpKind {
             $($op),*
         }

@@ -1,14 +1,14 @@
 use crate::{
     common::{span::*, visit::Accept},
-    syn::{
-        token::TokenKind,
-        op::*,
-    },
+    syn::{op::*, token::TokenKind},
+    vm::value::Binding,
 };
-use matches::matches;
 use lazy_static::lazy_static;
+use matches::matches;
+use std::collections::HashMap;
 
 pub type Lookaheads = &'static [TokenKind];
+pub type Bindings = HashMap<String, Binding>;
 
 macro_rules! ast_lookaheads {
     ($($tt:tt)*) => {
@@ -56,7 +56,7 @@ macro_rules! lookahead_builder {
         v.extend(u);
         v
     }};
-    
+
     ($collection:expr) => {{
         Vec::from($collection)
     }};
@@ -83,7 +83,7 @@ pub enum Stmt {
 }
 
 impl Stmt {
-    pub (in super) fn expects_eol(&self) -> bool {
+    pub(super) fn expects_eol(&self) -> bool {
         matches!(self, Stmt::Assign(_) | Stmt::Expr(_) | Stmt::Retn(_))
     }
 }
@@ -132,6 +132,8 @@ pub struct FunDef {
     pub name: String,
     pub params: Vec<String>,
     pub body: Vec<Stmt>,
+    pub binding: Binding,
+    pub bindings: Bindings,
 }
 
 spanned!(FunDef, span);
@@ -270,7 +272,7 @@ spanned!(Atom, span);
 #[derive(Debug, Clone, PartialEq)]
 pub enum AtomKind {
     Expr(Expr),
-    Ident(usize),
+    Ident(Binding),
     String,
     DecInt,
     BinInt,
@@ -282,7 +284,7 @@ pub enum AtomKind {
 /// An operator that is used for constructing unary and binary expressions.
 ///
 /// Operators are parsed as a collection of individual operator characters.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Op {
     pub span: Span,
     pub kind: Vec<OpKind>,
@@ -296,7 +298,7 @@ impl Ast for Op {
 }
 
 /// An operator used for assignment statements.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct AssignOp {
     pub span: Span,
     pub kind: Vec<OpKind>,
