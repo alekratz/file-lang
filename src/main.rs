@@ -6,7 +6,7 @@ mod vm;
 use crate::{
     common::span::*,
     compile::Compile,
-    vm::{Inst, fun::Fun},
+    vm::{Vm, Inst, fun::Fun},
 };
 use syn::prelude::*;
 use structopt::StructOpt;
@@ -24,6 +24,10 @@ enum Opt {
 
         #[structopt(subcommand, about = "What kind of dump to perform")]
         what: Dump,
+    },
+    Run {
+        #[structopt(parse(from_os_str))]
+        file: PathBuf,
     }
 }
 
@@ -57,6 +61,13 @@ fn dump_bytecode(text: &str) -> Result<()> {
         println!("{:?}", value);
     }
     println!();
+    println!("= BUILTIN FUNCTIONS ============================================================");
+    for fun in compile.pool().fun_pool() {
+        if let Fun::Builtin(fun) = fun {
+            println!("{}", fun.name());
+        }
+    }
+    println!();
     println!("= FUNCTIONS ====================================================================");
     for fun in compile.pool().fun_pool() {
         if let Fun::User(fun) = fun {
@@ -80,7 +91,7 @@ fn dump_bytecode(text: &str) -> Result<()> {
     println!();
     println!("= MAIN FUNCTION ================================================================");
     println!();
-    for (i, inst) in main_fun.iter().enumerate() {
+    for (i, inst) in main_fun.code().iter().enumerate() {
         let line = format!("{:03} {:?}", i, inst);
         match inst {
             Inst::Load(binding)
@@ -91,6 +102,14 @@ fn dump_bytecode(text: &str) -> Result<()> {
             _ => println!("{}", line),
         }
     }
+    Ok(())
+}
+
+fn run_text(text: &str) -> Result<()> {
+    let mut compile = Compile::new();
+    let main_fun = Fun::User(compile.compile(text)?);
+    let mut vm = Vm::new(compile.pool());
+    vm.main(&main_fun)?;
     Ok(())
 }
 
@@ -105,6 +124,10 @@ fn main() -> Result<()> {
                 Dump::Bytecode => dump_bytecode(&text)?,
             }
         },
+        Opt::Run { file } => {
+            let text = fs::read_to_string(file)?;
+            run_text(&text)?;
+        }
     }
 
     Ok(())

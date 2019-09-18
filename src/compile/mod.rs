@@ -36,25 +36,42 @@ impl Compile {
         }
     }
 
-    pub fn compile(&mut self, text: &str) -> Result<Vec<Inst>> {
-        let ast;
+    pub fn compile(&mut self, text: &str) -> Result<UserFun> {
+        let builtin_funs;
         let bin_ops;
         let un_ops;
-        {
+        let (body_bindings, ast) = {
             let mut parser = Parser::new(text, self.pool.bindings_mut())?;
+            builtin_funs = parser.insert_builtin_funs();
             bin_ops = parser.insert_builtin_bin_ops();
             un_ops = parser.insert_builtin_un_ops();
-            ast = parser.next_body()?;
+            parser.next_body()?
+        };
+
+        for builtin in builtin_funs.into_iter() {
+            assert_ne!(builtin.binding(), Binding(usize::max_value()));
+            let binding = builtin.binding();
+            let fun_ref = self.pool.insert_fun(Fun::Builtin(builtin));
+            self.pool.insert_base_register(binding, CopyValue::FunRef(fun_ref));
+        }
+        for (_, binding) in body_bindings.into_iter() {
+            self.pool.insert_base_register(binding, CopyValue::Empty);
         }
         self.bin_ops.extend(bin_ops);
         self.un_ops.extend(un_ops);
-        Ok(Translate::translate(
+        let code = Translate::translate(
             ast,
             text,
             &mut self.pool,
             &mut self.bin_ops,
             &mut self.un_ops
-        ))
+        );
+
+        let name = "__main__".to_string();
+        let params = Vec::new();
+        let binding = Binding(self.pool.bindings().len());
+        let registers = self.pool.base_registers().clone();
+        Ok(UserFun::new(name, params, binding, code, registers))
     }
 
     pub fn pool(&self) -> &Pool {

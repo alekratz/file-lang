@@ -1,8 +1,8 @@
-use crate::vm::{Inst, CopyValuePool, CopyValue, Binding, stack::Stack};
+use crate::vm::{Vm, Binding, CopyValue, CopyValuePool, Inst};
 use std::{
-    hash::{Hash, Hasher},
     cmp::Ordering,
-    fmt::{Debug, Formatter, self},
+    fmt::{self, Debug, Formatter},
+    hash::{Hash, Hasher},
 };
 
 #[derive(Debug, Clone)]
@@ -18,6 +18,13 @@ impl Fun {
             Fun::Builtin(b) => b.name(),
         }
     }
+
+    pub fn binding(&self) -> Binding {
+        match self {
+            Fun::User(u) => u.binding(),
+            Fun::Builtin(b) => b.binding(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -30,7 +37,13 @@ pub struct UserFun {
 }
 
 impl UserFun {
-    pub fn new(name: String, params: Vec<Binding>, binding: Binding, code: Vec<Inst>, registers: CopyValuePool) -> Self {
+    pub fn new(
+        name: String,
+        params: Vec<Binding>,
+        binding: Binding,
+        code: Vec<Inst>,
+        registers: CopyValuePool,
+    ) -> Self {
         UserFun {
             name,
             params,
@@ -59,7 +72,7 @@ impl UserFun {
     pub fn registers(&self) -> &CopyValuePool {
         &self.registers
     }
-    
+
     pub fn arity(&self) -> usize {
         self.params().len()
     }
@@ -101,36 +114,56 @@ impl Hash for UserFun {
     }
 }
 
+pub type BuiltinFunPtr = Box<fn(&mut Vm, Vec<CopyValue>)>;
+
 pub struct BuiltinFun {
+    binding: Binding,
     name: String,
-    fun: Box<fn(&mut Stack)>,
+    fun: BuiltinFunPtr,
 }
 
 impl BuiltinFun {
-    pub fn new(name: String, fun: Box<fn(&mut Stack)>) -> Self {
-        BuiltinFun { name, fun }
+    pub fn new(binding: Binding, name: String, fun: BuiltinFunPtr) -> Self {
+        BuiltinFun { binding, name, fun }
     }
 
-    pub fn call(&self, frame: &mut Stack) {
-        (self.fun)(frame)
+    pub fn binding(&self) -> Binding {
+        self.binding
+    }
+
+    pub fn call(&self, frame: &mut Vm, args: Vec<CopyValue>) {
+        (self.fun)(frame, args)
     }
 
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    pub fn with_binding(mut self, binding: Binding) -> Self {
+        self.binding = binding;
+        self
+    }
 }
 
 impl Clone for BuiltinFun {
     fn clone(&self) -> Self {
-        BuiltinFun { name: self.name.clone(), fun: Box::new(*self.fun) }
+        BuiltinFun {
+            binding: self.binding,
+            name: self.name.clone(),
+            fun: Box::new(*self.fun),
+        }
     }
 }
 
 impl Debug for BuiltinFun {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         fmt.debug_struct("BuiltinFun")
+            .field("binding", &self.binding)
             .field("name", &self.name)
-            .field("fun", &format!("function at {:#x}", &self.fun as *const _ as usize))
+            .field(
+                "fun",
+                &format!("function at {:#x}", &self.fun as *const _ as usize),
+            )
             .finish()
     }
 }
@@ -155,9 +188,5 @@ impl StackFrame<'_> {
 
     pub fn store_register(&mut self, binding: Binding, value: CopyValue) -> Option<CopyValue> {
         self.registers.insert(binding, value)
-    }
-
-    pub fn store_return(&mut self, value: CopyValue) {
-        self.return_value = Some(value);
     }
 }

@@ -34,8 +34,8 @@ pub enum Inst {
     /// Pop the top value off of the stack and store it in the return value register.
     StoreReturn,
 
-    /// Pop the top value off of the stack and attempt to call it.
-    PopCall,
+    /// Pop the top value off of the stack and attempt to call it with the given number of arguments.
+    PopCall(usize),
 
     /// Exit the current function.
     Return,
@@ -62,16 +62,31 @@ impl<'pool> Vm<'pool> {
         }
     }
 
+    pub fn main(&mut self, fun: &'pool Fun) -> Result<(), String> { 
+        self.stack.clear();
+        self.stack.frames_mut().clear();
+        self.call(fun, vec![]);
+        self.run()
+    }
+
     pub fn halt(&mut self) {
         self.halt = true;
     }
 
-    fn stack_frame(&self) -> &StackFrame<'pool> {
+    pub fn stack_frame(&self) -> &StackFrame<'pool> {
         self.stack.last_frame().expect("no stack frames")
     }
 
-    fn stack_frame_mut(&mut self) -> &mut StackFrame<'pool> {
+    pub fn stack_frame_mut(&mut self) -> &mut StackFrame<'pool> {
         self.stack.last_frame_mut().expect("no stack frames")
+    }
+
+    pub fn stack(&self) -> &Stack<'pool> {
+        &self.stack
+    }
+
+    pub fn stack_mut(&mut self) -> &mut Stack<'pool> {
+        &mut self.stack
     }
 
     fn run(&mut self) -> Result<(), String> {
@@ -146,43 +161,23 @@ impl<'pool> Vm<'pool> {
                         .expect("no value on top of stack for store_return");
                     self.store_return(value);
                 }
-                Inst::PopCall => {
-                    let tos = self.stack.pop().expect("no tos");
+                Inst::PopCall(argc) => {
+                    let tos = self.stack.pop().expect("no tos for pop_call");
                     let fun = if let Some(fun) = self.deref_fun(tos) {
                         fun
                     } else {
                         panic!("could not call {:?} as a function", tos);
                     };
-
-                    match fun {
-                        Fun::User(fun) => {
-                            // get intended number of args for the function, and get ready to pop
-                            // them off
-                            // NOTE: don't use split_off here because that allocates a new vec.
-                            //       Use an iterator with copied values, and truncate the vec at
-                            //       the end.
-                            let args_start = self.stack.len() - fun.arity();
-                            let mut args = self.stack.iter().skip(args_start).copied();
-                            let mut frame = fun.make_stack_frame(args_start);
-                            // store initial param values in function stack frame registers
-                            for (arg, binding) in args.zip(fun.params().iter().copied()) {
-                                let prev = frame.store_register(binding, arg);
-                                assert_eq!(prev, Some(CopyValue::Empty), 
-                                           "tried to store a value in the same parameter twice");
-                            }
-                            // pop off the args from the stack
-                            self.stack.truncate(args_start);
-                            // TODO : canary to ensure no stack misalignment
-                        }
-                        Fun::Builtin(fun) => {
-                            // builtin functions manage their own stack and run independently of
-                            // the VM
-                            fun.call(&mut self.stack);
-                        }
-                    }
+                    let args = self.stack.pop_args(argc);
+                    assert_eq!(args.len(), argc, "incorrect number of arguments on the stack");
+                    // TODO : canary to ensure no stack misalignment
+                    self.call(fun, args);
                 }
                 Inst::Return => {
-                    self.stack.pop_frame();
+                    let frame = self.stack.pop_frame().expect("returned to empty stack frame");
+                    if let Some(value) = frame.return_value {
+                        self.stack.push(value);
+                    }
                     break;
                 }
                 Inst::Halt => {
@@ -193,8 +188,28 @@ impl<'pool> Vm<'pool> {
         Ok(())
     }
 
+    pub fn call(&mut self, fun: &'pool Fun, args: Vec<CopyValue>) {
+        match fun {
+            Fun::User(fun) => {
+                let mut frame = fun.make_stack_frame(self.stack.len());
+                // store initial param values in function stack frame registers
+                for (arg, binding) in args.into_iter().zip(fun.params().iter().copied()) {
+                    let prev = frame.store_register(binding, arg);
+                    assert_eq!(prev, Some(CopyValue::Empty), 
+                               "tried to store a value in the same parameter twice");
+                }
+                self.stack.push_frame(frame);
+            }
+            Fun::Builtin(fun) => {
+                // builtin functions manage their own stack and run independently of
+                // the VM
+                fun.call(self, args);
+            }
+        }
+    }
+
     /// Tries to get a function by dereferencing a value until a function is reached.
-    fn deref_fun(&self, value: CopyValue) -> Option<&'pool Fun> {
+    pub fn deref_fun(&self, value: CopyValue) -> Option<&'pool Fun> {
         match value {
             CopyValue::FunRef(ref_id) => Some(self.pool.get_fun(ref_id)),
             CopyValue::HeapRef(ref_id) => {
@@ -215,7 +230,7 @@ impl<'pool> Vm<'pool> {
         }
     }
 
-    fn deref_value(&self, value: CopyValue) -> Option<&Value> {
+    pub fn deref_value(&self, value: CopyValue) -> Option<&Value> {
         match value {
             CopyValue::HeapRef(ref_id) => match self.deref_heap(ref_id) {
                 Value::CopyValue(c) if c.is_ref() => self.deref_value(*c),
@@ -231,17 +246,17 @@ impl<'pool> Vm<'pool> {
     }
 
     /// Gets a value from the const pool.
-    fn deref_const(&self, ref_id: ConstRef) -> &'pool Value {
+    pub fn deref_const(&self, ref_id: ConstRef) -> &'pool Value {
         self.pool.get_const(ref_id)
     }
 
     /// Gets a value from the heap.
-    fn deref_heap(&self, ref_id: HeapRef) -> &Value {
+    pub fn deref_heap(&self, ref_id: HeapRef) -> &Value {
         &self.heap[*ref_id]
     }
 
     /// Loads a value from a register using a variable binding.
-    fn load(&self, binding: Binding) -> Option<CopyValue> {
+    pub fn load(&self, binding: Binding) -> Option<CopyValue> {
         for stack_frame in self.stack.frames().iter().rev() {
             if let Some(value) = stack_frame.registers.get(&binding) {
                 return Some(*value);
@@ -250,7 +265,7 @@ impl<'pool> Vm<'pool> {
         None
     }
 
-    fn store(&mut self, binding: Binding, value: CopyValue) {
+    pub fn store(&mut self, binding: Binding, value: CopyValue) {
         for stack_frame in self.stack.frames_mut().iter_mut().rev() {
             if let Some(value_slot) = stack_frame.registers.get_mut(&binding) {
                 *value_slot = value;
@@ -266,6 +281,6 @@ impl<'pool> Vm<'pool> {
 
     fn store_return(&mut self, value: CopyValue) {
         let stack_frame = self.stack_frame_mut();
-        stack_frame.store_return(value);
+        stack_frame.return_value = Some(value);
     }
 }

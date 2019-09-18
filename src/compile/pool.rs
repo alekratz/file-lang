@@ -1,13 +1,15 @@
 use crate::vm::{
-    value::{Value, ConstRef, Binding, FunRef},
     fun::Fun,
+    value::*,
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct Pool {
     const_pool: Vec<Value>,
     fun_pool: Vec<Fun>,
     bindings: Vec<String>,
+    base_registers: CopyValuePool,
 }
 
 impl Pool {
@@ -15,8 +17,14 @@ impl Pool {
         const_pool: Vec<Value>,
         fun_pool: Vec<Fun>,
         bindings: Vec<String>,
+        base_registers: CopyValuePool,
     ) -> Self {
-        Pool { const_pool, fun_pool, bindings, }
+        Pool {
+            const_pool,
+            fun_pool,
+            bindings,
+            base_registers,
+        }
     }
 
     pub fn bindings(&self) -> &Vec<String> {
@@ -37,7 +45,13 @@ impl Pool {
         self.bindings
             .iter()
             .enumerate()
-            .filter_map(|(i, n)| if n.as_str() == name { Some(Binding(i)) } else { None })
+            .filter_map(|(i, n)| {
+                if n.as_str() == name {
+                    Some(Binding(i))
+                } else {
+                    None
+                }
+            })
             .next()
             .expect(&format!("no such binding {}", name.escape_debug()))
     }
@@ -66,11 +80,23 @@ impl Pool {
         ref_id
     }
 
+    pub fn insert_base_register(
+        &mut self,
+        binding: Binding,
+        value: CopyValue,
+    ) -> Option<CopyValue> {
+        self.base_registers.insert(binding, value)
+    }
+
     pub fn fun_pool(&self) -> &Vec<Fun> {
         &self.fun_pool
     }
 
     pub fn const_pool(&self) -> &Vec<Value> {
         &self.const_pool
+    }
+
+    pub fn base_registers(&self) -> &CopyValuePool {
+        &self.base_registers
     }
 }

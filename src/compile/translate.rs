@@ -85,12 +85,13 @@ impl<'text, 'pool> Translate<'text, 'pool> {
 
     fn translate_fun_call_expr(&mut self, fun_call: FunCall, ctx: ExprCtx) -> Vec<Inst> {
         let mut body = Vec::new();
+        let argc = fun_call.args.len();
         // evaluate expressions, evaluate function call, then try to call it
         for expr in fun_call.args.into_iter() {
             body.extend(self.translate_expr(expr, ExprCtx::Push));
         }
         body.extend(self.translate_expr(fun_call.fun, ExprCtx::Push));
-        body.push(Inst::PopCall);
+        body.push(Inst::PopCall(argc));
         body
     }
 
@@ -102,6 +103,8 @@ impl<'text, 'pool> Translate<'text, 'pool> {
         } else {
             unimplemented!("TODO: handle unknown un_ops");
         };
+        body.push(Inst::Load(op_binding));
+        body.push(Inst::PopCall(1));
         match ctx {
             // discard top of stack result
             ExprCtx::Stmt => body.push(Inst::Pop(1)),
@@ -125,7 +128,7 @@ impl<'text, 'pool> Translate<'text, 'pool> {
             unimplemented!("TODO: handle unknown bin_ops");
         };
         body.push(Inst::Load(op_binding));
-        body.push(Inst::PopCall);
+        body.push(Inst::PopCall(2));
 
         match ctx {
             // discard top of stack result

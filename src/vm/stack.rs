@@ -36,6 +36,11 @@ impl<'fun> Stack<'fun> {
     pub fn last_frame_mut(&mut self) -> Option<&mut StackFrame<'fun>> {
         self.frames_mut().last_mut()
     }
+
+    pub fn pop_args(&mut self, argc: usize) -> Vec<CopyValue> {
+        let at = self.len() - argc;
+        self.split_off(at)
+    }
 }
 
 impl DerefMut for Stack<'_> {

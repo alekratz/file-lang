@@ -4,7 +4,7 @@ use crate::{
         builtins,
     },
     syn::{ast::Bindings, prelude::*},
-    vm::value::Binding,
+    vm::{fun::BuiltinFun, value::Binding},
 };
 use std::{mem, collections::HashMap};
 
@@ -87,10 +87,13 @@ impl<'text, 'bindings> Parser<'text, 'bindings> {
         })
     }
 
-    pub fn insert_builtin_funs(&mut self) {
+    pub fn insert_builtin_funs(&mut self) -> Vec<BuiltinFun> {
+        let mut bindings = Vec::new();
         for (name, fun) in builtins::FUNS.iter() {
-            self.bindings.create_binding(name.to_string());
+            let binding = self.bindings.create_binding(name.to_string());
+            bindings.push(fun.clone().with_binding(binding));
         }
+        bindings
     }
 
     pub fn insert_builtin_bin_ops(&mut self) -> HashMap<Vec<OpKind>, Binding> {
@@ -121,6 +124,22 @@ impl<'text, 'bindings> Parser<'text, 'bindings> {
 
     pub fn is_eof(&self) -> bool {
         self.curr.kind() == TokenKind::Eof
+    }
+ 
+    pub fn next_body(&mut self) -> Result<(Bindings, Vec<Stmt>)> {
+        self.bindings.push_default();
+        let body = self.next_unbound_body()?;
+        let bindings = self.bindings.pop_expect();
+        Ok((bindings, body))
+    }
+
+    fn next_unbound_body(&mut self) -> Result<Vec<Stmt>> {
+        let mut body = Vec::new();
+        while self.is_any_lookahead::<Stmt>() {
+            let stmt = self.next_stmt()?;
+            body.push(stmt);
+        }
+        Ok(body)
     }
 
     pub fn next_stmt(&mut self) -> Result<Stmt> {
@@ -155,15 +174,6 @@ impl<'text, 'bindings> Parser<'text, 'bindings> {
         }
     }
 
-    pub fn next_body(&mut self) -> Result<Vec<Stmt>> {
-        let mut body = Vec::new();
-        while self.is_any_lookahead::<Stmt>() {
-            let stmt = self.next_stmt()?;
-            body.push(stmt);
-        }
-        Ok(body)
-    }
-
     fn next_fun_def(&mut self) -> Result<FunDef> {
         let first = self.expect_lookahead::<FunDef, _>("function definition")?;
 
@@ -189,7 +199,7 @@ impl<'text, 'bindings> Parser<'text, 'bindings> {
             .map(|name| (self.bindings.create_binding(name.clone()), name))
             .collect();
 
-        let body = self.next_body()?;
+        let body = self.next_unbound_body()?;
         let bindings = self.bindings.pop_expect();
         self.expect_token_kind(TokenKind::RBrace, "function body end (right brace)")?;
         let span = first.span().union(&body.span());
