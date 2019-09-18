@@ -10,6 +10,7 @@ pub struct Translate<'text, 'pool> {
     pool: &'pool mut Pool,
     bin_ops: &'pool mut Operators,
     un_ops: &'pool mut Operators,
+    registers: Vec<CopyValuePool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,16 +28,18 @@ impl<'text, 'pool> Translate<'text, 'pool> {
         pool: &'pool mut Pool,
         bin_ops: &'pool mut Operators,
         un_ops: &'pool mut Operators,
-    ) -> Vec<Inst> {
+    ) -> (CopyValuePool, Vec<Inst>) {
         let mut translate = Translate {
             text,
             pool,
             bin_ops,
             un_ops,
+            registers: vec![Default::default()],
         };
         let mut body = translate.translate_body(ast);
         body.push(Inst::Halt);
-        body
+        let registers = translate.registers.pop().unwrap();
+        (registers, body)
     }
 
     pub fn translate_body(&mut self, ast: Vec<Stmt>) -> Vec<Inst> {
@@ -50,7 +53,12 @@ impl<'text, 'pool> Translate<'text, 'pool> {
             Stmt::Assign(assign) => self.translate_assign(assign),
             Stmt::Expr(e) => self.translate_expr(e, ExprCtx::Stmt),
             Stmt::FunDef(def) => {
-                self.translate_fun_def(def);
+                let binding = def.binding;
+                let fun_ref = self.translate_fun_def(def);
+                let value = CopyValue::FunRef(fun_ref);
+                self.registers.last_mut()
+                    .unwrap()
+                    .insert(binding, value);
                 vec![]
             }
             Stmt::Retn(r) => {
@@ -193,10 +201,12 @@ impl<'text, 'pool> Translate<'text, 'pool> {
             .values()
             .map(|v| (*v, CopyValue::Empty))
             .collect();
+        self.registers.push(registers);
         let mut code = self.translate_body(fun_def.body);
         if code.last().copied() != Some(Inst::Return) {
             code.push(Inst::Return);
         }
+        let registers = self.registers.pop().unwrap();
         let fun = UserFun::new(name, params, binding, code, registers);
         self.pool.insert_fun(Fun::User(fun))
     }

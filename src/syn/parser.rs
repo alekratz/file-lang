@@ -52,6 +52,15 @@ impl<'bindings> BindingStack<'bindings> {
             .unwrap_or_else(|| self.create_binding(name.to_string()))
     }
 
+    fn get_or_create_local_binding(&mut self, name: &str) -> Binding {
+        self.stack
+            .last()
+            .unwrap()
+            .get(name)
+            .copied()
+            .unwrap_or_else(|| self.create_binding(name.to_string()))
+    }
+
     fn create_binding(&mut self, name: String) -> Binding {
         let binding = Binding(self.bindings.len());
         let lexical_bindings = self.stack.last_mut().expect("no bindings");
@@ -180,7 +189,7 @@ impl<'text, 'bindings> Parser<'text, 'bindings> {
         let name_token = self.expect_token_kind(TokenKind::Ident, "function name")?;
         let name = self.lexer.text_at(name_token.span()).to_string();
 
-        let binding = self.bindings.create_binding(name.clone());
+        let binding = self.bindings.get_or_create_local_binding(name.as_str());
 
         self.expect_token_kind(
             TokenKind::LParen,
@@ -196,7 +205,7 @@ impl<'text, 'bindings> Parser<'text, 'bindings> {
 
         // Explicitly create bindings for parameter names before going to the function body
         let params: Vec<(Binding, String)> = params.into_iter()
-            .map(|name| (self.bindings.create_binding(name.clone()), name))
+            .map(|name| (self.bindings.create_binding(name.to_string()), name))
             .collect();
 
         let body = self.next_unbound_body()?;
@@ -321,6 +330,11 @@ impl<'text, 'bindings> Parser<'text, 'bindings> {
             TokenKind::Ident => {
                 let binding = self
                     .bindings
+                    // TODO : this needs to be more context-dependent.
+                    // If we're using an ident as a function call, we want to search up the stack.
+                    // If we're using an ident as a LHS, we want to only search locally.
+                    // I think the best solution is to offload binding creation to the compiler,
+                    // and create a special binding type.
                     .get_or_create_binding(self.lexer.text_at(token.span()));
                 AtomKind::Ident(binding)
             }

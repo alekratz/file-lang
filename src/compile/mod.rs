@@ -48,18 +48,9 @@ impl Compile {
             parser.next_body()?
         };
 
-        for builtin in builtin_funs.into_iter() {
-            assert_ne!(builtin.binding(), Binding(usize::max_value()));
-            let binding = builtin.binding();
-            let fun_ref = self.pool.insert_fun(Fun::Builtin(builtin));
-            self.pool.insert_base_register(binding, CopyValue::FunRef(fun_ref));
-        }
-        for (_, binding) in body_bindings.into_iter() {
-            self.pool.insert_base_register(binding, CopyValue::Empty);
-        }
         self.bin_ops.extend(bin_ops);
         self.un_ops.extend(un_ops);
-        let code = Translate::translate(
+        let (mut registers, code) = Translate::translate(
             ast,
             text,
             &mut self.pool,
@@ -67,10 +58,21 @@ impl Compile {
             &mut self.un_ops
         );
 
+        for builtin in builtin_funs.into_iter() {
+            assert_ne!(builtin.binding(), Binding(usize::max_value()));
+            let binding = builtin.binding();
+            let fun_ref = self.pool.insert_fun(Fun::Builtin(builtin));
+            registers.insert(binding, CopyValue::FunRef(fun_ref));
+        }
+        for (_, binding) in body_bindings.into_iter() {
+            registers.entry(binding)
+                .or_insert(CopyValue::Empty);
+        }
+        //println!("base registers: {:#?}", registers);
+
         let name = "__main__".to_string();
         let params = Vec::new();
         let binding = Binding(self.pool.bindings().len());
-        let registers = self.pool.base_registers().clone();
         Ok(UserFun::new(name, params, binding, code, registers))
     }
 

@@ -112,7 +112,7 @@ impl<'pool> Vm<'pool> {
                         value
                     } else {
                         panic!(
-                            "could not find binding for {:?} (variable {:?})",
+                            "could not find {:?} (variable {:?})",
                             binding,
                             self.pool.get_binding_name(binding)
                         );
@@ -178,7 +178,6 @@ impl<'pool> Vm<'pool> {
                     if let Some(value) = frame.return_value {
                         self.stack.push(value);
                     }
-                    break;
                 }
                 Inst::Halt => {
                     self.halt();
@@ -194,10 +193,9 @@ impl<'pool> Vm<'pool> {
                 let mut frame = fun.make_stack_frame(self.stack.len());
                 // store initial param values in function stack frame registers
                 for (arg, binding) in args.into_iter().zip(fun.params().iter().copied()) {
-                    let prev = frame.store_register(binding, arg);
-                    assert_eq!(prev, Some(CopyValue::Empty), 
-                               "tried to store a value in the same parameter twice");
+                    frame.store_register(binding, arg);
                 }
+                //println!("frame registers: {:#?}", frame.registers);
                 self.stack.push_frame(frame);
             }
             Fun::Builtin(fun) => {
