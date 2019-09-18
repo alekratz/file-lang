@@ -8,13 +8,11 @@ mod test {
         }}
     }
 
-    /*
     macro_rules! expr_stmt {
         ($($tt:tt)*) => {{
             Stmt::Expr($($tt)*)
         }}
     }
-    */
 
     #[macro_export]
     macro_rules! retn_stmt {

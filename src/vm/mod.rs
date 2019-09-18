@@ -1,44 +1,63 @@
 pub mod fun;
+pub mod stack;
 pub mod value;
 
 pub mod prelude {
-    pub use super::fun::Fun;
+    pub use super::fun::{BuiltinFun, Fun, UserFun};
     pub use super::value::*;
-    pub use super::{
-        Inst, Vm
-    };
+    pub use super::{Inst, Vm};
 }
 
-use fun::*;
-use shrinkwraprs::Shrinkwrap;
-use value::*;
+use crate::{
+    compile::pool::Pool,
+    vm::{fun::*, stack::*, value::*},
+};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inst {
+    /// Pop N values off of the stack.
     Pop(usize),
+
+    /// Push a constant value to the stack.
     PushValue(CopyValue),
+
+    /// Load a variable binding and push it to the stack.
     Load(Binding),
+
+    /// Pop the top value off of the stack and store it in a variable binding.
     Store(Binding),
+
+    /// Pop a storage target followed by a value off of the stack, and store the value in the
+    /// target.
+    PopStore,
+
+    /// Pop the top value off of the stack and store it in the return value register.
+    StoreReturn,
+
+    /// Pop the top value off of the stack and attempt to call it.
+    PopCall,
+
+    /// Exit the current function.
     Return,
+
+    /// Halt the VM.
     Halt,
 }
 
 #[derive(Debug, Clone)]
 pub struct Vm<'pool> {
-    stack: Vec<CopyValue>,
-    stack_frames: Vec<StackFrame<'pool>>,
-    heap: Vec<Option<Value>>,
-    const_pool: &'pool Vec<Value>,
+    pool: &'pool Pool,
+    stack: Stack<'pool>,
+    heap: Vec<Value>,
     halt: bool,
 }
 
 impl<'pool> Vm<'pool> {
-    pub fn new(const_pool: &'pool Vec<Value>) -> Self {
+    pub fn new(pool: &'pool Pool) -> Self {
         Vm {
+            pool,
             stack: Default::default(),
-            stack_frames: Default::default(),
             heap: Default::default(),
-            const_pool,
             halt: false,
         }
     }
@@ -47,16 +66,12 @@ impl<'pool> Vm<'pool> {
         self.halt = true;
     }
 
-    fn stack_frame(&self) -> &'pool StackFrame {
-        self.stack_frames.last().expect("no stack frames")
+    fn stack_frame(&self) -> &StackFrame<'pool> {
+        self.stack.last_frame().expect("no stack frames")
     }
 
-    fn stack_frame_mut(&mut self) -> &'pool mut StackFrame {
-        self.stack_frames.last_mut().expect("no stack frames")
-    }
-
-    fn ip(&self) -> usize {
-        self.stack_frame().ip
+    fn stack_frame_mut(&mut self) -> &mut StackFrame<'pool> {
+        self.stack.last_frame_mut().expect("no stack frames")
     }
 
     fn run(&mut self) -> Result<(), String> {
@@ -64,28 +79,110 @@ impl<'pool> Vm<'pool> {
             if self.halt {
                 break;
             }
-            let stack_frame = self.stack_frame();
-            let op = stack_frame.decode();
+            let op = {
+                let stack_frame = self.stack_frame_mut();
+                let op = stack_frame.decode();
+                stack_frame.ip += 1;
+                op
+            };
 
             match op {
                 Inst::Pop(n) => {
                     let retain = self.stack.len() - n;
                     self.stack.truncate(retain);
                 }
-                Inst::PushValue(value) => self.push(value),
+                Inst::PushValue(value) => self.stack.push(value),
                 Inst::Load(binding) => {
-                    if let Some(value) = self.load(binding) {
-                        self.push(value);
+                    let value = if let Some(value) = self.load(binding) {
+                        value
                     } else {
-                        unimplemented!("TODO: use-before-assign error");
-                    }
+                        panic!(
+                            "could not find binding for {:?} (variable {:?})",
+                            binding,
+                            self.pool.get_binding_name(binding)
+                        );
+                    };
+                    self.stack.push(value);
                 }
                 Inst::Store(binding) => {
-                    let value = self.pop().expect("no value on top of stack for store");
+                    let value = self
+                        .stack
+                        .pop()
+                        .expect("no value on top of stack for store");
                     self.store(binding, value);
                 }
+                Inst::PopStore => {
+                    let target = self
+                        .stack
+                        .pop()
+                        .expect("no value on top of stack for pop_store target");
+                    // TODO : Raise an error here when exceptions are ready, instead of a hard crash
+                    assert!(
+                        target.is_ref(),
+                        "cannot store values in a non-ref target {:?}",
+                        target
+                    );
+                    let value = self
+                        .stack
+                        .pop()
+                        .expect("no value on top of stack for pop_store value");
+                    match (target, value) {
+                        (CopyValue::ConstRef(_), _) => panic!("tried to store a value {:?} in a const ref {:?}", value, target),
+                        (CopyValue::FunRef(_), _) => panic!("tried to store a value {:?} in a fun ref {:?}", value, target),
+                        (CopyValue::HeapRef(target_id), value) => {
+                            if let Some(value) = self.deref_value(value) {
+                                self.heap[*target_id] = value.clone();
+                            } else {
+                                self.heap[*target_id] = Value::CopyValue(value);
+                            }
+                        }
+                        v => { unreachable!("tried to store a value in a non-ref, non-literal value: {:?}", v) }
+                    }
+                }
+                Inst::StoreReturn => {
+                    let value = self
+                        .stack
+                        .pop()
+                        .expect("no value on top of stack for store_return");
+                    self.store_return(value);
+                }
+                Inst::PopCall => {
+                    let tos = self.stack.pop().expect("no tos");
+                    let fun = if let Some(fun) = self.deref_fun(tos) {
+                        fun
+                    } else {
+                        panic!("could not call {:?} as a function", tos);
+                    };
+
+                    match fun {
+                        Fun::User(fun) => {
+                            // get intended number of args for the function, and get ready to pop
+                            // them off
+                            // NOTE: don't use split_off here because that allocates a new vec.
+                            //       Use an iterator with copied values, and truncate the vec at
+                            //       the end.
+                            let args_start = self.stack.len() - fun.arity();
+                            let mut args = self.stack.iter().skip(args_start).copied();
+                            let mut frame = fun.make_stack_frame(args_start);
+                            // store initial param values in function stack frame registers
+                            for (arg, binding) in args.zip(fun.params().iter().copied()) {
+                                let prev = frame.store_register(binding, arg);
+                                assert_eq!(prev, Some(CopyValue::Empty), 
+                                           "tried to store a value in the same parameter twice");
+                            }
+                            // pop off the args from the stack
+                            self.stack.truncate(args_start);
+                            // TODO : canary to ensure no stack misalignment
+                        }
+                        Fun::Builtin(fun) => {
+                            // builtin functions manage their own stack and run independently of
+                            // the VM
+                            fun.call(&mut self.stack);
+                        }
+                    }
+                }
                 Inst::Return => {
-                    self.stack_frames.pop();
+                    self.stack.pop_frame();
                     break;
                 }
                 Inst::Halt => {
@@ -96,16 +193,56 @@ impl<'pool> Vm<'pool> {
         Ok(())
     }
 
-    fn push(&mut self, value: CopyValue) {
-        self.stack.push(value)
+    /// Tries to get a function by dereferencing a value until a function is reached.
+    fn deref_fun(&self, value: CopyValue) -> Option<&'pool Fun> {
+        match value {
+            CopyValue::FunRef(ref_id) => Some(self.pool.get_fun(ref_id)),
+            CopyValue::HeapRef(ref_id) => {
+                if let Value::CopyValue(value) = self.deref_heap(ref_id) {
+                    self.deref_fun(*value)
+                } else {
+                    None
+                }
+            }
+            CopyValue::ConstRef(ref_id) => {
+                if let Value::CopyValue(value) = self.deref_const(ref_id) {
+                    self.deref_fun(*value)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 
-    fn pop(&mut self) -> Option<CopyValue> {
-        self.stack.pop()
+    fn deref_value(&self, value: CopyValue) -> Option<&Value> {
+        match value {
+            CopyValue::HeapRef(ref_id) => match self.deref_heap(ref_id) {
+                Value::CopyValue(c) if c.is_ref() => self.deref_value(*c),
+                v => Some(v),
+            },
+            CopyValue::ConstRef(ref_id) => match self.deref_const(ref_id) {
+                Value::CopyValue(c) if c.is_ref() => self.deref_value(*c),
+                v => Some(v),
+            },
+            CopyValue::FunRef(ref_id) => None,
+            _ => None,
+        }
     }
 
+    /// Gets a value from the const pool.
+    fn deref_const(&self, ref_id: ConstRef) -> &'pool Value {
+        self.pool.get_const(ref_id)
+    }
+
+    /// Gets a value from the heap.
+    fn deref_heap(&self, ref_id: HeapRef) -> &Value {
+        &self.heap[*ref_id]
+    }
+
+    /// Loads a value from a register using a variable binding.
     fn load(&self, binding: Binding) -> Option<CopyValue> {
-        for stack_frame in self.stack_frames.iter().rev() {
+        for stack_frame in self.stack.frames().iter().rev() {
             if let Some(value) = stack_frame.registers.get(&binding) {
                 return Some(*value);
             }
@@ -114,12 +251,21 @@ impl<'pool> Vm<'pool> {
     }
 
     fn store(&mut self, binding: Binding, value: CopyValue) {
-        for stack_frame in self.stack_frames.iter_mut().rev() {
+        for stack_frame in self.stack.frames_mut().iter_mut().rev() {
             if let Some(value_slot) = stack_frame.registers.get_mut(&binding) {
                 *value_slot = value;
                 return;
             }
         }
-        panic!("could not find value slot for binding {:?}", binding);
+        panic!(
+            "could not find value slot for binding {:?} (var name {:?})",
+            binding,
+            self.pool.get_binding_name(binding)
+        );
+    }
+
+    fn store_return(&mut self, value: CopyValue) {
+        let stack_frame = self.stack_frame_mut();
+        stack_frame.store_return(value);
     }
 }

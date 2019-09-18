@@ -1,56 +1,64 @@
+pub mod translate;
+pub mod pool;
+
 use crate::{
+    compile::{
+        translate::Translate,
+        pool::Pool,
+    },
     common::span::*,
     syn::prelude::*,
     vm::prelude::*,
 };
 use std::collections::HashMap;
 
+pub (in self) type Operators = HashMap<Vec<OpKind>, Binding>;
 type Precedence = Vec<Vec<Vec<OpKind>>>;
 
-/// The context for which an expression is being translated.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ExprCtx {
-    /// The expression is used as a statement; compute it and diregard the result.
-    Stmt,
-
-    /// The expression is used as a return statement; compute it, make any necessary preparations
-    /// to return from the current function.
-    Retn,
-
-    /// The expression is being pushed to the stack, possibly as an intermediate value for further
-    /// computation.
-    Push,
-
-    /// The expression is the left-hand side of an assignment statement.
-    Lhs,
-}
-
-/// Base compiler that outputs 
-pub struct Compile<'text> {
-    text: &'text str,
+/// Base compiler that outputs an executable VM object.
+pub struct Compile {
     precedence: Precedence,
-    const_pool: Vec<Value>,
-    functions: Vec<Fun>,
-    operators: HashMap<Vec<Op>, Binding>,
+    pool: Pool,
+    bin_ops: Operators,
+    un_ops: Operators,
 }
 
-impl<'text> Compile<'text> {
-    pub fn new(text: &'text str) -> Self {
+impl Compile {
+    pub fn new() -> Self {
         Compile {
-            text,
             precedence: vec![
                 vec![vec![OpKind::Splat], vec![OpKind::FSlash]],
                 vec![vec![OpKind::Plus], vec![OpKind::Minus]],
             ],
-            const_pool: Default::default(),
-            functions: Default::default(),
-            operators: Default::default(),
+            pool: Default::default(),
+            bin_ops: Default::default(),
+            un_ops: Default::default(),
         }
     }
 
-    pub fn compile(&mut self) -> Result<Vec<Inst>> {
-        let ast = Parser::new(self.text)?.next_body()?;
-        Ok(self.translate(ast))
+    pub fn compile(&mut self, text: &str) -> Result<Vec<Inst>> {
+        let ast;
+        let bin_ops;
+        let un_ops;
+        {
+            let mut parser = Parser::new(text, self.pool.bindings_mut())?;
+            bin_ops = parser.insert_builtin_bin_ops();
+            un_ops = parser.insert_builtin_un_ops();
+            ast = parser.next_body()?;
+        }
+        self.bin_ops.extend(bin_ops);
+        self.un_ops.extend(un_ops);
+        Ok(Translate::translate(
+            ast,
+            text,
+            &mut self.pool,
+            &mut self.bin_ops,
+            &mut self.un_ops
+        ))
+    }
+
+    pub fn pool(&self) -> &Pool {
+        &self.pool
     }
 
     /// Rearrange expression trees in this level of the AST so that they follow the specified
@@ -66,8 +74,7 @@ impl<'text> Compile<'text> {
                 Stmt::Expr(e) => Stmt::Expr(expr_precedence(e, &self.precedence)),
                 Stmt::FunDef(_) => {
                     /*
-                     * no-op - stay on lexical level, this is taken care of when
-                     * translate_fun_def() calls translate().
+                     * no-op - stay on lexical level, this is taken care of during translation
                      */
                     stmt
                 }
@@ -77,87 +84,6 @@ impl<'text> Compile<'text> {
                 }
             })
             .collect()
-    }
-
-    /// Translates an AST into VM code.
-    fn translate(&mut self, ast: Vec<Stmt>) -> Vec<Inst> {
-        let ast = self.expr_precedence(ast);
-        let mut body = Vec::new();
-        for stmt in ast.into_iter() {
-            body.extend(self.translate_stmt(stmt));
-        }
-        body
-    }
-
-    fn translate_stmt(&mut self, stmt: Stmt) -> Vec<Inst> {
-        match stmt {
-            Stmt::Assign(Assign { .. }) => unimplemented!("TODO: translate assign stmt"),
-            Stmt::Expr(e) => self.translate_expr(e, ExprCtx::Stmt),
-            Stmt::FunDef(def) => {
-                self.translate_fun_def(def);
-                vec![]
-            }
-            Stmt::Retn(_) => unimplemented!("TODO: translate retn"),
-        }
-    }
-
-    fn translate_expr(&mut self, expr: Expr, ctx: ExprCtx) -> Vec<Inst> {
-        match expr {
-            Expr::FunCall(f) => self.translate_fun_call_expr(*f, ctx),
-            Expr::Un(u) => self.translate_un_expr(*u, ctx),
-            Expr::Bin(b) => self.translate_bin_expr(*b, ctx),
-            Expr::Atom(a) => self.translate_atom_expr(*a, ctx),
-        }
-    }
-
-    fn translate_fun_call_expr(&mut self, fun_call: FunCall, ctx: ExprCtx) -> Vec<Inst> {
-        unimplemented!()
-    }
-
-    fn translate_un_expr(&mut self, un: UnExpr, ctx: ExprCtx) -> Vec<Inst> {
-        unimplemented!()
-    }
-
-    fn translate_bin_expr(&mut self, bin: BinExpr, ctx: ExprCtx) -> Vec<Inst> {
-        let mut body = Vec::new();
-        body.extend(self.translate_expr(bin.lhs, ExprCtx::Push));
-        body.extend(self.translate_expr(bin.rhs, ExprCtx::Push));
-        unimplemented!()
-    }
-
-    fn translate_atom_expr(&mut self, atom: Atom, ctx: ExprCtx) -> Vec<Inst> {
-        let text = atom.text(self.text);
-        let value = match atom.kind {
-            AtomKind::Expr(e) => return self.translate_expr(e, ctx),
-            AtomKind::Ident(binding) => return vec![Inst::Load(binding)],
-            AtomKind::String => {
-                let ref_id = self.insert_const(Value::String(text.to_string()));
-                CopyValue::PoolRef(ref_id)
-            }
-            AtomKind::DecInt => CopyValue::Int(text.parse().expect("invalid int text")),
-            AtomKind::BinInt => CopyValue::Int(i64::from_str_radix(&text[2..], 2).expect("invalid binary int text")),
-            AtomKind::OctInt => CopyValue::Int(i64::from_str_radix(&text[2..], 8).expect("invalid octal int text")),
-            AtomKind::HexInt => CopyValue::Int(i64::from_str_radix(&text[2..], 16).expect("invalid hex int text")),
-            AtomKind::Real => CopyValue::Real(text.parse().expect("invalid real number text")),
-        };
-        vec![Inst::PushValue(value)]
-    }
-
-    fn translate_fun_def(&mut self, fun_def: FunDef) {
-        let name = fun_def.name.clone();
-        let binding = fun_def.binding;
-        let registers: CopyValuePool = fun_def.bindings
-            .values()
-            .map(|v| (*v, CopyValue::Empty))
-            .collect();
-        let code = self.translate(fun_def.body);
-        self.functions.push(Fun::new(name, binding, code, registers));
-    }
-
-    fn insert_const(&mut self, value: Value) -> RefId {
-        let ref_id = RefId(self.const_pool.len());
-        self.const_pool.push(value);
-        ref_id
     }
 }
 
@@ -324,7 +250,8 @@ mod test {
 
     #[test]
     fn test_flatten_bin_expr() {
-        let mut parser = Parser::new("1 + 2 * 3 - 4").unwrap();
+        let mut bindings = Vec::new();
+        let mut parser = Parser::new("1 + 2 * 3 - 4", &mut bindings).unwrap();
         let expr = parser.next_expr().unwrap();
         let (span, head, tail) = flatten_bin_expr(expr);
 
@@ -361,7 +288,8 @@ mod test {
     #[test]
     fn test_bin_expr_precedence() {
         // Binary expression
-        let mut parser = Parser::new("1 + 2 * 3 - 4").unwrap();
+        let mut bindings = Vec::new();
+        let mut parser = Parser::new("1 + 2 * 3 - 4", &mut bindings).unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
 
         assert_eq!(
@@ -391,12 +319,13 @@ mod test {
     #[test]
     fn test_atom_expr_precedence() {
         // Atomic expression
-        let mut parser = Parser::new("1").unwrap();
+        let mut bindings = Vec::new();
+        let mut parser = Parser::new("1", &mut bindings).unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
         assert_eq!(expr, atom_expr!(AtomKind::DecInt));
 
         // Parens
-        let mut parser = Parser::new("(1 + 2) * 3 - 4").unwrap();
+        let mut parser = Parser::new("(1 + 2) * 3 - 4", &mut bindings).unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
 
         assert_eq!(
@@ -426,7 +355,8 @@ mod test {
     #[test]
     fn test_sub_expr_precedence() {
         // TODO: function calls, unary expressions
-        let mut parser = Parser::new("(1 + 2 * 3) * 4 - 5").unwrap();
+        let mut bindings = Vec::new();
+        let mut parser = Parser::new("(1 + 2 * 3) * 4 - 5", &mut bindings).unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
 
         assert_eq!(

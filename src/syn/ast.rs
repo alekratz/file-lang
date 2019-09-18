@@ -130,7 +130,7 @@ impl Ast for Assign {
 pub struct FunDef {
     pub span: Span,
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<(Binding, String)>,
     pub body: Vec<Stmt>,
     pub binding: Binding,
     pub bindings: Bindings,

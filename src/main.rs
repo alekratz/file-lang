@@ -3,7 +3,11 @@
 mod compile;
 mod vm;
 
-use crate::common::span::*;
+use crate::{
+    common::span::*,
+    compile::Compile,
+    vm::{Inst, fun::Fun},
+};
 use syn::prelude::*;
 use structopt::StructOpt;
 use std::{fs, path::PathBuf};
@@ -24,9 +28,12 @@ enum Opt {
 }
 
 #[derive(Debug, Copy, Clone, StructOpt)]
-#[structopt(about = "Dump the tokens from a file")]
 enum Dump {
+    #[structopt(about = "Dump the tokens from a file")]
     Tokens,
+
+    #[structopt(about = "Dump translated bytecode")]
+    Bytecode,
 }
 
 fn dump_tokens(text: &str) -> Result<()> {
@@ -42,6 +49,51 @@ fn dump_tokens(text: &str) -> Result<()> {
     Ok(())
 }
 
+fn dump_bytecode(text: &str) -> Result<()> {
+    let mut compile = Compile::new();
+    let main_fun = compile.compile(text)?;
+    println!("= CONST POOL ===================================================================");
+    for value in compile.pool().const_pool() {
+        println!("{:?}", value);
+    }
+    println!();
+    println!("= FUNCTIONS ====================================================================");
+    for fun in compile.pool().fun_pool() {
+        if let Fun::User(fun) = fun {
+            println!("{}", fun.name());
+            println!("--------------------------------------------------------------------------------");
+            println!();
+            for (i, inst) in fun.code().iter().enumerate() {
+                let line = format!("{:03} {:?}", i, inst);
+                match inst {
+                    Inst::Load(binding)
+                    | Inst::Store(binding) => {
+                        let name = compile.pool().get_binding_name(*binding);
+                        println!("{: <30}{: <15?} = {}", line, binding, name);
+                    }
+                    _ => println!("{}", line),
+                }
+            }
+            println!();
+        }
+    }
+    println!();
+    println!("= MAIN FUNCTION ================================================================");
+    println!();
+    for (i, inst) in main_fun.iter().enumerate() {
+        let line = format!("{:03} {:?}", i, inst);
+        match inst {
+            Inst::Load(binding)
+            | Inst::Store(binding) => {
+                let name = compile.pool().get_binding_name(*binding);
+                println!("{: <30}{: <15?} = {}", line, binding, name);
+            }
+            _ => println!("{}", line),
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
@@ -50,6 +102,7 @@ fn main() -> Result<()> {
             let text = fs::read_to_string(file)?;
             match what {
                 Dump::Tokens => dump_tokens(&text)?,
+                Dump::Bytecode => dump_bytecode(&text)?,
             }
         },
     }

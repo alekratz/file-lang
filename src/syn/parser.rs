@@ -1,19 +1,29 @@
 use crate::{
-    common::span::*,
+    common::{
+        span::*,
+        builtins,
+    },
     syn::{ast::Bindings, prelude::*},
     vm::value::Binding,
 };
-use std::{convert::TryFrom, mem};
+use std::{mem, collections::HashMap};
 
-#[derive(Debug, Default, Clone)]
-struct BindingStack {
-    bindings: Vec<Bindings>,
-    count: Binding,
+#[derive(Debug)]
+struct BindingStack<'bindings> {
+    stack: Vec<Bindings>,
+    bindings: &'bindings mut Vec<String>,
 }
 
-impl BindingStack {
+impl<'bindings> BindingStack<'bindings> {
+    fn new(bindings: &'bindings mut Vec<String>) -> Self {
+        BindingStack {
+            stack: vec![Default::default()],
+            bindings,
+        }
+    }
+
     fn push(&mut self, bindings: Bindings) {
-        self.bindings.push(bindings);
+        self.stack.push(bindings);
     }
 
     fn push_default(&mut self) {
@@ -21,7 +31,7 @@ impl BindingStack {
     }
 
     fn pop(&mut self) -> Option<Bindings> {
-        self.bindings.pop()
+        self.stack.pop()
     }
 
     fn pop_expect(&mut self) -> Bindings {
@@ -29,7 +39,7 @@ impl BindingStack {
     }
 
     fn get_binding(&self, name: &str) -> Option<Binding> {
-        self.bindings
+        self.stack
             .iter()
             .rev()
             .filter_map(|map| map.get(name))
@@ -43,34 +53,62 @@ impl BindingStack {
     }
 
     fn create_binding(&mut self, name: String) -> Binding {
-        let lexical_bindings = self.bindings.last_mut().expect("no bindings");
-        let next = self.count;
-        lexical_bindings.insert(name.to_string(), next);
-        self.count = Binding(*self.count + 1);
-        next
+        let binding = Binding(self.bindings.len());
+        let lexical_bindings = self.stack.last_mut().expect("no bindings");
+        lexical_bindings.insert(name.clone(), binding);
+        self.bindings.push(name);
+        binding
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Parser<'text> {
+#[derive(Debug)]
+pub struct Parser<'text, 'bindings> {
     lexer: Lexer<'text>,
     curr: Token,
-    bindings: BindingStack,
+    bindings: BindingStack<'bindings>,
 }
 
-impl<'text> Parser<'text> {
-    pub fn new(text: &'text str) -> Result<Self> {
+impl<'text, 'bindings> Parser<'text, 'bindings> {
+    pub fn parse_ops(text: &str) -> Result<Op> {
+        let mut bindings = Vec::new();
+        Parser::new(text, &mut bindings)?.next_op()
+    }
+
+    pub fn new(text: &'text str, bindings: &'bindings mut Vec<String>) -> Result<Self> {
         let mut lexer = Lexer::new(text);
         let curr = lexer.next_token()?;
 
-        let mut bindings = BindingStack::default();
-        bindings.push_default();
+        let mut bindings = BindingStack::new(bindings);
 
         Ok(Parser {
             lexer,
             curr,
-            bindings: bindings.clone(),
+            bindings,
         })
+    }
+
+    pub fn insert_builtin_funs(&mut self) {
+        for (name, fun) in builtins::FUNS.iter() {
+            self.bindings.create_binding(name.to_string());
+        }
+    }
+
+    pub fn insert_builtin_bin_ops(&mut self) -> HashMap<Vec<OpKind>, Binding> {
+        let mut bindings = HashMap::new();
+        for (ops, fun) in builtins::BIN_OPS.iter() {
+            let binding = self.bindings.create_binding(fun.name().to_string());
+            bindings.insert(ops.clone(), binding);
+        }
+        bindings
+    }
+
+    pub fn insert_builtin_un_ops(&mut self) -> HashMap<Vec<OpKind>, Binding> {
+        let mut bindings = HashMap::new();
+        for (ops, fun) in builtins::UN_OPS.iter() {
+            let binding = self.bindings.create_binding(fun.name().to_string());
+            bindings.insert(ops.clone(), binding);
+        }
+        bindings
     }
 
     pub fn lexer(&self) -> &Lexer<'text> {
@@ -121,7 +159,6 @@ impl<'text> Parser<'text> {
         let mut body = Vec::new();
         while self.is_any_lookahead::<Stmt>() {
             let stmt = self.next_stmt()?;
-            let expects_eol = stmt.expects_eol();
             body.push(stmt);
         }
         Ok(body)
@@ -145,11 +182,13 @@ impl<'text> Parser<'text> {
             "function parameter end delimiter (right parenthesis)",
         )?;
         self.expect_token_kind(TokenKind::LBrace, "function body start (left brace)")?;
-        self.bindings.push(Default::default());
+        self.bindings.push_default();
+
         // Explicitly create bindings for parameter names before going to the function body
-        for name in params.iter().cloned() {
-            self.bindings.create_binding(name);
-        }
+        let params: Vec<(Binding, String)> = params.into_iter()
+            .map(|name| (self.bindings.create_binding(name.clone()), name))
+            .collect();
+
         let body = self.next_body()?;
         let bindings = self.bindings.pop_expect();
         self.expect_token_kind(TokenKind::RBrace, "function body end (right brace)")?;
@@ -199,11 +238,34 @@ impl<'text> Parser<'text> {
     }
 
     pub fn next_expr(&mut self) -> Result<Expr> {
-        self.next_fun_call()
+        self.next_bin_expr()
+    }
+
+    fn next_bin_expr(&mut self) -> Result<Expr> {
+        let lhs = self.next_un_expr()?;
+        if self.is_any_lookahead::<Op>() {
+            let op = self.next_op()?;
+            let rhs = self.next_expr()?;
+            let span = lhs.span().union(&rhs.span());
+            Ok(Expr::Bin(BinExpr { span, lhs, op, rhs }.into()))
+        } else {
+            Ok(lhs)
+        }
+    }
+
+    fn next_un_expr(&mut self) -> Result<Expr> {
+        if self.is_any_lookahead::<Op>() {
+            let op = self.next_op()?;
+            let expr = self.next_expr()?;
+            let span = op.span().union(&expr.span());
+            Ok(Expr::Un(UnExpr { span, op, expr }.into()))
+        } else {
+            self.next_fun_call()
+        }
     }
 
     fn next_fun_call(&mut self) -> Result<Expr> {
-        let fun = self.next_bin_expr()?;
+        let fun = self.next_atom()?;
         if self.curr.kind() == TokenKind::LParen {
             self.adv_token()?;
             let args = self.next_fun_call_args()?;
@@ -235,29 +297,6 @@ impl<'text> Parser<'text> {
             }
         }
         Ok(args)
-    }
-
-    fn next_bin_expr(&mut self) -> Result<Expr> {
-        let lhs = self.next_un_expr()?;
-        if self.is_any_lookahead::<Op>() {
-            let op = self.next_op()?;
-            let rhs = self.next_bin_expr()?;
-            let span = lhs.span().union(&rhs.span());
-            Ok(Expr::Bin(BinExpr { span, lhs, op, rhs }.into()))
-        } else {
-            Ok(lhs)
-        }
-    }
-
-    fn next_un_expr(&mut self) -> Result<Expr> {
-        if self.is_any_lookahead::<Op>() {
-            let op = self.next_op()?;
-            let expr = self.next_un_expr()?;
-            let span = op.span().union(&expr.span());
-            Ok(Expr::Un(UnExpr { span, op, expr }.into()))
-        } else {
-            self.next_atom()
-        }
     }
 
     fn next_atom(&mut self) -> Result<Expr> {
@@ -365,14 +404,6 @@ impl<'text> Parser<'text> {
     }
 }
 
-impl<'text> TryFrom<&'text str> for Parser<'text> {
-    type Error = SyntaxError;
-
-    fn try_from(text: &'text str) -> Result<Self> {
-        Parser::new(text)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -400,6 +431,7 @@ mod test {
 
     #[test]
     fn test_parser_atom() {
+        let mut bindings = Vec::new();
         let mut parser = Parser::new(
             r#"
         123
@@ -409,8 +441,7 @@ mod test {
         0xaaa
 
         foo_bar_baz
-        "#,
-        )
+        "#, &mut bindings)
         .unwrap();
         verify! {
             parser, next_atom;
@@ -426,58 +457,70 @@ mod test {
 
     #[test]
     fn test_parser_un_expr() {
+        let mut bindings = Vec::new();
         let mut parser = Parser::new(
             r#"
-            +123
-            -123.456
-            +0o666
-            --0b100
+            +123;
+            -123.456;
+            +0o666;
+            --0b100;
 
-            ~0xaaa
+            ~0xaaa;
 
-            ^foo_bar_baz
-            "#,
-        )
+            ^foo_bar_baz;
+            "#, &mut bindings)
         .unwrap();
 
-        // TODO maybe clean up unary/binary expressions into their own macro
         verify! {
-            parser, next_un_expr;
-            un_expr!(
-                ast!(Op { kind: vec![OpKind::Plus] }),
-                atom_expr!(AtomKind::DecInt)
+            parser, next_stmt;
+            expr_stmt!(
+                un_expr!(
+                    ast!(Op { kind: vec![OpKind::Plus] }),
+                    atom_expr!(AtomKind::DecInt)
+                )
             ),
 
-            un_expr!(
-                ast!(Op { kind: vec![OpKind::Minus] }),
-                atom_expr!(AtomKind::Real)
+            expr_stmt!(
+                un_expr!(
+                    ast!(Op { kind: vec![OpKind::Minus] }),
+                    atom_expr!(AtomKind::Real)
+                )
             ),
 
-            un_expr!(
-                ast!(Op { kind: vec![OpKind::Plus] }),
-                atom_expr!(AtomKind::OctInt)
+            expr_stmt!(
+                un_expr!(
+                    ast!(Op { kind: vec![OpKind::Plus] }),
+                    atom_expr!(AtomKind::OctInt)
+                )
             ),
 
-            un_expr!(
-                ast!(Op { kind: vec![OpKind::Minus, OpKind::Minus] }),
-                atom_expr!(AtomKind::BinInt)
+            expr_stmt!(
+                un_expr!(
+                    ast!(Op { kind: vec![OpKind::Minus, OpKind::Minus] }),
+                    atom_expr!(AtomKind::BinInt)
+                )
             ),
 
-            un_expr!(
-                ast!(Op { kind: vec![OpKind::Tilde] }),
-                atom_expr!(AtomKind::HexInt)
+            expr_stmt!(
+                un_expr!(
+                    ast!(Op { kind: vec![OpKind::Tilde] }),
+                    atom_expr!(AtomKind::HexInt)
+                )
             ),
 
-            un_expr!(
-                ast!(Op { kind: vec![OpKind::Caret] }),
-                atom_expr!(AtomKind::Ident(Binding(0)))
-            ),
+            expr_stmt!(
+                un_expr!(
+                    ast!(Op { kind: vec![OpKind::Caret] }),
+                    atom_expr!(AtomKind::Ident(Binding(0)))
+                )
+            )
         }
         verify_eof!(parser);
     }
 
     #[test]
     fn test_parser_bin_expr() {
+        let mut bindings = Vec::new();
         let mut parser = Parser::new(
             r#"
             123 + 456
@@ -485,8 +528,7 @@ mod test {
             0o6660 & ~UMASK
             0b100 --0b100
             0b100 - -0b100
-            "#,
-        )
+            "#, &mut bindings)
         .unwrap();
 
         verify!(parser, next_bin_expr;
@@ -529,13 +571,13 @@ mod test {
 
     #[test]
     fn test_parser_assign_stmt() {
+        let mut bindings = Vec::new();
         let mut parser = Parser::new(
             r#"
             a += b;
             b -= c;
             d = e;
-            "#,
-        )
+            "#, &mut bindings)
         .unwrap();
 
         verify! {
@@ -576,11 +618,11 @@ mod test {
     #[test]
     fn test_parser_fun_def_stmt() {
         use maplit::hashmap;
+        let mut bindings = Vec::new();
         let mut parser = Parser::new(
             r#"
             fn add(a, b) { retn a + b; }
-            "#,
-        )
+            "#, &mut bindings)
         .unwrap();
 
         verify! {
@@ -588,7 +630,7 @@ mod test {
             Stmt::FunDef(ast! {
                 FunDef {
                     name: "add".to_string(),
-                    params: vec!["a".to_string(), "b".to_string()],
+                    params: vec![(Binding(1), "a".to_string()), (Binding(2), "b".to_string())],
                     body: vec![
                         retn_stmt! {
                             bin_expr!(
