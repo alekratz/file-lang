@@ -1,11 +1,8 @@
-pub mod translate;
 pub mod pool;
+pub mod ir;
 
 use crate::{
-    compile::{
-        translate::Translate,
-        pool::Pool,
-    },
+    compile::pool::Pool,
     common::span::*,
     syn::prelude::*,
     vm::prelude::*,
@@ -37,6 +34,8 @@ impl Compile {
     }
 
     pub fn compile(&mut self, text: &str) -> Result<UserFun> {
+        unimplemented!()
+        /*
         let builtin_funs;
         let bin_ops;
         let un_ops;
@@ -75,6 +74,7 @@ impl Compile {
         let params = Vec::new();
         let binding = Binding(self.pool.bindings().len());
         Ok(UserFun::new(name, params, binding, code, registers))
+        */
     }
 
     pub fn pool(&self) -> &Pool {

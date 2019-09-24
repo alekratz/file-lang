@@ -1,14 +1,12 @@
 use crate::{
     common::{span::*, visit::Accept},
     syn::{op::*, token::TokenKind},
-    vm::value::Binding,
 };
 use lazy_static::lazy_static;
 use matches::matches;
 use std::collections::HashMap;
 
 pub type Lookaheads = &'static [TokenKind];
-pub type Bindings = HashMap<String, Binding>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Macros
@@ -108,10 +106,8 @@ pub struct Assign {
 pub struct FunDef {
     pub span: Span,
     pub name: String,
-    pub params: Vec<(Binding, String)>,
+    pub params: Vec<String>,
     pub body: Vec<Stmt>,
-    pub binding: Binding,
-    pub bindings: Bindings,
 }
 
 /// A return statement, with an optional expression.
@@ -177,7 +173,7 @@ pub struct Atom {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AtomKind {
     Expr(Expr),
-    Ident(Binding),
+    Ident,
     String,
     DecInt,
     BinInt,
@@ -203,7 +199,7 @@ pub struct AssignOp {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Implementations
+// Base impl
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Stmt {
