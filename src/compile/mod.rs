@@ -48,6 +48,7 @@ impl Compile {
             parser.next_body()?
         };
 
+        let ast = self.expr_precedence(ast);
         self.bin_ops.extend(bin_ops);
         self.un_ops.extend(un_ops);
         let (mut registers, code) = Translate::translate(
