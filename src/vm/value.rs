@@ -9,18 +9,23 @@ pub enum CopyValue {
     Real(f64),
     HeapRef(HeapRef),
     ConstRef(ConstRef),
-    FunRef(FunRef),
 }
 
 impl CopyValue {
     pub fn is_ref(&self) -> bool {
         match self {
             CopyValue::HeapRef(_)
-            | CopyValue::ConstRef(_)
-            | CopyValue::FunRef(_) => true,
+            | CopyValue::ConstRef(_) => true,
             _ => false,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Value {
+    CopyValue(CopyValue),
+    String(String),
+    Fun(Fun),
 }
 
 impl Default for CopyValue {
@@ -34,15 +39,6 @@ pub struct ConstRef(pub usize);
 
 #[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct HeapRef(pub usize);
-
-#[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
-pub struct FunRef(pub usize);
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum Value {
-    CopyValue(CopyValue),
-    String(String),
-}
 
 #[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct Binding(pub usize);

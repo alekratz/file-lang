@@ -6,11 +6,11 @@ mod vm;
 use crate::{
     common::span::*,
     compile::Compile,
-    vm::{Vm, Inst, fun::Fun},
+    vm::{Vm, Inst, fun::Fun, value::Value},
 };
 use syn::prelude::*;
 use structopt::StructOpt;
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, rc::Rc};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -61,16 +61,9 @@ fn dump_bytecode(text: &str) -> Result<()> {
         println!("{:?}", value);
     }
     println!();
-    println!("= BUILTIN FUNCTIONS ============================================================");
-    for fun in compile.pool().fun_pool() {
-        if let Fun::Builtin(fun) = fun {
-            println!("{}", fun.name());
-        }
-    }
-    println!();
     println!("= FUNCTIONS ====================================================================");
-    for fun in compile.pool().fun_pool() {
-        if let Fun::User(fun) = fun {
+    for value in compile.pool().const_pool() {
+        if let Value::Fun(Fun::User(fun)) = value {
             println!("{}", fun.name());
             println!("--------------------------------------------------------------------------------");
             println!();
@@ -107,8 +100,8 @@ fn dump_bytecode(text: &str) -> Result<()> {
 
 fn run_text(text: &str) -> Result<()> {
     let mut compile = Compile::new();
-    let main_fun = Fun::User(compile.compile(text)?);
-    let mut vm = Vm::new(compile.pool());
+    let main_fun = Fun::User(Rc::new(compile.compile(text)?));
+    let mut vm = Vm::new(compile.pool().clone());
     vm.main(&main_fun)?;
     Ok(())
 }

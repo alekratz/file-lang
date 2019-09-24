@@ -7,19 +7,16 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Default)]
 pub struct Pool {
     const_pool: Vec<Value>,
-    fun_pool: Vec<Fun>,
     bindings: Vec<String>,
 }
 
 impl Pool {
     pub fn new(
         const_pool: Vec<Value>,
-        fun_pool: Vec<Fun>,
         bindings: Vec<String>,
     ) -> Self {
         Pool {
             const_pool,
-            fun_pool,
             bindings,
         }
     }
@@ -53,11 +50,6 @@ impl Pool {
             .expect(&format!("no such binding {}", name.escape_debug()))
     }
 
-    /// Gets a function based on its ref ID.
-    pub fn get_fun(&self, ref_id: FunRef) -> &Fun {
-        &self.fun_pool[*ref_id]
-    }
-
     /// Gets a constant value based on its ref ID.
     pub fn get_const(&self, ref_id: ConstRef) -> &Value {
         &self.const_pool[*ref_id]
@@ -68,17 +60,6 @@ impl Pool {
         let ref_id = ConstRef(self.const_pool.len());
         self.const_pool.push(value);
         ref_id
-    }
-
-    /// Inserts a function into the pool.
-    pub fn insert_fun(&mut self, fun: Fun) -> FunRef {
-        let ref_id = FunRef(self.fun_pool.len());
-        self.fun_pool.push(fun);
-        ref_id
-    }
-
-    pub fn fun_pool(&self) -> &Vec<Fun> {
-        &self.fun_pool
     }
 
     pub fn const_pool(&self) -> &Vec<Value> {

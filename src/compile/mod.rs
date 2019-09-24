@@ -61,8 +61,8 @@ impl Compile {
         for builtin in builtin_funs.into_iter() {
             assert_ne!(builtin.binding(), Binding(usize::max_value()));
             let binding = builtin.binding();
-            let fun_ref = self.pool.insert_fun(Fun::Builtin(builtin));
-            registers.insert(binding, CopyValue::FunRef(fun_ref));
+            let fun_ref = self.pool.insert_const(Value::Fun(Fun::Builtin(builtin)));
+            registers.insert(binding, CopyValue::ConstRef(fun_ref));
         }
         for (_, binding) in body_bindings.into_iter() {
             registers.entry(binding)

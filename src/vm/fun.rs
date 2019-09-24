@@ -3,11 +3,12 @@ use std::{
     cmp::Ordering,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
+    rc::Rc,
 };
 
 #[derive(Debug, Clone)]
 pub enum Fun {
-    User(UserFun),
+    User(Rc<UserFun>),
     Builtin(BuiltinFun),
 }
 
@@ -75,16 +76,6 @@ impl UserFun {
 
     pub fn arity(&self) -> usize {
         self.params().len()
-    }
-
-    pub fn make_stack_frame<'fun>(&'fun self, stack_base: usize) -> StackFrame<'fun> {
-        StackFrame {
-            ip: Default::default(),
-            stack_base,
-            return_value: None,
-            registers: self.registers.clone(),
-            fun: self,
-        }
     }
 }
 
@@ -169,15 +160,15 @@ impl Debug for BuiltinFun {
 }
 
 #[derive(Debug, Clone)]
-pub struct StackFrame<'fun> {
+pub struct StackFrame {
     pub ip: usize,
     pub stack_base: usize,
     pub registers: CopyValuePool,
     pub return_value: Option<CopyValue>,
-    pub fun: &'fun UserFun,
+    pub fun: Rc<UserFun>,
 }
 
-impl StackFrame<'_> {
+impl StackFrame {
     pub fn decode(&self) -> Inst {
         self.fun.code[self.ip]
     }

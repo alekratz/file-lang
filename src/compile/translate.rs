@@ -4,6 +4,7 @@ use crate::{
     syn::prelude::*,
     vm::prelude::*,
 };
+use std::rc::Rc;
 
 pub struct Translate<'text, 'pool> {
     text: &'text str,
@@ -55,7 +56,7 @@ impl<'text, 'pool> Translate<'text, 'pool> {
             Stmt::FunDef(def) => {
                 let binding = def.binding;
                 let fun_ref = self.translate_fun_def(def);
-                let value = CopyValue::FunRef(fun_ref);
+                let value = CopyValue::ConstRef(fun_ref);
                 self.registers.last_mut()
                     .unwrap()
                     .insert(binding, value);
@@ -188,7 +189,7 @@ impl<'text, 'pool> Translate<'text, 'pool> {
         }
     }
 
-    fn translate_fun_def(&mut self, fun_def: FunDef) -> FunRef {
+    fn translate_fun_def(&mut self, fun_def: FunDef) -> ConstRef {
         let name = fun_def.name.clone();
         let params: Vec<_> = fun_def
             .params
@@ -207,7 +208,7 @@ impl<'text, 'pool> Translate<'text, 'pool> {
             code.push(Inst::Return);
         }
         let registers = self.registers.pop().unwrap();
-        let fun = UserFun::new(name, params, binding, code, registers);
-        self.pool.insert_fun(Fun::User(fun))
+        let fun = Rc::new(UserFun::new(name, params, binding, code, registers));
+        self.pool.insert_const(Value::Fun(Fun::User(fun)))
     }
 }
