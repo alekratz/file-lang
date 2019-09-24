@@ -10,6 +10,10 @@ use std::collections::HashMap;
 pub type Lookaheads = &'static [TokenKind];
 pub type Bindings = HashMap<String, Binding>;
 
+////////////////////////////////////////////////////////////////////////////////
+// Macros
+////////////////////////////////////////////////////////////////////////////////
+
 macro_rules! ast_lookaheads {
     ($($tt:tt)*) => {
         fn lookaheads() -> Lookaheads {
@@ -62,6 +66,10 @@ macro_rules! lookahead_builder {
     }};
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Traits
+////////////////////////////////////////////////////////////////////////////////
+
 /// AST item trait.
 ///
 /// All AST items accept visitors.
@@ -70,6 +78,10 @@ pub trait Ast: Spanned + PartialEq {
 }
 
 impl<T> Accept for T where T: Ast {}
+
+////////////////////////////////////////////////////////////////////////////////
+// AST structures
+////////////////////////////////////////////////////////////////////////////////
 
 /// Base statement node.
 ///
@@ -82,32 +94,6 @@ pub enum Stmt {
     Retn(Retn),
 }
 
-impl Stmt {
-    pub(super) fn expects_eol(&self) -> bool {
-        matches!(self, Stmt::Assign(_) | Stmt::Expr(_) | Stmt::Retn(_))
-    }
-}
-
-impl Spanned for Stmt {
-    fn span(&self) -> Span {
-        match self {
-            Stmt::Assign(a) => a.span(),
-            Stmt::Expr(e) => e.span(),
-            Stmt::FunDef(f) => f.span(),
-            Stmt::Retn(r) => r.span(),
-        }
-    }
-}
-
-impl Ast for Stmt {
-    ast_lookaheads! {
-        Assign::lookaheads(),
-        FunDef::lookaheads(),
-        Expr::lookaheads(),
-        Retn::lookaheads(),
-    }
-}
-
 /// An assignment statement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assign {
@@ -115,14 +101,6 @@ pub struct Assign {
     pub lhs: Expr,
     pub op: AssignOp,
     pub rhs: Expr,
-}
-
-spanned!(Assign, span);
-
-impl Ast for Assign {
-    ast_lookaheads! {
-        Expr::lookaheads(),
-    }
 }
 
 /// A function definition.
@@ -136,27 +114,11 @@ pub struct FunDef {
     pub bindings: Bindings,
 }
 
-spanned!(FunDef, span);
-
-impl Ast for FunDef {
-    ast_lookaheads! {
-        TokenKind::KwFn,
-    }
-}
-
 /// A return statement, with an optional expression.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Retn {
     pub span: Span,
     pub expr: Option<Expr>,
-}
-
-spanned!(Retn, span);
-
-impl Ast for Retn {
-    ast_lookaheads! {
-        TokenKind::KwRetn,
-    }
 }
 
 /// Base expression node.
@@ -172,23 +134,6 @@ pub enum Expr {
     Atom(Box<Atom>),
 }
 
-impl Ast for Expr {
-    ast_lookaheads! {
-        FunCall::lookaheads(),
-    }
-}
-
-impl Spanned for Expr {
-    fn span(&self) -> Span {
-        match self {
-            Expr::FunCall(f) => f.span(),
-            Expr::Un(u) => u.span(),
-            Expr::Bin(b) => b.span(),
-            Expr::Atom(a) => a.span(),
-        }
-    }
-}
-
 /// A function call.
 ///
 /// Function calls are composed of an expression (the function), and any number of arguments.
@@ -199,14 +144,6 @@ pub struct FunCall {
     pub args: Vec<Expr>,
 }
 
-spanned!(FunCall, span);
-
-impl Ast for FunCall {
-    ast_lookaheads! {
-        BinExpr::lookaheads(),
-    }
-}
-
 /// A unary expression.
 ///
 /// Un(ary) expressions start with an operator and are followed by an expression.
@@ -215,14 +152,6 @@ pub struct UnExpr {
     pub span: Span,
     pub op: Op,
     pub expr: Expr,
-}
-
-spanned!(UnExpr, span);
-
-impl Ast for UnExpr {
-    ast_lookaheads! {
-        TokenKind::Op,
-    }
 }
 
 /// A binary expression.
@@ -236,15 +165,6 @@ pub struct BinExpr {
     pub rhs: Expr,
 }
 
-spanned!(BinExpr, span);
-
-impl Ast for BinExpr {
-    ast_lookaheads! {
-        Atom::lookaheads(),
-        UnExpr::lookaheads(),
-    }
-}
-
 /// A literal value.
 ///
 /// Atom values are identifiers, strings, and numbers.
@@ -253,21 +173,6 @@ pub struct Atom {
     pub span: Span,
     pub kind: AtomKind,
 }
-
-impl Ast for Atom {
-    ast_lookaheads! {
-        TokenKind::LParen,
-        TokenKind::Ident,
-        TokenKind::String,
-        TokenKind::DecInt,
-        TokenKind::BinInt,
-        TokenKind::OctInt,
-        TokenKind::HexInt,
-        TokenKind::Real,
-    }
-}
-
-spanned!(Atom, span);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AtomKind {
@@ -290,13 +195,6 @@ pub struct Op {
     pub kind: Vec<OpKind>,
 }
 
-spanned!(Op, span);
-impl Ast for Op {
-    ast_lookaheads! {
-        TokenKind::Op,
-    }
-}
-
 /// An operator used for assignment statements.
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct AssignOp {
@@ -304,9 +202,130 @@ pub struct AssignOp {
     pub kind: Vec<OpKind>,
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Implementations
+////////////////////////////////////////////////////////////////////////////////
+
+impl Stmt {
+    pub(super) fn expects_eol(&self) -> bool {
+        matches!(self, Stmt::Assign(_) | Stmt::Expr(_) | Stmt::Retn(_))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// impl Spanned
+////////////////////////////////////////////////////////////////////////////////
+
+impl Spanned for Stmt {
+    fn span(&self) -> Span {
+        match self {
+            Stmt::Assign(a) => a.span(),
+            Stmt::Expr(e) => e.span(),
+            Stmt::FunDef(f) => f.span(),
+            Stmt::Retn(r) => r.span(),
+        }
+    }
+}
+
+impl Spanned for Expr {
+    fn span(&self) -> Span {
+        match self {
+            Expr::FunCall(f) => f.span(),
+            Expr::Un(u) => u.span(),
+            Expr::Bin(b) => b.span(),
+            Expr::Atom(a) => a.span(),
+        }
+    }
+}
+
 spanned!(AssignOp, span);
+spanned!(Assign, span);
+spanned!(FunDef, span);
+spanned!(Retn, span);
+spanned!(FunCall, span);
+spanned!(UnExpr, span);
+spanned!(BinExpr, span);
+spanned!(Atom, span);
+spanned!(Op, span);
+
+////////////////////////////////////////////////////////////////////////////////
+// impl Ast
+////////////////////////////////////////////////////////////////////////////////
+
+impl Ast for Stmt {
+    ast_lookaheads! {
+        Assign::lookaheads(),
+        FunDef::lookaheads(),
+        Expr::lookaheads(),
+        Retn::lookaheads(),
+    }
+}
+
+impl Ast for Assign {
+    ast_lookaheads! {
+        Expr::lookaheads(),
+    }
+}
+
+impl Ast for FunDef {
+    ast_lookaheads! {
+        TokenKind::KwFn,
+    }
+}
+
+impl Ast for Retn {
+    ast_lookaheads! {
+        TokenKind::KwRetn,
+    }
+}
+
+impl Ast for Expr {
+    ast_lookaheads! {
+        FunCall::lookaheads(),
+    }
+}
+
+impl Ast for FunCall {
+    ast_lookaheads! {
+        BinExpr::lookaheads(),
+    }
+}
+
+impl Ast for UnExpr {
+    ast_lookaheads! {
+        TokenKind::Op,
+    }
+}
+
+impl Ast for BinExpr {
+    ast_lookaheads! {
+        Atom::lookaheads(),
+        UnExpr::lookaheads(),
+    }
+}
+
+impl Ast for Atom {
+    ast_lookaheads! {
+        TokenKind::LParen,
+        TokenKind::Ident,
+        TokenKind::String,
+        TokenKind::DecInt,
+        TokenKind::BinInt,
+        TokenKind::OctInt,
+        TokenKind::HexInt,
+        TokenKind::Real,
+    }
+}
+
+impl Ast for Op {
+    ast_lookaheads! {
+        TokenKind::Op,
+    }
+}
+
 impl Ast for AssignOp {
     ast_lookaheads! {
         TokenKind::AssignOp,
     }
 }
+
