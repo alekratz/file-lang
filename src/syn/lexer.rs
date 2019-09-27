@@ -101,8 +101,47 @@ impl<'text> Lexer<'text> {
         self.catchup();
     }
 
+    fn skip_comment(&mut self) -> Result<()> {
+        if self.match_char('#').is_some() {
+            if self.match_char('*').is_some() {
+                while self.curr_char() != Some('*') && self.next_char() != Some('#') {
+                    if self.curr_char() == Some('#') && self.next_char() == Some('*') {
+                        self.skip_comment()?;
+                    } else {
+                        self.adv_char();
+                    }
+
+                    if self.next_char().is_none() {
+                        let span = self.span();
+                        return Err(SyntaxError::ExpectedGot {
+                            span,
+                            expected: "multiline comment end `*#`".into(),
+                            got: "EOF".into(),
+                        });
+                    }
+                }
+                self.match_char('*').unwrap();
+                self.match_char('#').unwrap();
+            } else {
+                let mut c = self.curr_char();
+                while c != Some('\n') && c != None {
+                    c = self.adv_char();
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn next_token(&mut self) -> Result<Token> {
-        self.skip_whitespace();
+        loop {
+            let start = self.end;
+            self.skip_whitespace();
+            self.skip_comment()?;
+            let end = self.end;
+            if start == end {
+                break;
+            }
+        }
         if self.is_eof() {
             return Ok(self.make_token(TokenKind::Eof));
         }
@@ -270,6 +309,10 @@ impl<'text> Lexer<'text> {
         }
     }
 
+    fn expect_char(&mut self, ch: char, expected: impl ToString) -> Result<char> {
+        self.expect_predicate(|c| c == ch, expected)
+    }
+
     fn expect_any_char(&mut self, chars: &[char], expected: impl ToString) -> Result<char> {
         self.expect_predicate(|c| chars.contains(&c), expected)
     }
@@ -301,6 +344,10 @@ impl<'text> Lexer<'text> {
         self.curr_char()
             .map(|c| chars.contains(&c))
             .unwrap_or(false)
+    }
+
+    fn next_char(&self) -> Option<char> {
+        self.chars.clone().skip(1).next()
     }
 
     fn curr_char(&self) -> Option<char> {
