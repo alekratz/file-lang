@@ -41,7 +41,5 @@ pub struct HeapRef(pub usize);
 
 #[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct Binding(pub usize);
-pub type BindingPool<V> = HashMap<Binding, V>;
-pub type ValuePool = BindingPool<Value>;
-pub type CopyValuePool = BindingPool<CopyValue>;
-pub type FunPool = BindingPool<Fun>;
+
+pub type CopyValuePool = HashMap<Binding, CopyValue>;

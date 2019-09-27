@@ -205,7 +205,7 @@ impl<'text> Lexer<'text> {
 
     pub fn next_op(&mut self) -> Result<Token> {
         self.expect_any_char(OpKind::CHARS, "operator character")?;
-        while let Some(c) = self.match_any_char(OpKind::CHARS) {}
+        while let Some(_) = self.match_any_char(OpKind::CHARS) {}
         let text = self.text_at(self.span());
         assert!(!text.is_empty());
 

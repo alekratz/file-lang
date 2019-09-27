@@ -6,7 +6,7 @@ mod translate;
 use crate::{
     common::span::*,
     compile::{bindings::BindingStack, error::*, translate::*},
-    syn::{ast, op::OpKind, parser::Parser},
+    syn::{ast::*, op::OpKind, parser::Parser},
     vm::prelude::*,
 };
 
@@ -37,29 +37,29 @@ impl Compile {
         let ir = AstToIr::new(text, &mut funs, &mut binding_stack).translate(ast)?;
         let main_bindings = binding_stack.collapse();
         let Compile { bindings, .. } = self;
-        Ok(IrToInst::new(text, funs, bindings).translate(ir, main_bindings))
+        Ok(IrToInst::new(funs, bindings).translate(ir, main_bindings))
     }
 
     /// Rearrange expression trees in this level of the AST so that they follow the specified
     /// precedence.
-    fn expr_precedence(&mut self, ast: Vec<ast::Stmt>) -> Vec<ast::Stmt> {
+    fn expr_precedence(&mut self, ast: Vec<Stmt>) -> Vec<Stmt> {
         ast.into_iter()
             .map(|stmt| match stmt {
-                ast::Stmt::Assign(mut a) => {
+                Stmt::Assign(mut a) => {
                     a.lhs = expr_precedence(a.lhs, &self.precedence);
                     a.rhs = expr_precedence(a.rhs, &self.precedence);
-                    ast::Stmt::Assign(a)
+                    Stmt::Assign(a)
                 }
-                ast::Stmt::Expr(e) => ast::Stmt::Expr(expr_precedence(e, &self.precedence)),
-                ast::Stmt::FunDef(_) => {
+                Stmt::Expr(e) => Stmt::Expr(expr_precedence(e, &self.precedence)),
+                Stmt::FunDef(_) => {
                     /*
                      * no-op - stay on lexical level, this is taken care of during translation
                      */
                     stmt
                 }
-                ast::Stmt::Retn(mut r) => {
+                Stmt::Retn(mut r) => {
                     r.expr = r.expr.map(|expr| expr_precedence(expr, &self.precedence));
-                    ast::Stmt::Retn(r)
+                    Stmt::Retn(r)
                 }
             })
             .collect()
@@ -70,8 +70,7 @@ impl Compile {
 // operators with user-defined precedence (in the future).
 
 /// Rearrange a binary expression tree to follow a defined precedence.
-fn expr_precedence(expr: ast::Expr, precedence: &Precedence) -> ast::Expr {
-    use crate::syn::{ast::*, prelude::*};
+fn expr_precedence(expr: Expr, precedence: &Precedence) -> Expr {
     // This algorithm effectively treats the binary expression as a LHS, followed by any number of
     // (operator, RHS) pairs, similar to a token stream in the parser.
     //
@@ -123,7 +122,7 @@ fn expr_precedence(expr: ast::Expr, precedence: &Precedence) -> ast::Expr {
     // Algorithm proper
 
     // Step 1, 2
-    let (span, head, tail) = flatten_bin_expr(expr);
+    let (_span, head, tail) = flatten_bin_expr(expr);
     let mut op_stack = Vec::new();
     let mut lhs_stack = vec![if tail.is_empty() {
         head
@@ -197,9 +196,9 @@ fn expr_precedence(expr: ast::Expr, precedence: &Precedence) -> ast::Expr {
 
 /// Flattens a binary expression to an `Expr`, `Vec<(Op, Expr)>` list of flat operations, removing
 /// any precedence.
-fn flatten_bin_expr(expr: ast::Expr) -> (Span, ast::Expr, Vec<(ast::Op, ast::Expr)>) {
-    if let ast::Expr::Bin(binexpr) = expr {
-        let ast::BinExpr { span, lhs, op, rhs } = *binexpr;
+fn flatten_bin_expr(expr: Expr) -> (Span, Expr, Vec<(Op, Expr)>) {
+    if let Expr::Bin(binexpr) = expr {
+        let BinExpr { span, lhs, op, rhs } = *binexpr;
         let (_, lhs, mut lhs_tail) = flatten_bin_expr(lhs);
         let (_, rhs, rhs_tail) = flatten_bin_expr(rhs);
 
@@ -215,7 +214,6 @@ fn flatten_bin_expr(expr: ast::Expr) -> (Span, ast::Expr, Vec<(ast::Op, ast::Exp
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::syn::prelude::*;
     use lazy_static::lazy_static;
 
     lazy_static! {

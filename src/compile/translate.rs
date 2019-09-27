@@ -1,5 +1,5 @@
 use crate::{
-    common::{builtins, span::*},
+    common::span::*,
     compile::{bindings::*, error::*, ir::*},
     syn::{ast, op::OpKind},
     vm::{fun::*, pool::Pool, value::*, Inst},
@@ -27,7 +27,7 @@ impl<'compile, 'bindings: 'compile> CollectFuns<'compile, 'bindings> {
         }
     }
 
-    fn collect(mut self, ast: Vec<ast::Stmt>) -> Result<Vec<ast::Stmt>> {
+    fn collect(self, ast: Vec<ast::Stmt>) -> Result<Vec<ast::Stmt>> {
         let (funs, ast) = ast
             .into_iter()
             .partition(|stmt| matches!(stmt, ast::Stmt::FunDef(_)));
@@ -172,7 +172,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                     let binding = self.bindings.get_local_binding(text).unwrap();
                     Ok(LValue::Ident(span, binding))
                 }
-                other => {
+                _ => {
                     return Err(CompileError::InvalidLValue {
                         span,
                         what: format!("constant value `{}`", span.text(self.text)),
@@ -289,17 +289,15 @@ enum ExprCtx {
     Stmt,
 }
 
-pub struct IrToInst<'compile> {
-    text: &'compile str,
+pub struct IrToInst {
     funs: BTreeMap<Binding, (ConstRef, BoundFun)>,
     pool: Pool,
 }
 
-impl<'compile> IrToInst<'compile> {
-    pub fn new(text: &'compile str, funs: Vec<BoundFun>, bindings: Vec<String>) -> Self {
+impl IrToInst {
+    pub fn new(funs: Vec<BoundFun>, bindings: Vec<String>) -> Self {
         let mut pool = Pool::new(bindings);
         IrToInst {
-            text,
             funs: funs
                 .into_iter()
                 .map(|fun| {

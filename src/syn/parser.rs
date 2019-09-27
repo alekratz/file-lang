@@ -1,5 +1,5 @@
 use crate::{
-    common::{builtins, span::*},
+    common::span::*,
     syn::prelude::*,
 };
 use std::mem;

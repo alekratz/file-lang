@@ -1,7 +1,6 @@
 use crate::{
     common::span::*,
     compile::bindings::Bindings,
-    syn::ast,
     vm::{fun::BuiltinFunPtr, value::Binding},
 };
 use std::fmt::{self, Debug, Formatter};

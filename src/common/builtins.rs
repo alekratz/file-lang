@@ -2,7 +2,7 @@ use crate::{
     syn::{op::OpKind, parser::Parser},
     vm::{
         fun::BuiltinFunPtr,
-        value::{Binding, CopyValue},
+        value::CopyValue,
         Vm,
     },
 };

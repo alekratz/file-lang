@@ -1,4 +1,4 @@
-use crate::vm::{fun::Fun, value::*};
+use crate::vm::value::*;
 use std::mem;
 
 #[derive(Debug, Clone, Default)]

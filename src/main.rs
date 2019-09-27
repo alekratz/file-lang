@@ -8,10 +8,9 @@ mod vm;
 use crate::{
     common::span::*,
     compile::Compile,
-    vm::{fun::Fun, value::Value, Inst, Vm},
 };
 use matches::matches;
-use std::{fs, path::PathBuf, rc::Rc};
+use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 use syn::prelude::*;
 
@@ -63,7 +62,7 @@ fn dump_tokens(text: &str) -> Result<()> {
 
 fn dump_bytecode(text: &str) -> Result<()> {
     use vm::prelude::*;
-    let (main_fun, pool) = Compile::new().compile(text)?;
+    let (_main_fun, pool) = Compile::new().compile(text)?;
 
     let (funs, const_values): (Vec<_>, Vec<_>) = pool
         .const_pool()
