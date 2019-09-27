@@ -4,7 +4,7 @@ use crate::{
 };
 use lazy_static::lazy_static;
 use matches::matches;
-use std::collections::HashMap;
+use std::{fmt::{self, Display, Formatter}, collections::HashMap};
 
 pub type Lookaheads = &'static [TokenKind];
 
@@ -209,6 +209,28 @@ impl Stmt {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// impl Display
+////////////////////////////////////////////////////////////////////////////////
+
+impl Display for Op {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        for op in self.kind.iter() {
+            write!(fmt, "{}", op)?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for AssignOp {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        for op in self.kind.iter() {
+            write!(fmt, "{}", op)?;
+        }
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // impl Spanned
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -324,4 +346,5 @@ impl Ast for AssignOp {
         TokenKind::AssignOp,
     }
 }
+
 

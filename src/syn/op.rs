@@ -1,3 +1,5 @@
+use std::fmt::{self, Formatter, Display};
+
 macro_rules! ops {
     ($($op:ident => $text:expr),* $(,)?) => {
         /// The kind of operator being represented.
@@ -34,6 +36,12 @@ macro_rules! ops {
             }
         }
     };
+}
+
+impl Display for OpKind {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        write!(fmt, "{}", self.to_char())
+    }
 }
 
 ops! {

@@ -1,23 +1,25 @@
-pub mod pool;
-pub mod ir;
+pub mod error;
+mod ir;
+mod translate;
+mod bindings;
 
 use crate::{
-    compile::pool::Pool,
+    compile::{
+        bindings::BindingStack,
+        translate::*,
+        error::*,
+    },
     common::span::*,
-    syn::prelude::*,
+    syn::{parser::Parser, op::OpKind, ast},
     vm::prelude::*,
 };
-use std::collections::HashMap;
 
-pub (in self) type Operators = HashMap<Vec<OpKind>, Binding>;
 type Precedence = Vec<Vec<Vec<OpKind>>>;
 
 /// Base compiler that outputs an executable VM object.
 pub struct Compile {
     precedence: Precedence,
-    pool: Pool,
-    bin_ops: Operators,
-    un_ops: Operators,
+    bindings: Vec<String>,
 }
 
 impl Compile {
@@ -27,80 +29,45 @@ impl Compile {
                 vec![vec![OpKind::Splat], vec![OpKind::FSlash]],
                 vec![vec![OpKind::Plus], vec![OpKind::Minus]],
             ],
-            pool: Default::default(),
-            bin_ops: Default::default(),
-            un_ops: Default::default(),
+            bindings: Vec::new(),
         }
     }
 
-    pub fn compile(&mut self, text: &str) -> Result<UserFun> {
-        unimplemented!()
-        /*
-        let builtin_funs;
-        let bin_ops;
-        let un_ops;
-        let (body_bindings, ast) = {
-            let mut parser = Parser::new(text, self.pool.bindings_mut())?;
-            builtin_funs = parser.insert_builtin_funs();
-            bin_ops = parser.insert_builtin_bin_ops();
-            un_ops = parser.insert_builtin_un_ops();
-            parser.next_body()?
-        };
+    pub fn compile(mut self, text: &str) -> Result<(Fun, Pool)> {
+        let ast = self.expr_precedence(Parser::new(text)?.next_body()?);
+        let mut binding_stack = BindingStack::new(&mut self.bindings);
+        let mut funs = binding_stack.insert_builtins();
 
-        let ast = self.expr_precedence(ast);
-        self.bin_ops.extend(bin_ops);
-        self.un_ops.extend(un_ops);
-        let (mut registers, code) = Translate::translate(
-            ast,
-            text,
-            &mut self.pool,
-            &mut self.bin_ops,
-            &mut self.un_ops
-        );
-
-        for builtin in builtin_funs.into_iter() {
-            assert_ne!(builtin.binding(), Binding(usize::max_value()));
-            let binding = builtin.binding();
-            let fun_ref = self.pool.insert_const(Value::Fun(Fun::Builtin(builtin)));
-            registers.insert(binding, CopyValue::ConstRef(fun_ref));
-        }
-        for (_, binding) in body_bindings.into_iter() {
-            registers.entry(binding)
-                .or_insert(CopyValue::Empty);
-        }
-        //println!("base registers: {:#?}", registers);
-
-        let name = "__main__".to_string();
-        let params = Vec::new();
-        let binding = Binding(self.pool.bindings().len());
-        Ok(UserFun::new(name, params, binding, code, registers))
-        */
-    }
-
-    pub fn pool(&self) -> &Pool {
-        &self.pool
+        let ir = AstToIr::new(text, &mut funs, &mut binding_stack)
+            .translate(ast)?;
+        let main_bindings = binding_stack.pop_expect();
+        let Compile { bindings, .. } = self;
+        Ok(
+            IrToInst::new(text, funs, bindings)
+                .translate(ir, main_bindings)
+        )
     }
 
     /// Rearrange expression trees in this level of the AST so that they follow the specified
     /// precedence.
-    fn expr_precedence(&mut self, ast: Vec<Stmt>) -> Vec<Stmt> {
+    fn expr_precedence(&mut self, ast: Vec<ast::Stmt>) -> Vec<ast::Stmt> {
         ast.into_iter()
             .map(|stmt| match stmt {
-                Stmt::Assign(mut a) => {
+                ast::Stmt::Assign(mut a) => {
                     a.lhs = expr_precedence(a.lhs, &self.precedence);
                     a.rhs = expr_precedence(a.rhs, &self.precedence);
-                    Stmt::Assign(a)
+                    ast::Stmt::Assign(a)
                 }
-                Stmt::Expr(e) => Stmt::Expr(expr_precedence(e, &self.precedence)),
-                Stmt::FunDef(_) => {
+                ast::Stmt::Expr(e) => ast::Stmt::Expr(expr_precedence(e, &self.precedence)),
+                ast::Stmt::FunDef(_) => {
                     /*
                      * no-op - stay on lexical level, this is taken care of during translation
                      */
                     stmt
                 }
-                Stmt::Retn(mut r) => {
+                ast::Stmt::Retn(mut r) => {
                     r.expr = r.expr.map(|expr| expr_precedence(expr, &self.precedence));
-                    Stmt::Retn(r)
+                    ast::Stmt::Retn(r)
                 }
             })
             .collect()
@@ -111,7 +78,8 @@ impl Compile {
 // operators with user-defined precedence (in the future).
 
 /// Rearrange a binary expression tree to follow a defined precedence.
-fn expr_precedence(expr: Expr, precedence: &Precedence) -> Expr {
+fn expr_precedence(expr: ast::Expr, precedence: &Precedence) -> ast::Expr {
+    use crate::syn::{prelude::*, ast::*};
     // This algorithm effectively treats the binary expression as a LHS, followed by any number of
     // (operator, RHS) pairs, similar to a token stream in the parser.
     //
@@ -237,9 +205,9 @@ fn expr_precedence(expr: Expr, precedence: &Precedence) -> Expr {
 
 /// Flattens a binary expression to an `Expr`, `Vec<(Op, Expr)>` list of flat operations, removing
 /// any precedence.
-fn flatten_bin_expr(expr: Expr) -> (Span, Expr, Vec<(Op, Expr)>) {
-    if let Expr::Bin(binexpr) = expr {
-        let BinExpr { span, lhs, op, rhs } = *binexpr;
+fn flatten_bin_expr(expr: ast::Expr) -> (Span, ast::Expr, Vec<(ast::Op, ast::Expr)>) {
+    if let ast::Expr::Bin(binexpr) = expr {
+        let ast::BinExpr { span, lhs, op, rhs } = *binexpr;
         let (_, lhs, mut lhs_tail) = flatten_bin_expr(lhs);
         let (_, rhs, rhs_tail) = flatten_bin_expr(rhs);
 
@@ -270,8 +238,7 @@ mod test {
 
     #[test]
     fn test_flatten_bin_expr() {
-        let mut bindings = Vec::new();
-        let mut parser = Parser::new("1 + 2 * 3 - 4", &mut bindings).unwrap();
+        let mut parser = Parser::new("1 + 2 * 3 - 4").unwrap();
         let expr = parser.next_expr().unwrap();
         let (span, head, tail) = flatten_bin_expr(expr);
 
@@ -308,8 +275,7 @@ mod test {
     #[test]
     fn test_bin_expr_precedence() {
         // Binary expression
-        let mut bindings = Vec::new();
-        let mut parser = Parser::new("1 + 2 * 3 - 4", &mut bindings).unwrap();
+        let mut parser = Parser::new("1 + 2 * 3 - 4").unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
 
         assert_eq!(
@@ -339,13 +305,12 @@ mod test {
     #[test]
     fn test_atom_expr_precedence() {
         // Atomic expression
-        let mut bindings = Vec::new();
-        let mut parser = Parser::new("1", &mut bindings).unwrap();
+        let mut parser = Parser::new("1").unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
         assert_eq!(expr, atom_expr!(AtomKind::DecInt));
 
         // Parens
-        let mut parser = Parser::new("(1 + 2) * 3 - 4", &mut bindings).unwrap();
+        let mut parser = Parser::new("(1 + 2) * 3 - 4").unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
 
         assert_eq!(
@@ -375,8 +340,7 @@ mod test {
     #[test]
     fn test_sub_expr_precedence() {
         // TODO: function calls, unary expressions
-        let mut bindings = Vec::new();
-        let mut parser = Parser::new("(1 + 2 * 3) * 4 - 5", &mut bindings).unwrap();
+        let mut parser = Parser::new("(1 + 2 * 3) * 4 - 5").unwrap();
         let expr = expr_precedence(parser.next_expr().unwrap(), &PRECEDENCE);
 
         assert_eq!(

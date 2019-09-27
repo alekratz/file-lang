@@ -8,6 +8,7 @@ use crate::{
     compile::Compile,
     vm::{Vm, Inst, fun::Fun, value::Value},
 };
+use matches::matches;
 use syn::prelude::*;
 use structopt::StructOpt;
 use std::{fs, path::PathBuf, rc::Rc};
@@ -54,56 +55,37 @@ fn dump_tokens(text: &str) -> Result<()> {
 }
 
 fn dump_bytecode(text: &str) -> Result<()> {
-    let mut compile = Compile::new();
-    let main_fun = compile.compile(text)?;
-    println!("= CONST POOL ===================================================================");
-    for value in compile.pool().const_pool() {
-        println!("{:?}", value);
+    use vm::prelude::*;
+    let (main_fun, pool) = Compile::new().compile(text)?;
+
+    let (funs, const_values): (Vec<_>, Vec<_>) = pool.const_pool()
+        .iter()
+        .partition(|value| matches!(value, Value::Fun(_)));
+
+    let funs: Vec<_> = funs.into_iter()
+        .map(|fun| if let Value::Fun(fun) = fun { fun } else { unreachable!() })
+        .collect();
+
+    println!("{} functions, {} constant values", funs.len(), const_values.len());
+
+    println!("= CONSTANTS ====================================================================");
+    for c in const_values {
+        println!("{:?}", c);
     }
     println!();
+
     println!("= FUNCTIONS ====================================================================");
-    for value in compile.pool().const_pool() {
-        if let Value::Fun(Fun::User(fun)) = value {
-            println!("{}", fun.name());
-            println!("--------------------------------------------------------------------------------");
-            println!();
-            for (i, inst) in fun.code().iter().enumerate() {
-                let line = format!("{:03} {:?}", i, inst);
-                match inst {
-                    Inst::Load(binding)
-                    | Inst::Store(binding) => {
-                        let name = compile.pool().get_binding_name(*binding);
-                        println!("{: <30}{: <15?} = {}", line, binding, name);
-                    }
-                    _ => println!("{}", line),
-                }
-            }
-            println!();
-        }
+    for fun in funs {
+        println!("{}", pool.get_binding_name(fun.binding()));
     }
     println!();
-    println!("= MAIN FUNCTION ================================================================");
-    println!();
-    for (i, inst) in main_fun.code().iter().enumerate() {
-        let line = format!("{:03} {:?}", i, inst);
-        match inst {
-            Inst::Load(binding)
-            | Inst::Store(binding) => {
-                let name = compile.pool().get_binding_name(*binding);
-                println!("{: <30}{: <15?} = {}", line, binding, name);
-            }
-            _ => println!("{}", line),
-        }
-    }
+
+
     Ok(())
 }
 
 fn run_text(text: &str) -> Result<()> {
-    let mut compile = Compile::new();
-    let main_fun = Fun::User(Rc::new(compile.compile(text)?));
-    let mut vm = Vm::new(compile.pool().clone());
-    vm.main(&main_fun)?;
-    Ok(())
+    unimplemented!()
 }
 
 fn main() -> Result<()> {

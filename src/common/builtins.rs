@@ -2,7 +2,7 @@ use crate::{
     syn::{op::OpKind, parser::Parser},
     vm::{
         Vm,
-        fun::BuiltinFun,
+        fun::BuiltinFunPtr,
         value::{CopyValue, Binding},
     },
 };
@@ -16,13 +16,9 @@ macro_rules! builtins {
             fn $fn_name ( $($param_name : $param_t),* ) $fn_body
         )*
         lazy_static! {
-            pub static ref FUNS: HashMap<String, BuiltinFun> = hashmap! {
+            pub static ref FUNS: HashMap<&'static str, BuiltinFunPtr> = hashmap! {
                 $(
-                     $builtin_name.to_string() => BuiltinFun::new(
-                         Binding(usize::max_value()),
-                         $builtin_name.to_string(),
-                         Box::new($fn_name),
-                     )
+                     $builtin_name => $fn_name as BuiltinFunPtr
                 ),*
             };
         }
@@ -35,17 +31,13 @@ macro_rules! bin_op_builtins {
             fn $fn_name ( $($param_name : $param_t),* ) $fn_body
         )*
         lazy_static! {
-            pub static ref BIN_OPS: HashMap<Vec<OpKind>, BuiltinFun> = hashmap! {
+            pub static ref BIN_OPS: HashMap<Vec<OpKind>, BuiltinFunPtr> = hashmap! {
                 $(
                     {
                         let op = Parser::parse_ops($builtin_name)
                             .expect(&format!("invalid builtin op: {:?}", $builtin_name));
                         op.kind
-                    } => BuiltinFun::new(
-                        Binding(usize::max_value()),
-                        format!("<operator {}>", $builtin_name),
-                        Box::new($fn_name)
-                    )
+                    } => $fn_name as BuiltinFunPtr
                 ),*
             };
         }
@@ -58,17 +50,13 @@ macro_rules! un_op_builtins {
             fn $fn_name ( $($param_name : $param_t),* ) $fn_body
         )*
         lazy_static! {
-            pub static ref UN_OPS: HashMap<Vec<OpKind>, BuiltinFun> = hashmap! {
+            pub static ref UN_OPS: HashMap<Vec<OpKind>, BuiltinFunPtr> = hashmap! {
                 $(
                     {
                         let op = Parser::parse_ops($builtin_name)
                             .expect(&format!("invalid builtin op: {:?}", $builtin_name));
                         op.kind
-                    } => BuiltinFun::new(
-                        Binding(usize::max_value()),
-                        format!("<operator {}>", $builtin_name),
-                        Box::new($fn_name)
-                    )
+                    } => $fn_name as BuiltinFunPtr
                 ),*
             };
         }

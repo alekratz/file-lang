@@ -13,13 +13,6 @@ pub enum Fun {
 }
 
 impl Fun {
-    pub fn name(&self) -> &str {
-        match self {
-            Fun::User(u) => u.name(),
-            Fun::Builtin(b) => b.name(),
-        }
-    }
-
     pub fn binding(&self) -> Binding {
         match self {
             Fun::User(u) => u.binding(),
@@ -30,7 +23,6 @@ impl Fun {
 
 #[derive(Debug, Clone)]
 pub struct UserFun {
-    name: String,
     params: Vec<Binding>,
     binding: Binding,
     code: Vec<Inst>,
@@ -39,23 +31,17 @@ pub struct UserFun {
 
 impl UserFun {
     pub fn new(
-        name: String,
         params: Vec<Binding>,
         binding: Binding,
         code: Vec<Inst>,
         registers: CopyValuePool,
     ) -> Self {
         UserFun {
-            name,
             params,
             binding,
             code,
             registers,
         }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
     }
 
     pub fn params(&self) -> &[Binding] {
@@ -105,17 +91,16 @@ impl Hash for UserFun {
     }
 }
 
-pub type BuiltinFunPtr = Box<fn(&mut Vm, Vec<CopyValue>)>;
+pub type BuiltinFunPtr = fn(&mut Vm, Vec<CopyValue>);
 
 pub struct BuiltinFun {
     binding: Binding,
-    name: String,
-    fun: BuiltinFunPtr,
+    fun: Box<BuiltinFunPtr>,
 }
 
 impl BuiltinFun {
-    pub fn new(binding: Binding, name: String, fun: BuiltinFunPtr) -> Self {
-        BuiltinFun { binding, name, fun }
+    pub fn new(binding: Binding, fun: Box<BuiltinFunPtr>) -> Self {
+        BuiltinFun { binding, fun }
     }
 
     pub fn binding(&self) -> Binding {
@@ -124,10 +109,6 @@ impl BuiltinFun {
 
     pub fn call(&self, frame: &mut Vm, args: Vec<CopyValue>) {
         (self.fun)(frame, args)
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
     }
 
     pub fn with_binding(mut self, binding: Binding) -> Self {
@@ -140,7 +121,6 @@ impl Clone for BuiltinFun {
     fn clone(&self) -> Self {
         BuiltinFun {
             binding: self.binding,
-            name: self.name.clone(),
             fun: Box::new(*self.fun),
         }
     }
@@ -150,7 +130,6 @@ impl Debug for BuiltinFun {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         fmt.debug_struct("BuiltinFun")
             .field("binding", &self.binding)
-            .field("name", &self.name)
             .field(
                 "fun",
                 &format!("function at {:#x}", &self.fun as *const _ as usize),

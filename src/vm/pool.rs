@@ -2,7 +2,7 @@ use crate::vm::{
     fun::Fun,
     value::*,
 };
-use std::collections::HashMap;
+use std::mem;
 
 #[derive(Debug, Clone, Default)]
 pub struct Pool {
@@ -12,11 +12,10 @@ pub struct Pool {
 
 impl Pool {
     pub fn new(
-        const_pool: Vec<Value>,
         bindings: Vec<String>,
     ) -> Self {
         Pool {
-            const_pool,
+            const_pool: Default::default(),
             bindings,
         }
     }
@@ -64,5 +63,13 @@ impl Pool {
 
     pub fn const_pool(&self) -> &Vec<Value> {
         &self.const_pool
+    }
+    
+    pub fn const_pool_mut(&mut self) -> &mut Vec<Value> {
+        &mut self.const_pool
+    }
+
+    pub fn update_const(&mut self, ref_id: ConstRef, value: Value) -> Value {
+        mem::replace(&mut self.const_pool_mut()[*ref_id], value)
     }
 }

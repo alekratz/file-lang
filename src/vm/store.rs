@@ -4,7 +4,7 @@ use crate::{
         stack::Stack,
         fun::{UserFun, StackFrame},
     },
-    compile::pool::Pool,
+    vm::pool::Pool,
 };
 use std::rc::Rc;
 

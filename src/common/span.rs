@@ -71,12 +71,16 @@ impl Span {
 
         Span { start, end, }
     }
+
+    pub fn text<'text>(&self, text: &'text str) -> &'text str {
+        &text[self.start.byte..self.end.byte]
+    }
 }
 
 pub trait Spanned {
     fn text<'text>(&self, text: &'text str) -> &'text str {
         let span = self.span();
-        &text[span.start.byte..span.end.byte]
+        span.text(text)
     }
 
     fn span(&self) -> Span;

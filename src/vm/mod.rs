@@ -1,4 +1,5 @@
 pub mod fun;
+pub mod pool;
 pub mod stack;
 pub mod value;
 pub mod store;
@@ -7,11 +8,11 @@ pub mod prelude {
     pub use super::fun::{BuiltinFun, Fun, UserFun};
     pub use super::value::*;
     pub use super::{Inst, Vm};
+    pub use super::pool::*;
 }
 
 use crate::{
-    compile::pool::Pool,
-    vm::{fun::*, stack::*, value::*, store::*},
+    vm::{fun::*, pool::*, stack::*, value::*, store::*},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -113,6 +114,13 @@ impl Vm {
                 stack_frame.ip += 1;
                 op
             };
+
+            // TODO: jump table(?)
+            // how would this work with ops that take a value?
+            // although discriminants work, getting a "possible" value is impossible unless we use
+            // program arguments as parameters (not a bad idea)
+            // NOTE : consider using a union for the above? Unions are "unsafe", however, if we're
+            // careful, we can make them work
 
             match op {
                 Inst::Pop(n) => {
