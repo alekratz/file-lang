@@ -183,7 +183,8 @@ impl Vm {
                                     .store_heap(target_id, Value::CopyValue(value));
                             }
                         }
-                        v => unreachable!(
+                        v => panic!(
+                            // TODO(exception)
                             "tried to store a value in a non-ref, non-literal value: {:?}",
                             v
                         ),
