@@ -40,7 +40,7 @@ impl Compile {
 
         let ir = AstToIr::new(text, &mut funs, &mut binding_stack)
             .translate(ast)?;
-        let main_bindings = binding_stack.pop_expect();
+        let main_bindings = binding_stack.collapse();
         let Compile { bindings, .. } = self;
         Ok(
             IrToInst::new(text, funs, bindings)

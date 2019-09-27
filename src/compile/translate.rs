@@ -298,16 +298,23 @@ pub struct IrToInst<'compile> {
 impl<'compile> IrToInst<'compile> {
     pub fn new(text: &'compile str, funs: Vec<BoundFun>, bindings: Vec<String>) -> Self {
         let mut pool = Pool::new(bindings);
-
         IrToInst {
             text,
-            funs: funs.into_iter()
+            funs: funs
+                .into_iter()
                 .map(|fun| {
                     // this pre-allocates the function pool, which will have functions inserted as
                     // during compile-time
-                    let ref_id = pool.insert_const(Value::CopyValue(CopyValue::Empty));
+                    let value = match &fun {
+                        BoundFun::User(_) => Value::CopyValue(CopyValue::Empty),
+                        BoundFun::Builtin(binding, builtin) => {
+                            Value::Fun(Fun::Builtin(BuiltinFun::new(*binding, builtin.clone())))
+                        }
+                    };
+                    let ref_id = pool.insert_const(value);
                     (fun.binding(), (ref_id, fun))
-                }).collect(),
+                })
+                .collect(),
             pool,
         }
     }
@@ -322,17 +329,14 @@ impl<'compile> IrToInst<'compile> {
                     let user_fun = self.translate_fun_def(fun.clone());
                     let fun = Fun::User(Rc::new(user_fun));
                     self.pool.update_const(*ref_id, Value::Fun(fun));
-                },
-                BoundFun::Builtin(binding, fun) => {
-                    let builtin_fun = BuiltinFun::new(*binding, fun.clone());
-                    let fun = Fun::Builtin(builtin_fun);
-                    self.pool.update_const(*ref_id, Value::Fun(fun));
                 }
+                _ => {}
             }
         }
 
         // translate main function
-        let main_body = self.translate_body(body);
+        let mut main_body = self.translate_body(body);
+        main_body.push(Inst::Halt);
         let main_binding = Binding(self.pool.bindings().len());
         self.pool.bindings_mut().push("#*main*#".to_string());
         let main_registers = self.translate_bindings(main_bindings);
@@ -359,7 +363,8 @@ impl<'compile> IrToInst<'compile> {
             body,
             ..
         } = fun_def;
-        let body = self.translate_body(body);
+        let mut body = self.translate_body(body);
+        body.push(Inst::Return);
         let registers = self.translate_bindings(bindings);
         UserFun::new(params, binding, body, registers)
     }
@@ -382,11 +387,7 @@ impl<'compile> IrToInst<'compile> {
     fn translate_stmt(&self, stmt: Stmt) -> Vec<Inst> {
         match stmt {
             Stmt::Assign(assign) => self.translate_assign(assign),
-            Stmt::Expr(expr) => {
-                let mut body = self.translate_expr(expr, ExprCtx::Stmt);
-                body.push(Inst::Pop(1));
-                body
-            }
+            Stmt::Expr(expr) => self.translate_expr(expr, ExprCtx::Stmt),
             Stmt::Retn(retn) => self.translate_retn(retn),
         }
     }
@@ -437,7 +438,10 @@ impl<'compile> IrToInst<'compile> {
                 }
                 body.extend(self.translate_expr(fun, ExprCtx::Push));
                 body.push(Inst::PopCall(arg_count));
-                // TODO : return register
+                match ctx {
+                    ExprCtx::Push | ExprCtx::LValue => body.push(Inst::PushReturn),
+                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+                }
             }
             Expr::Bin(bin) => {
                 let BinExpr { lhs, op, rhs, .. } = *bin;
@@ -446,6 +450,10 @@ impl<'compile> IrToInst<'compile> {
                 let ref_id = self.get_fun_ref(op);
                 body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
                 body.push(Inst::PopCall(2));
+                match ctx {
+                    ExprCtx::Push | ExprCtx::LValue => body.push(Inst::PushReturn),
+                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+                }
             }
             Expr::Un(un) => {
                 let UnExpr { op, expr, .. } = *un;
@@ -453,20 +461,27 @@ impl<'compile> IrToInst<'compile> {
                 let ref_id = self.get_fun_ref(op);
                 body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
                 body.push(Inst::PopCall(1));
+                match ctx {
+                    ExprCtx::Push | ExprCtx::LValue => body.push(Inst::PushReturn),
+                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+                }
             }
-            Expr::Atom(Atom { kind, .. }) => match kind {
-                AtomKind::Ident(binding) => body.push(Inst::Load(binding)),
-                AtomKind::String(_) => unimplemented!("TODO(string)"),
-                AtomKind::Int(i) => body.push(Inst::PushValue(CopyValue::Int(i as i64))),
-                AtomKind::Real(f) => body.push(Inst::PushValue(CopyValue::Real(f))),
+            Expr::Atom(Atom { kind, .. }) => {
+                match kind {
+                    AtomKind::Ident(binding) => body.push(Inst::Load(binding)),
+                    AtomKind::String(_) => unimplemented!("TODO(string)"),
+                    AtomKind::Int(i) => body.push(Inst::PushValue(CopyValue::Int(i as i64))),
+                    AtomKind::Real(f) => body.push(Inst::PushValue(CopyValue::Real(f))),
+                }
+                match ctx {
+                    ExprCtx::Push | ExprCtx::LValue => {
+                        /* no-op - expression should remain on the stack */
+                    }
+                    ExprCtx::Stmt => {
+                        body.push(Inst::Pop(1));
+                    }
+                }
             }
-        }
-
-        match ctx {
-            ExprCtx::Push | ExprCtx::LValue => { /* no-op - expression should remain on the stack */ },
-            ExprCtx::Stmt => {
-                body.push(Inst::Pop(1));
-            },
         }
 
         body

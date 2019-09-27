@@ -14,6 +14,7 @@ pub mod prelude {
 use crate::{
     vm::{fun::*, pool::*, stack::*, value::*, store::*},
 };
+use std::mem;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inst {
@@ -36,6 +37,12 @@ pub enum Inst {
     /// Pop the top value off of the stack and store it in the return value register.
     StoreReturn,
 
+    /// Loads the return value from the return register and pushes it to the top of the stack.
+    PushReturn,
+
+    /// Discards the return value from the return register.
+    DiscardReturn,
+
     /// Pop the top value off of the stack and attempt to call it with the given number of arguments.
     PopCall(usize),
 
@@ -50,6 +57,7 @@ pub enum Inst {
 pub struct Vm {
     storage: Storage,
     halt: bool,
+    return_value: Option<CopyValue>,
 }
 
 impl Vm {
@@ -57,6 +65,7 @@ impl Vm {
         Vm {
             storage: Storage::new(pool),
             halt: false,
+            return_value: None,
         }
     }
 
@@ -182,6 +191,16 @@ impl Vm {
                         .expect("no value on top of stack for store_return");
                     self.store_return(value);
                 }
+                Inst::PushReturn => {
+                    let return_value = mem::replace(&mut self.return_value, None)
+                        .unwrap_or(CopyValue::Empty);
+                    self.stack_mut()
+                        .push(return_value);
+
+                }
+                Inst::DiscardReturn => {
+                    self.return_value = None;
+                }
                 Inst::PopCall(argc) => {
                     let tos = self.stack_mut().pop().expect("no tos for pop_call");
                     let args = self.stack_mut().pop_args(argc);
@@ -195,9 +214,7 @@ impl Vm {
                 }
                 Inst::Return => {
                     let frame = self.stack_mut().pop_frame().expect("returned to empty stack frame");
-                    if let Some(value) = frame.return_value {
-                        self.stack_mut().push(value);
-                    }
+                    self.return_value = frame.return_value;
                 }
                 Inst::Halt => {
                     self.halt();

@@ -1,5 +1,5 @@
 use crate::{syn::op::OpKind, vm::value::Binding, common::builtins, compile::ir::BoundFun};
-use std::collections::HashMap;
+use std::{mem, collections::HashMap};
 
 pub type Bindings = HashMap<String, Binding>;
 
@@ -32,6 +32,15 @@ impl<'bindings> BindingStack<'bindings> {
             stack: vec![Default::default()],
             bindings,
         }
+    }
+
+    /// Collects all of the remaining bindings in the stack, and merges them into a single Bindings
+    /// layer, popping all layers off.
+    pub fn collapse(&mut self) -> Bindings {
+        let stack = mem::replace(&mut self.stack, Vec::new());
+        stack.into_iter()
+            .flat_map(|bindings| bindings.into_iter())
+            .collect()
     }
 
     /// Inserts builtin functions and operators to the current binding stack level, and pushes a

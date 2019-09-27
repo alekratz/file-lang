@@ -85,7 +85,11 @@ fn dump_bytecode(text: &str) -> Result<()> {
 }
 
 fn run_text(text: &str) -> Result<()> {
-    unimplemented!()
+    use vm::prelude::*;
+    let (main_fun, pool) = Compile::new().compile(text)?;
+    let mut vm = Vm::new(pool);
+    vm.main(&main_fun)?;
+    Ok(())
 }
 
 fn main() -> Result<()> {
