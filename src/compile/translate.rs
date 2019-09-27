@@ -285,8 +285,8 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ExprCtx {
     Push,
-    LValue,
     Stmt,
+    Return,
 }
 
 pub struct IrToInst {
@@ -437,8 +437,9 @@ impl IrToInst {
                 body.extend(self.translate_expr(fun, ExprCtx::Push));
                 body.push(Inst::PopCall(arg_count));
                 match ctx {
-                    ExprCtx::Push | ExprCtx::LValue => body.push(Inst::PushReturn),
+                    ExprCtx::Push => body.push(Inst::PushReturn),
                     ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+                    ExprCtx::Return => { /* return value is already set */ }
                 }
             }
             Expr::Bin(bin) => {
@@ -449,8 +450,9 @@ impl IrToInst {
                 body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
                 body.push(Inst::PopCall(2));
                 match ctx {
-                    ExprCtx::Push | ExprCtx::LValue => body.push(Inst::PushReturn),
+                    ExprCtx::Push => body.push(Inst::PushReturn),
                     ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+                    ExprCtx::Return => { /* return value is already set */ }
                 }
             }
             Expr::Un(un) => {
@@ -460,8 +462,9 @@ impl IrToInst {
                 body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
                 body.push(Inst::PopCall(1));
                 match ctx {
-                    ExprCtx::Push | ExprCtx::LValue => body.push(Inst::PushReturn),
+                    ExprCtx::Push => body.push(Inst::PushReturn),
                     ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+                    ExprCtx::Return => { /* return value is already set */ }
                 }
             }
             Expr::Atom(Atom { kind, .. }) => {
@@ -472,12 +475,11 @@ impl IrToInst {
                     AtomKind::Real(f) => body.push(Inst::PushValue(CopyValue::Real(f))),
                 }
                 match ctx {
-                    ExprCtx::Push | ExprCtx::LValue => {
+                    ExprCtx::Push => {
                         /* no-op - expression should remain on the stack */
                     }
-                    ExprCtx::Stmt => {
-                        body.push(Inst::Pop(1));
-                    }
+                    ExprCtx::Stmt => { body.push(Inst::Pop(1)); }
+                    ExprCtx::Return => { body.push(Inst::StoreReturn) }
                 }
             }
         }
@@ -489,8 +491,7 @@ impl IrToInst {
     fn translate_retn(&self, Retn { expr, .. }: Retn) -> Vec<Inst> {
         let mut body = Vec::new();
         if let Some(expr) = expr {
-            body.extend(self.translate_expr(expr, ExprCtx::Push));
-            body.push(Inst::StoreReturn);
+            body.extend(self.translate_expr(expr, ExprCtx::Return));
         }
         body.push(Inst::Return);
         body
