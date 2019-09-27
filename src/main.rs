@@ -62,14 +62,14 @@ fn dump_tokens(text: &str) -> Result<()> {
 
 fn dump_bytecode(text: &str) -> Result<()> {
     use vm::prelude::*;
-    let (_main_fun, pool) = Compile::new().compile(text)?;
+    let (main_fun, pool) = Compile::new().compile(text)?;
 
     let (funs, const_values): (Vec<_>, Vec<_>) = pool
         .const_pool()
         .iter()
         .partition(|value| matches!(value, Value::Fun(_)));
 
-    let funs: Vec<_> = funs
+    let mut funs: Vec<_> = funs
         .into_iter()
         .map(|fun| {
             if let Value::Fun(fun) = fun {
@@ -79,6 +79,7 @@ fn dump_bytecode(text: &str) -> Result<()> {
             }
         })
         .collect();
+    funs.push(&main_fun);
 
     println!(
         "{} functions, {} constant values",
@@ -86,17 +87,34 @@ fn dump_bytecode(text: &str) -> Result<()> {
         const_values.len()
     );
 
-    println!("= CONSTANTS ====================================================================");
-    for c in const_values {
-        println!("{:?}", c);
+    if !const_values.is_empty() {
+        println!("= CONSTANTS ====================================================================");
+        for c in &const_values {
+            println!("{:?}", c);
+        }
+        println!();
     }
-    println!();
 
     println!("= FUNCTIONS ====================================================================");
-    for fun in funs {
+    for fun in &funs {
         println!("{}", pool.get_binding_name(fun.binding()));
     }
     println!();
+
+    println!("= FUNCTION DUMP ================================================================");
+    println!();
+    for fun in &funs {
+        if let Fun::User(fun) = &fun {
+            println!("= {}", pool.get_binding_name(fun.binding()));
+            println!();
+
+            for (i, inst) in fun.code().iter().enumerate() {
+                println!("{:0>4x}  {:?}", i, inst);
+            }
+
+            println!();
+        }
+    }
 
     Ok(())
 }
