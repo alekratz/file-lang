@@ -1,0 +1,14 @@
+a = 1234;
+b = 0x4567;
+println(a, b);
+c = a;
+a = 5678;
+println(a, c);
+foo();
+println(a, b);
+
+fn foo() {
+    a = 9999;
+    b = 8888;
+    println(a, b);
+}
