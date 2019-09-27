@@ -110,11 +110,6 @@ impl BuiltinFun {
     pub fn call(&self, frame: &mut Vm, args: Vec<CopyValue>) {
         (self.fun)(frame, args)
     }
-
-    pub fn with_binding(mut self, binding: Binding) -> Self {
-        self.binding = binding;
-        self
-    }
 }
 
 impl Clone for BuiltinFun {
