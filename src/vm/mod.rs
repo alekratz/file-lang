@@ -1,19 +1,17 @@
 pub mod fun;
 pub mod pool;
 pub mod stack;
-pub mod value;
 pub mod store;
+pub mod value;
 
 pub mod prelude {
     pub use super::fun::{BuiltinFun, Fun, UserFun};
+    pub use super::pool::*;
     pub use super::value::*;
     pub use super::{Inst, Vm};
-    pub use super::pool::*;
 }
 
-use crate::{
-    vm::{fun::*, pool::*, stack::*, value::*, store::*},
-};
+use crate::vm::{fun::*, pool::*, stack::*, store::*, value::*};
 use std::mem;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -69,7 +67,7 @@ impl Vm {
         }
     }
 
-    pub fn main(&mut self, fun: &Fun) -> Result<(), String> { 
+    pub fn main(&mut self, fun: &Fun) -> Result<(), String> {
         self.stack_mut().clear();
         self.stack_mut().frames_mut().clear();
         self.call(fun, vec![]);
@@ -172,16 +170,23 @@ impl Vm {
                         .pop()
                         .expect("no value on top of stack for pop_store value");
                     match (target, value) {
-                        (CopyValue::ConstRef(_), _) => panic!("tried to store a value {:?} in a const ref {:?}", value, target),
+                        (CopyValue::ConstRef(_), _) => panic!(
+                            "tried to store a value {:?} in a const ref {:?}",
+                            value, target
+                        ),
                         (CopyValue::HeapRef(target_id), value) => {
                             if let Some(value) = self.deref_value(value) {
                                 let value = value.clone();
                                 self.storage_mut().store_heap(target_id, value);
                             } else {
-                                self.storage_mut().store_heap(target_id, Value::CopyValue(value));
+                                self.storage_mut()
+                                    .store_heap(target_id, Value::CopyValue(value));
                             }
                         }
-                        v => { unreachable!("tried to store a value in a non-ref, non-literal value: {:?}", v) }
+                        v => unreachable!(
+                            "tried to store a value in a non-ref, non-literal value: {:?}",
+                            v
+                        ),
                     }
                 }
                 Inst::StoreReturn => {
@@ -192,11 +197,9 @@ impl Vm {
                     self.store_return(value);
                 }
                 Inst::PushReturn => {
-                    let return_value = mem::replace(&mut self.return_value, None)
-                        .unwrap_or(CopyValue::Empty);
-                    self.stack_mut()
-                        .push(return_value);
-
+                    let return_value =
+                        mem::replace(&mut self.return_value, None).unwrap_or(CopyValue::Empty);
+                    self.stack_mut().push(return_value);
                 }
                 Inst::DiscardReturn => {
                     self.return_value = None;
@@ -213,7 +216,10 @@ impl Vm {
                     self.call(&fun, args);
                 }
                 Inst::Return => {
-                    let frame = self.stack_mut().pop_frame().expect("returned to empty stack frame");
+                    let frame = self
+                        .stack_mut()
+                        .pop_frame()
+                        .expect("returned to empty stack frame");
                     self.return_value = frame.return_value;
                 }
                 Inst::Halt => {

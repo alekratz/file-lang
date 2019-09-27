@@ -1,4 +1,4 @@
-use std::fmt::{self, Formatter, Display};
+use std::fmt::{self, Display, Formatter};
 
 macro_rules! ops {
     ($($op:ident => $text:expr),* $(,)?) => {

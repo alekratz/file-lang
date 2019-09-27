@@ -36,11 +36,10 @@ impl Display for TokenKind {
             TokenKind::Ident => write!(fmt, "identifier"),
             TokenKind::String => write!(fmt, "string"),
 
-            TokenKind::DecInt
-            | TokenKind::BinInt
-            | TokenKind::OctInt
-            | TokenKind::HexInt => write!(fmt, "integer"),
-            | TokenKind::Real => write!(fmt, "real number"),
+            TokenKind::DecInt | TokenKind::BinInt | TokenKind::OctInt | TokenKind::HexInt => {
+                write!(fmt, "integer")
+            }
+            TokenKind::Real => write!(fmt, "real number"),
 
             TokenKind::Op => write!(fmt, "operator"),
             TokenKind::AssignOp => write!(fmt, "assignment operator"),

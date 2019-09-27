@@ -1,16 +1,12 @@
+mod bindings;
 pub mod error;
 mod ir;
 mod translate;
-mod bindings;
 
 use crate::{
-    compile::{
-        bindings::BindingStack,
-        translate::*,
-        error::*,
-    },
     common::span::*,
-    syn::{parser::Parser, op::OpKind, ast},
+    compile::{bindings::BindingStack, error::*, translate::*},
+    syn::{ast, op::OpKind, parser::Parser},
     vm::prelude::*,
 };
 
@@ -38,14 +34,10 @@ impl Compile {
         let mut binding_stack = BindingStack::new(&mut self.bindings);
         let mut funs = binding_stack.insert_builtins();
 
-        let ir = AstToIr::new(text, &mut funs, &mut binding_stack)
-            .translate(ast)?;
+        let ir = AstToIr::new(text, &mut funs, &mut binding_stack).translate(ast)?;
         let main_bindings = binding_stack.collapse();
         let Compile { bindings, .. } = self;
-        Ok(
-            IrToInst::new(text, funs, bindings)
-                .translate(ir, main_bindings)
-        )
+        Ok(IrToInst::new(text, funs, bindings).translate(ir, main_bindings))
     }
 
     /// Rearrange expression trees in this level of the AST so that they follow the specified
@@ -79,7 +71,7 @@ impl Compile {
 
 /// Rearrange a binary expression tree to follow a defined precedence.
 fn expr_precedence(expr: ast::Expr, precedence: &Precedence) -> ast::Expr {
-    use crate::syn::{prelude::*, ast::*};
+    use crate::syn::{ast::*, prelude::*};
     // This algorithm effectively treats the binary expression as a LHS, followed by any number of
     // (operator, RHS) pairs, similar to a token stream in the parser.
     //
@@ -223,6 +215,7 @@ fn flatten_bin_expr(expr: ast::Expr) -> (Span, ast::Expr, Vec<(ast::Op, ast::Exp
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::syn::prelude::*;
     use lazy_static::lazy_static;
 
     lazy_static! {

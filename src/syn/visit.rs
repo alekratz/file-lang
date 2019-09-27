@@ -1,7 +1,4 @@
-use crate::{
-    syn::ast::*,
-    common::visit::*,
-};
+use crate::{common::visit::*, syn::ast::*};
 
 pub struct DumpAst {
     depth: usize,

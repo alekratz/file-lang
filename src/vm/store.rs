@@ -1,10 +1,10 @@
 use crate::{
-    vm::{
-        value::{CopyValue, Value, HeapRef, ConstRef, Binding},
-        stack::Stack,
-        fun::{UserFun, StackFrame},
-    },
     vm::pool::Pool,
+    vm::{
+        fun::{StackFrame, UserFun},
+        stack::Stack,
+        value::{Binding, ConstRef, CopyValue, HeapRef, Value},
+    },
 };
 use std::rc::Rc;
 
@@ -27,7 +27,7 @@ impl Storage {
     pub fn stack(&self) -> &Stack {
         &self.stack
     }
-    
+
     pub fn stack_mut(&mut self) -> &mut Stack {
         &mut self.stack
     }
@@ -35,7 +35,7 @@ impl Storage {
     pub fn pool(&self) -> &Pool {
         &self.pool
     }
-    
+
     pub fn pool_mut(&mut self) -> &mut Pool {
         &mut self.pool
     }
@@ -45,11 +45,11 @@ impl Storage {
             CopyValue::ConstRef(ref_id) => match self.load_const(ref_id) {
                 Value::CopyValue(c) if c.is_ref() => self.deref_value(*c),
                 v => Some(v),
-            }
+            },
             CopyValue::HeapRef(ref_id) => match self.load_heap(ref_id) {
                 Value::CopyValue(c) if c.is_ref() => self.deref_value(*c),
                 v => Some(v),
-            }
+            },
             _ => None,
         }
     }

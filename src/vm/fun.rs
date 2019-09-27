@@ -1,4 +1,4 @@
-use crate::vm::{Vm, Binding, CopyValue, CopyValuePool, Inst};
+use crate::vm::{Binding, CopyValue, CopyValuePool, Inst, Vm};
 use std::{
     cmp::Ordering,
     fmt::{self, Debug, Formatter},

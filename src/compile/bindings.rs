@@ -1,5 +1,5 @@
-use crate::{syn::op::OpKind, vm::value::Binding, common::builtins, compile::ir::BoundFun};
-use std::{mem, collections::HashMap};
+use crate::{common::builtins, compile::ir::BoundFun, syn::op::OpKind, vm::value::Binding};
+use std::{collections::HashMap, mem};
 
 pub type Bindings = HashMap<String, Binding>;
 
@@ -38,7 +38,8 @@ impl<'bindings> BindingStack<'bindings> {
     /// layer, popping all layers off.
     pub fn collapse(&mut self) -> Bindings {
         let stack = mem::replace(&mut self.stack, Vec::new());
-        stack.into_iter()
+        stack
+            .into_iter()
             .flat_map(|bindings| bindings.into_iter())
             .collect()
     }
@@ -102,10 +103,7 @@ impl<'bindings> BindingStack<'bindings> {
     }
 
     pub fn get_local_binding(&self, name: &str) -> Option<Binding> {
-        self.stack
-            .last()
-            .and_then(|map| map.get(name))
-            .copied()
+        self.stack.last().and_then(|map| map.get(name)).copied()
     }
 
     pub fn get_or_create_binding(&mut self, name: &str) -> Binding {

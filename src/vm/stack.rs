@@ -1,7 +1,4 @@
-use crate::vm::{
-    value::CopyValue,
-    fun::StackFrame,
-};
+use crate::vm::{fun::StackFrame, value::CopyValue};
 use shrinkwraprs::Shrinkwrap;
 use std::ops::DerefMut;
 

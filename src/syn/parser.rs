@@ -1,8 +1,5 @@
 use crate::{
-    common::{
-        span::*,
-        builtins,
-    },
+    common::{builtins, span::*},
     syn::prelude::*,
 };
 use std::mem;
@@ -22,10 +19,7 @@ impl<'text> Parser<'text> {
         let mut lexer = Lexer::new(text);
         let curr = lexer.next_token()?;
 
-        Ok(Parser {
-            lexer,
-            curr,
-        })
+        Ok(Parser { lexer, curr })
     }
     pub fn lexer(&self) -> &Lexer<'text> {
         &self.lexer
@@ -38,7 +32,7 @@ impl<'text> Parser<'text> {
     pub fn is_eof(&self) -> bool {
         self.curr.kind() == TokenKind::Eof
     }
- 
+
     pub fn next_body(&mut self) -> Result<Vec<Stmt>> {
         let mut body = Vec::new();
         while self.is_any_lookahead::<Stmt>() {
@@ -340,7 +334,9 @@ mod test {
         0xaaa
 
         foo_bar_baz
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         verify! {
             parser, next_atom;
             atom_expr!(AtomKind::DecInt),
@@ -365,7 +361,9 @@ mod test {
             ~0xaaa;
 
             ^foo_bar_baz;
-            "#).unwrap();
+            "#,
+        )
+        .unwrap();
 
         verify! {
             parser, next_stmt;
@@ -423,7 +421,9 @@ mod test {
             0o6660 & ~UMASK
             0b100 --0b100
             0b100 - -0b100
-            "#).unwrap();
+            "#,
+        )
+        .unwrap();
 
         verify!(parser, next_bin_expr;
             bin_expr! {
@@ -470,7 +470,9 @@ mod test {
             a += b;
             b -= c;
             d = e;
-            "#).unwrap();
+            "#,
+        )
+        .unwrap();
 
         verify! {
             parser, next_stmt;
@@ -513,7 +515,9 @@ mod test {
         let mut parser = Parser::new(
             r#"
             fn add(a, b) { retn a + b; }
-            "#).unwrap();
+            "#,
+        )
+        .unwrap();
 
         verify! {
             parser, next_stmt;

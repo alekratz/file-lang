@@ -11,10 +11,7 @@ pub enum SyntaxError {
     },
 
     #[snafu(display("unexpected {}", what))]
-    Unexpected {
-        span: Span,
-        what: String,
-    },
+    Unexpected { span: Span, what: String },
 
     #[snafu(display("invalid {}: {}", what, why))]
     Invalid {

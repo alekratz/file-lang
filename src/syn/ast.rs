@@ -4,7 +4,10 @@ use crate::{
 };
 use lazy_static::lazy_static;
 use matches::matches;
-use std::{fmt::{self, Display, Formatter}, collections::HashMap};
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
 
 pub type Lookaheads = &'static [TokenKind];
 
@@ -346,5 +349,3 @@ impl Ast for AssignOp {
         TokenKind::AssignOp,
     }
 }
-
-

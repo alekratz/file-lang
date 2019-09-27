@@ -1,7 +1,4 @@
-use crate::vm::{
-    fun::Fun,
-    value::*,
-};
+use crate::vm::{fun::Fun, value::*};
 use std::mem;
 
 #[derive(Debug, Clone, Default)]
@@ -11,9 +8,7 @@ pub struct Pool {
 }
 
 impl Pool {
-    pub fn new(
-        bindings: Vec<String>,
-    ) -> Self {
+    pub fn new(bindings: Vec<String>) -> Self {
         Pool {
             const_pool: Default::default(),
             bindings,
@@ -64,7 +59,7 @@ impl Pool {
     pub fn const_pool(&self) -> &Vec<Value> {
         &self.const_pool
     }
-    
+
     pub fn const_pool_mut(&mut self) -> &mut Vec<Value> {
         &mut self.const_pool
     }

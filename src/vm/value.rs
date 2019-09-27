@@ -14,8 +14,7 @@ pub enum CopyValue {
 impl CopyValue {
     pub fn is_ref(&self) -> bool {
         match self {
-            CopyValue::HeapRef(_)
-            | CopyValue::ConstRef(_) => true,
+            CopyValue::HeapRef(_) | CopyValue::ConstRef(_) => true,
             _ => false,
         }
     }

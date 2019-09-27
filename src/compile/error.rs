@@ -1,27 +1,16 @@
-use crate::{
-    syn,
-    common::span::Span,
-};
+use crate::{common::span::Span, syn};
 use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
 pub enum CompileError {
     #[snafu(display("{}", what))]
-    InvalidOp {
-        span: Span,
-        what: String,
-    },
+    InvalidOp { span: Span, what: String },
 
     #[snafu(display("{}", what))]
-    InvalidLValue {
-        span: Span,
-        what: String,
-    },
+    InvalidLValue { span: Span, what: String },
 
     #[snafu(display("{}", error))]
-    SyntaxError {
-        error: syn::error::SyntaxError,
-    },
+    SyntaxError { error: syn::error::SyntaxError },
 }
 
 impl From<syn::error::SyntaxError> for CompileError {

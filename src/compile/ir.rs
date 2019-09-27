@@ -110,13 +110,15 @@ impl BoundFun {
 impl Debug for BoundFun {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match self {
-            BoundFun::User(fun) => fmt.debug_tuple("BoundFun")
-                .field(&fun)
-                .finish(),
-            BoundFun::Builtin(binding, fun) => fmt.debug_tuple("BoundFun")
+            BoundFun::User(fun) => fmt.debug_tuple("BoundFun").field(&fun).finish(),
+            BoundFun::Builtin(binding, fun) => fmt
+                .debug_tuple("BoundFun")
                 .field(&binding)
-                .field(&format!("builtin function at {:#x}", (&fun as *const _ as usize)))
-                .finish()
+                .field(&format!(
+                    "builtin function at {:#x}",
+                    (&fun as *const _ as usize)
+                ))
+                .finish(),
         }
     }
 }

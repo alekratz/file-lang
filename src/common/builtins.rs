@@ -1,9 +1,9 @@
 use crate::{
     syn::{op::OpKind, parser::Parser},
     vm::{
-        Vm,
         fun::BuiltinFunPtr,
-        value::{CopyValue, Binding},
+        value::{Binding, CopyValue},
+        Vm,
     },
 };
 use lazy_static::lazy_static;

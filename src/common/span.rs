@@ -13,7 +13,9 @@ pub struct Pos {
 // writing tests
 #[cfg(test)]
 impl PartialEq for Pos {
-    fn eq(&self, _other: &Self) -> bool { true }
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
 }
 
 impl Pos {
@@ -49,7 +51,7 @@ pub struct Span {
 
 impl Span {
     pub fn new(start: Pos, end: Pos) -> Self {
-        Span { start, end, }
+        Span { start, end }
     }
 
     pub fn len(&self) -> usize {
@@ -69,7 +71,7 @@ impl Span {
             span.end
         };
 
-        Span { start, end, }
+        Span { start, end }
     }
 
     pub fn text<'text>(&self, text: &'text str) -> &'text str {
@@ -99,7 +101,6 @@ macro_rules! spanned {
 
 impl<T: Spanned> Spanned for [T] {
     fn span(&self) -> Span {
-        self.iter()
-            .fold(Span::default(), |a, b| a.union(&b.span()))
+        self.iter().fold(Span::default(), |a, b| a.union(&b.span()))
     }
 }

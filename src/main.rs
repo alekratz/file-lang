@@ -1,17 +1,19 @@
-#[macro_use] mod common;
-#[macro_use] mod syn;
+#[macro_use]
+mod common;
+#[macro_use]
+mod syn;
 mod compile;
 mod vm;
 
 use crate::{
     common::span::*,
     compile::Compile,
-    vm::{Vm, Inst, fun::Fun, value::Value},
+    vm::{fun::Fun, value::Value, Inst, Vm},
 };
 use matches::matches;
-use syn::prelude::*;
-use structopt::StructOpt;
 use std::{fs, path::PathBuf, rc::Rc};
+use structopt::StructOpt;
+use syn::prelude::*;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -29,7 +31,7 @@ enum Opt {
     Run {
         #[structopt(parse(from_os_str))]
         file: PathBuf,
-    }
+    },
 }
 
 #[derive(Debug, Copy, Clone, StructOpt)]
@@ -46,7 +48,12 @@ fn dump_tokens(text: &str) -> Result<()> {
     loop {
         let token = lexer.next_token()?;
         let span = token.span();
-        println!("{: <15}line {}, index {}", token.kind().to_string(), span.start.line + 1, span.start.source);
+        println!(
+            "{: <15}line {}, index {}",
+            token.kind().to_string(),
+            span.start.line + 1,
+            span.start.source
+        );
         if token.kind() == TokenKind::Eof {
             break;
         }
@@ -58,15 +65,27 @@ fn dump_bytecode(text: &str) -> Result<()> {
     use vm::prelude::*;
     let (main_fun, pool) = Compile::new().compile(text)?;
 
-    let (funs, const_values): (Vec<_>, Vec<_>) = pool.const_pool()
+    let (funs, const_values): (Vec<_>, Vec<_>) = pool
+        .const_pool()
         .iter()
         .partition(|value| matches!(value, Value::Fun(_)));
 
-    let funs: Vec<_> = funs.into_iter()
-        .map(|fun| if let Value::Fun(fun) = fun { fun } else { unreachable!() })
+    let funs: Vec<_> = funs
+        .into_iter()
+        .map(|fun| {
+            if let Value::Fun(fun) = fun {
+                fun
+            } else {
+                unreachable!()
+            }
+        })
         .collect();
 
-    println!("{} functions, {} constant values", funs.len(), const_values.len());
+    println!(
+        "{} functions, {} constant values",
+        funs.len(),
+        const_values.len()
+    );
 
     println!("= CONSTANTS ====================================================================");
     for c in const_values {
@@ -79,7 +98,6 @@ fn dump_bytecode(text: &str) -> Result<()> {
         println!("{}", pool.get_binding_name(fun.binding()));
     }
     println!();
-
 
     Ok(())
 }
@@ -96,13 +114,13 @@ fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     match opt {
-        Opt::Dump { file, what, } => {
+        Opt::Dump { file, what } => {
             let text = fs::read_to_string(file)?;
             match what {
                 Dump::Tokens => dump_tokens(&text)?,
                 Dump::Bytecode => dump_bytecode(&text)?,
             }
-        },
+        }
         Opt::Run { file } => {
             let text = fs::read_to_string(file)?;
             run_text(&text)?;
