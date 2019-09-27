@@ -21,6 +21,7 @@ impl<'text> Parser<'text> {
 
         Ok(Parser { lexer, curr })
     }
+
     pub fn lexer(&self) -> &Lexer<'text> {
         &self.lexer
     }
@@ -78,7 +79,7 @@ impl<'text> Parser<'text> {
         let first = self.expect_lookahead::<FunDef, _>("function definition")?;
 
         let name_token = self.expect_token_kind(TokenKind::Ident, "function name")?;
-        let name = self.lexer.text_at(name_token.span()).to_string();
+        let name = self.lexer().text_at(name_token.span()).to_string();
 
         self.expect_token_kind(
             TokenKind::LParen,
@@ -106,7 +107,7 @@ impl<'text> Parser<'text> {
         let mut params = Vec::new();
         if let Some(ident) = self.match_token_kind(TokenKind::Ident) {
             let ident = ident?;
-            params.push(self.lexer.text_at(ident.span()).to_string());
+            params.push(self.lexer().text_at(ident.span()).to_string());
             loop {
                 if self.curr.kind() == TokenKind::RParen {
                     break;
@@ -117,7 +118,7 @@ impl<'text> Parser<'text> {
                 )?;
                 let ident =
                     self.expect_token_kind(TokenKind::Ident, "function parameter identifier")?;
-                params.push(self.lexer.text_at(ident.span()).to_string());
+                params.push(self.lexer().text_at(ident.span()).to_string());
             }
         }
         Ok(params)
@@ -227,7 +228,7 @@ impl<'text> Parser<'text> {
 
     fn next_op(&mut self) -> Result<Op> {
         let token = self.expect_lookahead::<Op, _>("operator")?;
-        let text = self.lexer.text_at(token.span());
+        let text = self.lexer().text_at(token.span());
         let kind: Vec<OpKind> = text
             .chars()
             .map(|c| OpKind::from_char(c).unwrap())
@@ -240,7 +241,7 @@ impl<'text> Parser<'text> {
 
     fn next_assign_op(&mut self) -> Result<AssignOp> {
         let token = self.expect_lookahead::<AssignOp, _>("assignment operator")?;
-        let text = self.lexer.text_at(token.span());
+        let text = self.lexer().text_at(token.span());
         let kind: Vec<OpKind> = text
             .chars()
             .map(|c| OpKind::from_char(c).unwrap())
@@ -511,7 +512,6 @@ mod test {
 
     #[test]
     fn test_parser_fun_def_stmt() {
-        use maplit::hashmap;
         let mut parser = Parser::new(
             r#"
             fn add(a, b) { retn a + b; }

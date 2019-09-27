@@ -1,5 +1,5 @@
 use crate::{
-    common::{span::*, visit::Accept},
+    common::span::*,
     syn::{op::*, token::TokenKind},
 };
 use lazy_static::lazy_static;
@@ -74,8 +74,6 @@ macro_rules! lookahead_builder {
 pub trait Ast: Spanned + PartialEq {
     fn lookaheads() -> Lookaheads;
 }
-
-impl<T> Accept for T where T: Ast {}
 
 ////////////////////////////////////////////////////////////////////////////////
 // AST structures

@@ -6,7 +6,6 @@ pub mod lexer;
 pub mod op;
 pub mod parser;
 pub mod token;
-pub mod visit;
 
 pub mod prelude {
     pub use super::ast::{
@@ -19,5 +18,4 @@ pub mod prelude {
     pub use super::op::*;
     pub use super::parser::*;
     pub use super::token::*;
-    pub use super::visit::*;
 }
