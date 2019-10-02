@@ -12,6 +12,12 @@ pub enum BoundFun {
 }
 
 #[derive(Debug, Clone)]
+pub struct TypeDef {
+    pub span: Span,
+    pub member_funs: Vec<Binding>,
+}
+
+#[derive(Debug, Clone)]
 pub struct FunDef {
     pub span: Span,
     pub params: Vec<Binding>,

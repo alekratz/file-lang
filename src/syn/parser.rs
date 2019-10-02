@@ -181,7 +181,24 @@ impl<'text> Parser<'text> {
             let span = op.span().union(&expr.span());
             Ok(Expr::Un(UnExpr { span, op, expr }.into()))
         } else {
-            self.next_fun_call()
+            self.next_access()
+        }
+    }
+
+    fn next_access(&mut self) -> Result<Expr> {
+        let fun = self.next_fun_call()?;
+        if self.curr.kind() == TokenKind::Dot {
+            self.adv_token()?;
+            let tail = self.next_access()?;
+            let span = fun.span().union(&tail.span());
+            let access = Access {
+                span,
+                head: fun,
+                tail,
+            };
+            Ok(Expr::Access(access.into()))
+        } else {
+            Ok(fun)
         }
     }
 
@@ -489,6 +506,28 @@ mod test {
                 }
             },
         );
+    }
+
+    #[test]
+    fn test_parser_access_expr() {
+        let mut parser = Parser::new(
+            r#"
+            foo.bar().baz
+            "#,
+        )
+        .unwrap();
+
+        verify! {
+            parser, next_expr;
+            access_expr!(
+                atom_expr!(AtomKind::Ident),
+                access_expr!(
+                    fun_call_expr!(
+                        atom_expr!(AtomKind::Ident)
+                    ),
+                    atom_expr!(AtomKind::Ident)))
+        }
+        verify_eof!(parser);
     }
 
     #[test]

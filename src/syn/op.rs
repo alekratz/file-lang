@@ -60,6 +60,5 @@ ops! {
     Minus => '-',
     Eq => '=',
     Plus => '+',
-    Dot => '.',
     Tilde => '~',
 }

@@ -130,10 +130,22 @@ pub struct Retn {
 /// expressions).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    FunCall(Box<FunCall>),
-    Un(Box<UnExpr>),
     Bin(Box<BinExpr>),
+    Un(Box<UnExpr>),
+    Access(Box<Access>),
+    FunCall(Box<FunCall>),
     Atom(Box<Atom>),
+}
+
+/// An access expression.
+///
+/// Access expressions are a "head" expression, followed by a "tail" expression (which itself may
+/// be another access). Accesses are split up by Dot tokens, e.g. `foo.bar.baz()`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Access {
+    pub span: Span,
+    pub head: Expr,
+    pub tail: Expr,
 }
 
 /// A function call.
@@ -257,9 +269,10 @@ impl Spanned for Stmt {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Expr::FunCall(f) => f.span(),
-            Expr::Un(u) => u.span(),
             Expr::Bin(b) => b.span(),
+            Expr::Un(u) => u.span(),
+            Expr::Access(a) => a.span(),
+            Expr::FunCall(f) => f.span(),
             Expr::Atom(a) => a.span(),
         }
     }
@@ -270,9 +283,10 @@ spanned!(AssignOp, span);
 spanned!(Assign, span);
 spanned!(FunDef, span);
 spanned!(Retn, span);
-spanned!(FunCall, span);
-spanned!(UnExpr, span);
 spanned!(BinExpr, span);
+spanned!(UnExpr, span);
+spanned!(Access, span);
+spanned!(FunCall, span);
 spanned!(Atom, span);
 spanned!(Op, span);
 
@@ -321,6 +335,12 @@ impl Ast for Expr {
 }
 
 impl Ast for FunCall {
+    ast_lookaheads! {
+        BinExpr::lookaheads(),
+    }
+}
+
+impl Ast for Access {
     ast_lookaheads! {
         BinExpr::lookaheads(),
     }

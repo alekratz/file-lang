@@ -125,18 +125,6 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
 
     fn translate_expr(&mut self, expr: ast::Expr) -> Result<Expr> {
         let expr = match expr {
-            ast::Expr::FunCall(fun) => {
-                let ast::FunCall { span, fun, args } = *fun;
-                let fun = FunCall {
-                    span,
-                    fun: self.translate_expr(fun)?,
-                    args: args
-                        .into_iter()
-                        .map(|expr| self.translate_expr(expr))
-                        .collect::<Result<Vec<Expr>>>()?,
-                };
-                Expr::FunCall(fun.into())
-            }
             ast::Expr::Bin(bin) => {
                 let ast::BinExpr { span, lhs, op, rhs } = *bin;
                 let bin = BinExpr {
@@ -155,6 +143,21 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                     expr: self.translate_expr(expr)?,
                 };
                 Expr::Un(un.into())
+            }
+            ast::Expr::Access(_) => {
+                unimplemented!("TODO(object) access expression")
+            }
+            ast::Expr::FunCall(fun) => {
+                let ast::FunCall { span, fun, args } = *fun;
+                let fun = FunCall {
+                    span,
+                    fun: self.translate_expr(fun)?,
+                    args: args
+                        .into_iter()
+                        .map(|expr| self.translate_expr(expr))
+                        .collect::<Result<Vec<Expr>>>()?,
+                };
+                Expr::FunCall(fun.into())
             }
             ast::Expr::Atom(atom) => {
                 let ast::Atom { span, kind } = *atom;

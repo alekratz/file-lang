@@ -221,7 +221,6 @@ mod test {
             vec![
                 vec![OpKind::Splat],
                 vec![OpKind::FSlash],
-                vec![OpKind::Dot, OpKind::FSlash]
             ],
             vec![vec![OpKind::Plus], vec![OpKind::Minus]],
         ];

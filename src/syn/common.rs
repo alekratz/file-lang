@@ -69,6 +69,40 @@ mod test {
     }
 
     #[macro_export]
+    macro_rules! fun_call {
+        ($fun:expr $(, $arg:expr)*) => {{
+            ast!(FunCall {
+                fun: $fun,
+                args: vec![$($arg),*],
+            })
+        }};
+    }
+
+    #[macro_export]
+    macro_rules! fun_call_expr {
+        ($fun:expr $(, $arg:expr)*) => {{
+            Expr::FunCall(fun_call!($fun $(, $arg)*).into())
+        }};
+    }
+
+    #[macro_export]
+    macro_rules! access {
+        ($head:expr, $tail:expr) => {{
+            ast!(Access {
+                head: $head,
+                tail: $tail,
+            })
+        }};
+    }
+
+    #[macro_export]
+    macro_rules! access_expr {
+        ($head:expr, $tail:expr) => {{
+            Expr::Access(access!($head, $tail).into())
+        }};
+    }
+
+    #[macro_export]
     macro_rules! atom {
         ($kind:expr) => {{
             ast!(Atom { kind: $kind })

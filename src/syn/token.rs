@@ -25,6 +25,7 @@ pub enum TokenKind {
     RBrace,
     Comma,
     Colon,
+    Dot,
 
     KwFn,
     KwRetn,
@@ -56,6 +57,7 @@ impl Display for TokenKind {
             TokenKind::RBrace => write!(fmt, "right brace"),
             TokenKind::Comma => write!(fmt, "comma"),
             TokenKind::Colon => write!(fmt, "colon"),
+            TokenKind::Dot => write!(fmt, "dot"),
 
             TokenKind::KwFn => write!(fmt, "`fn` keyword"),
             TokenKind::KwRetn => write!(fmt, "`retn` keyword"),
