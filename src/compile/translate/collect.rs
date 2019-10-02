@@ -5,6 +5,7 @@ use crate::{
     vm::{fun::*, pool::Pool, value::*, Inst},
 };
 use matches::matches;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct CollectFuns<'compile, 'bindings: 'compile> {
@@ -100,6 +101,66 @@ impl<'compile, 'bindings: 'compile> CollectBindings<'compile, 'bindings> {
                 _ => { /* no-op - no bindings to collect */ }
             },
             _ => { /* no-op - only identifiers can be collected */ }
+        }
+    }
+}
+
+pub struct CollectStringConstants<'compile> {
+    pool: &'compile mut Pool,
+    const_strings: &'compile mut HashMap<String, ConstRef>,
+}
+
+impl<'compile> CollectStringConstants<'compile> {
+    pub fn new(pool: &'compile mut Pool, const_strings: &'compile mut HashMap<String, ConstRef>) -> Self {
+        CollectStringConstants { pool, const_strings, }
+    }
+
+    pub fn collect(&mut self, body: &Vec<Stmt>) {
+        for stmt in body.iter() {
+            match stmt {
+                Stmt::Assign(assign) => {
+                    if let LValue::Complex(expr) = &assign.lhs {
+                        self.collect_expr(expr);
+                    }
+                    self.collect_expr(&assign.rhs);
+                }
+                Stmt::Expr(e) => self.collect_expr(e),
+                Stmt::Retn(retn) => if let Some(e) = &retn.expr {
+                    self.collect_expr(e);
+                }
+            }
+        }
+    }
+
+    fn collect_expr(&mut self, expr: &Expr) {
+        match expr {
+            Expr::FunCall(fun) => {
+                self.collect_expr(&fun.fun);
+                for arg in fun.args.iter() {
+                    self.collect_expr(arg);
+                }
+            }
+            Expr::Un(un) => {
+                self.collect_expr(&un.expr);
+            }
+            Expr::Bin(bin) => {
+                self.collect_expr(&bin.lhs);
+                self.collect_expr(&bin.rhs);
+            }
+            Expr::Atom(atom) => {
+                match &atom.kind {
+                    AtomKind::String(s) => self.insert_string(s),
+                    AtomKind::TaggedString { string, .. } => self.insert_string(string),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    fn insert_string(&mut self, s: &String) {
+        if !self.const_strings.contains_key(s) {
+            let ref_id = self.pool.insert_const(Value::String(s.clone()));
+            self.const_strings.insert(s.clone(), ref_id);
         }
     }
 }

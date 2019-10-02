@@ -159,7 +159,7 @@ impl Vm {
                         .stack_mut()
                         .pop()
                         .expect("no value on top of stack for pop_store target");
-                    // TODO : Raise an error here when exceptions are ready, instead of a hard crash
+                    // TODO(exception) : Raise an error here when exceptions are ready, instead of a hard crash
                     assert!(
                         target.is_ref(),
                         "cannot store values in a non-ref target {:?}",

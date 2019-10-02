@@ -80,6 +80,7 @@ builtins! {
     }
 
     "str" => fn builtin_str(_vm: &mut Vm, _args: Vec<CopyValue>) {
+        unimplemented!();
     }
 }
 

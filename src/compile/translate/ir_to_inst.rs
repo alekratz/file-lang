@@ -1,11 +1,19 @@
 use crate::{
     common::span::*,
-    compile::{bindings::*, error::*, ir::*, translate::ast_to_ir::*},
+    compile::{
+        bindings::*,
+        error::*,
+        ir::*,
+        translate::{ast_to_ir::*, collect::CollectStringConstants},
+    },
     syn::{ast, op::OpKind},
     vm::{fun::*, pool::Pool, value::*, Inst},
 };
 use matches::matches;
-use std::{collections::BTreeMap, rc::Rc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    rc::Rc,
+};
 
 /// A context for an expression to be used in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +25,7 @@ enum ExprCtx {
 
 pub struct IrToInst {
     funs: BTreeMap<Binding, (ConstRef, BoundFun)>,
+    const_strings: HashMap<String, ConstRef>,
     pool: Pool,
 }
 
@@ -39,6 +48,7 @@ impl IrToInst {
                     (fun.binding(), (ref_id, fun))
                 })
                 .collect(),
+            const_strings: Default::default(),
             pool,
         }
     }
@@ -46,10 +56,23 @@ impl IrToInst {
     /// Translates all IR functions in this translator, plus the given "main" body, into a pair of
     /// main function and VM constant pool.
     pub fn translate(mut self, body: Vec<Stmt>, main_bindings: Bindings) -> (Fun, Pool) {
+        // collect strings in all functions and main body
+        let mut collector = CollectStringConstants::new(&mut self.pool, &mut self.const_strings);
+        collector.collect(&body);
+        for (_, (_, fun)) in self.funs.iter() {
+            match fun {
+                BoundFun::User(fun) => {
+                    collector.collect(&fun.body);
+                }
+                _ => {}
+            }
+        }
+
         // translate functions and insert them as constants
         for (_, (ref_id, fun)) in self.funs.iter() {
             match fun {
                 BoundFun::User(fun) => {
+                    // TODO is it possible to translate_fun_def without cloning the fun?
                     let user_fun = self.translate_fun_def(fun.clone());
                     let fun = Fun::User(Rc::new(user_fun));
                     self.pool.update_const(*ref_id, Value::Fun(fun));
@@ -196,17 +219,22 @@ impl IrToInst {
             Expr::Atom(Atom { kind, .. }) => {
                 match kind {
                     AtomKind::Ident(binding) => body.push(Inst::Load(binding)),
-                    AtomKind::String(_) => unimplemented!("TODO(string)"),
-                    AtomKind::TaggedString { .. } => unimplemented!("TODO(string)"),
+                    AtomKind::String(s) => {
+                        let ref_id = *self.const_strings.get(&s).unwrap();
+                        body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
+                    }
+                    AtomKind::TaggedString { .. } => {
+                        unimplemented!("TODO(string) Tagged string behavior")
+                    }
                     AtomKind::Int(i) => body.push(Inst::PushValue(CopyValue::Int(i as i64))),
                     AtomKind::Real(f) => body.push(Inst::PushValue(CopyValue::Real(f))),
                 }
                 match ctx {
-                    ExprCtx::Push => {
-                        /* no-op - expression should remain on the stack */
+                    ExprCtx::Push => { /* no-op - expression should remain on the stack */ }
+                    ExprCtx::Stmt => {
+                        body.push(Inst::Pop(1));
                     }
-                    ExprCtx::Stmt => { body.push(Inst::Pop(1)); }
-                    ExprCtx::Return => { body.push(Inst::StoreReturn) }
+                    ExprCtx::Return => body.push(Inst::StoreReturn),
                 }
             }
         }
@@ -238,4 +266,3 @@ impl IrToInst {
         *ref_id
     }
 }
-

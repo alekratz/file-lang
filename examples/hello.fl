@@ -12,3 +12,5 @@ fn foo() {
     b = 8888;
     println(a, b);
 }
+
+println("hell world");
