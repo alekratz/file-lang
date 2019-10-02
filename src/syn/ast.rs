@@ -95,7 +95,6 @@ pub enum Stmt {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeDef {
     pub span: Span,
-    pub member_fields: Vec<(String, String)>,
     pub member_funs: Vec<FunDef>,
 }
 

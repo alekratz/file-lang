@@ -46,6 +46,8 @@ impl<'text> Parser<'text> {
     pub fn next_stmt(&mut self) -> Result<Stmt> {
         let stmt = if self.is_any_lookahead::<FunDef>() {
             Stmt::FunDef(self.next_fun_def()?)
+        } else if self.is_any_lookahead::<TypeDef>() {
+            Stmt::TypeDef(self.next_type_def()?)
         } else if self.is_any_lookahead::<Expr>() {
             self.next_assign_or_expr_stmt()?
         } else if self.is_any_lookahead::<Retn>() {
@@ -122,6 +124,25 @@ impl<'text> Parser<'text> {
             }
         }
         Ok(params)
+    }
+
+    fn next_type_def(&mut self) -> Result<TypeDef> {
+        let kw = self.expect_token_kind(TokenKind::KwType, "`type` keyword")?;
+        self.expect_token_kind(TokenKind::LBrace, "type definition start (left brace)")?;
+
+        let mut member_funs = Vec::new();
+
+        // TODO(object) Assignment statements for static(?) members, kind of like Python
+        while !self.is_match(TokenKind::RBrace) && !self.is_eof() {
+            member_funs.push(self.next_fun_def()?);
+        }
+
+        let rbrace = self.expect_token_kind(TokenKind::RBrace, "type definition end (right brace)")?;
+        let span = kw.span().union(&rbrace.span());
+        Ok(TypeDef {
+            span,
+            member_funs,
+        })
     }
 
     fn next_retn_stmt(&mut self) -> Result<Retn> {
@@ -292,6 +313,10 @@ impl<'text> Parser<'text> {
 
     fn is_any_lookahead<A: Ast>(&self) -> bool {
         A::lookaheads().contains(&self.curr.kind())
+    }
+
+    fn is_match(&self, kind: TokenKind) -> bool {
+        self.curr.kind() == kind 
     }
 
     fn adv_token(&mut self) -> Result<Token> {

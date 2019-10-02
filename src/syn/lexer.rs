@@ -157,6 +157,7 @@ impl<'text> Lexer<'text> {
             '{' => self.next_char_token('{', TokenKind::LBrace),
             '}' => self.next_char_token('}', TokenKind::RBrace),
             ',' => self.next_char_token(',', TokenKind::Comma),
+            ':' => self.next_char_token(',', TokenKind::Colon),
             c if STRING_CHARS.contains(&c) => self.next_string(true),
             c if OpKind::CHARS.contains(&c) => self.next_op(),
             c => Err(SyntaxError::Invalid {
