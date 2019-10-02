@@ -210,6 +210,8 @@ impl<'text> Parser<'text> {
             }
             TokenKind::Ident => AtomKind::Ident,
             TokenKind::String => AtomKind::String,
+            TokenKind::RawString => AtomKind::RawString,
+            TokenKind::TaggedString => AtomKind::TaggedString,
             TokenKind::DecInt => AtomKind::DecInt,
             TokenKind::BinInt => AtomKind::BinInt,
             TokenKind::OctInt => AtomKind::OctInt,

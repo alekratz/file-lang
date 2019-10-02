@@ -8,6 +8,8 @@ pub enum TokenKind {
 
     Ident,
     String,
+    RawString,
+    TaggedString,
     DecInt,
     BinInt,
     OctInt,
@@ -35,6 +37,8 @@ impl Display for TokenKind {
 
             TokenKind::Ident => write!(fmt, "identifier"),
             TokenKind::String => write!(fmt, "string"),
+            TokenKind::RawString => write!(fmt, "raw string"),
+            TokenKind::TaggedString => write!(fmt, "tagged string"),
 
             TokenKind::DecInt | TokenKind::BinInt | TokenKind::OctInt | TokenKind::HexInt => {
                 write!(fmt, "integer")

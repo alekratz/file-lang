@@ -1,6 +1,6 @@
 use crate::{
     common::span::*,
-    syn::{error::*, op::*, token::*},
+    syn::{error::*, op::*, token::*, STRING_ESCAPE_CHAR, STRING_CHARS},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -148,15 +148,15 @@ impl<'text> Lexer<'text> {
         let c = self.curr_char().unwrap();
 
         match c {
-            'a'..='z' | 'A'..='Z' | '_' => self.next_ident(),
+            'a'..='z' | 'A'..='Z' | '_' => self.next_ident_or_string(),
             '0'..='9' => self.next_number(),
-            '\'' | '"' => unimplemented!("TODO: string"),
             ';' => self.next_char_token(';', TokenKind::Eol),
             '(' => self.next_char_token('(', TokenKind::LParen),
             ')' => self.next_char_token(')', TokenKind::RParen),
             '{' => self.next_char_token('{', TokenKind::LBrace),
             '}' => self.next_char_token('}', TokenKind::RBrace),
             ',' => self.next_char_token(',', TokenKind::Comma),
+            c if STRING_CHARS.contains(&c) => self.next_string(true),
             c if OpKind::CHARS.contains(&c) => self.next_op(),
             c => Err(SyntaxError::Invalid {
                 span: self.span(),
@@ -166,12 +166,25 @@ impl<'text> Lexer<'text> {
         }
     }
 
-    pub fn next_ident(&mut self) -> Result<Token> {
+    pub fn next_ident_or_string(&mut self) -> Result<Token> {
         self.expect_predicate(is_ident_start_char, "identifier start character")?;
         while self.match_predicate(is_ident_char).is_some() {}
-        let text = self.text();
-        let kind = KEYWORDS.get(text).copied().unwrap_or(TokenKind::Ident);
-        Ok(self.make_token(kind))
+        if self.is_any_match(&STRING_CHARS) {
+            // "r" is reserved for raw strings
+            let is_raw = self.text() == "r";
+            if is_raw {
+                self.catchup();
+                self.next_string(false)
+            } else {
+                let token = self.next_string(true)?;
+                let span = token.span();
+                Ok(Token::new(TokenKind::TaggedString, span))
+            }
+        } else {
+            let text = self.text();
+            let kind = KEYWORDS.get(text).copied().unwrap_or(TokenKind::Ident);
+            Ok(self.make_token(kind))
+        }
     }
 
     pub fn next_number(&mut self) -> Result<Token> {
@@ -240,6 +253,24 @@ impl<'text> Lexer<'text> {
         }
 
         Ok(self.make_token(kind))
+    }
+
+    pub fn next_string(&mut self, escaped: bool) -> Result<Token> {
+        let string_char = self.expect_any_char(STRING_CHARS, "string")?;
+        loop {
+            match self.curr_char() {
+                Some(STRING_ESCAPE_CHAR) if escaped => {
+                    // string escapes are done at the parser and IR levels
+                    self.adv_char();
+                }
+                Some(c) if c == string_char => break,
+                None => break,
+                _ => {}
+            }
+            self.adv_char();
+        }
+        self.expect_char(string_char, "end of string")?;
+        Ok(self.make_token(TokenKind::String))
     }
 
     pub fn next_op(&mut self) -> Result<Token> {
@@ -481,6 +512,46 @@ mod test {
             "15.0001",
             "0.0",
             "111111101010101.10101010101",
+        }
+        verify_eof!(lexer);
+    }
+
+    #[test]
+    fn test_strings() {
+        let mut lexer = Lexer::new(
+            r#"
+            "this is a string"
+            "this is an \"escaped\" string"
+            "this is a
+multiline string"
+            r"this is a raw string"
+            r"this is a raw string with an escape\"
+            "#,
+        );
+        verify! {
+            lexer, TokenKind::String;
+            r#""this is a string""#,
+            r#""this is an \"escaped\" string""#,
+            r#""this is a
+multiline string""#,
+            r#""this is a raw string""#,
+            r#""this is a raw string with an escape\""#,
+        }
+        verify_eof!(lexer);
+    }
+
+    #[test]
+    fn test_tagged_strings() {
+        let mut lexer = Lexer::new(
+            r#"
+            f"Maybe a formatted string, it hasn't been defined yet"
+            reallylongstringprefix'This is valid, too'
+            "#,
+        );
+        verify! {
+            lexer, TokenKind::TaggedString;
+            r#"f"Maybe a formatted string, it hasn't been defined yet""#,
+            r#"reallylongstringprefix'This is valid, too'"#,
         }
         verify_eof!(lexer);
     }

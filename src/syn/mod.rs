@@ -18,4 +18,8 @@ pub mod prelude {
     pub use super::op::*;
     pub use super::parser::*;
     pub use super::token::*;
+    pub use super::{STRING_ESCAPE_CHAR, STRING_CHARS};
 }
+
+pub const STRING_ESCAPE_CHAR: char = '\\';
+pub const STRING_CHARS: &[char] = &['"', '\''];

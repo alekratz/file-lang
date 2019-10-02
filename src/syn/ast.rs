@@ -173,6 +173,8 @@ pub enum AtomKind {
     Expr(Expr),
     Ident,
     String,
+    RawString,
+    TaggedString,
     DecInt,
     BinInt,
     OctInt,

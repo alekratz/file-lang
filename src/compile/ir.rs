@@ -81,6 +81,7 @@ pub struct Atom {
 pub enum AtomKind {
     Ident(Binding),
     String(String),
+    TaggedString { tag: String, string: String },
     Int(i64),
     Real(f64),
 }
