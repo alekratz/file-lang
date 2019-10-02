@@ -9,6 +9,9 @@ pub enum CompileError {
     #[snafu(display("{}", what))]
     InvalidLValue { span: Span, what: String },
 
+    #[snafu(display("{}", what))]
+    InvalidStringEscape { span: Span, what: char },
+
     #[snafu(display("{}", error))]
     SyntaxError { error: syn::error::SyntaxError },
 }

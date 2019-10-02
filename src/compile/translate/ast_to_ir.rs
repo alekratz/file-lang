@@ -192,7 +192,14 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                         chars.next().unwrap();
                         chars.next_back().unwrap();
                         let raw: String = chars.collect();
-                        AtomKind::String(unescape_string(&raw).unwrap())
+                        let string = match unescape_string(&raw) {
+                            Ok(string) => string,
+                            Err(c) => return Err(CompileError::InvalidStringEscape {
+                                span,
+                                what: c,
+                            }),
+                        };
+                        AtomKind::String(string)
                     }
                     ast::AtomKind::RawString => {
                         let mut chars = text.chars();
