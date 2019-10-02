@@ -84,10 +84,19 @@ pub trait Ast: Spanned + PartialEq {
 /// This akin to a single expression, branch, loop, assignment, and so forth.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
+    TypeDef(TypeDef),
     Assign(Assign),
     Expr(Expr),
     FunDef(FunDef),
     Retn(Retn),
+}
+
+/// A type definition.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeDef {
+    pub span: Span,
+    pub member_fields: Vec<(String, String)>,
+    pub member_funs: Vec<FunDef>,
 }
 
 /// An assignment statement.
@@ -237,6 +246,7 @@ impl Display for AssignOp {
 impl Spanned for Stmt {
     fn span(&self) -> Span {
         match self {
+            Stmt::TypeDef(t) => t.span(),
             Stmt::Assign(a) => a.span(),
             Stmt::Expr(e) => e.span(),
             Stmt::FunDef(f) => f.span(),
@@ -256,6 +266,7 @@ impl Spanned for Expr {
     }
 }
 
+spanned!(TypeDef, span);
 spanned!(AssignOp, span);
 spanned!(Assign, span);
 spanned!(FunDef, span);
@@ -272,10 +283,17 @@ spanned!(Op, span);
 
 impl Ast for Stmt {
     ast_lookaheads! {
+        TypeDef::lookaheads(),
         Assign::lookaheads(),
         FunDef::lookaheads(),
         Expr::lookaheads(),
         Retn::lookaheads(),
+    }
+}
+
+impl Ast for TypeDef {
+    ast_lookaheads! {
+        TokenKind::KwType,
     }
 }
 

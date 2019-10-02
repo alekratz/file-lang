@@ -46,7 +46,7 @@ impl<'bindings> BindingStack<'bindings> {
 
     /// Inserts builtin functions and operators to the current binding stack level, and pushes a
     /// new clean stack layer.
-    pub fn insert_builtins(&mut self) -> Vec<BoundFun> {
+    pub fn insert_builtin_functions(&mut self) -> Vec<BoundFun> {
         let mut funs = Vec::new();
         for (name, fun) in builtins::FUNS.iter() {
             let binding = self.create_binding(name.to_string());

@@ -32,7 +32,7 @@ impl Compile {
     pub fn compile(mut self, text: &str) -> Result<(Fun, Pool)> {
         let ast = self.expr_precedence(Parser::new(text)?.next_body()?);
         let mut binding_stack = BindingStack::new(&mut self.bindings);
-        let mut funs = binding_stack.insert_builtins();
+        let mut funs = binding_stack.insert_builtin_functions();
 
         let ir = AstToIr::new(text, &mut funs, &mut binding_stack).translate(ast)?;
         let main_bindings = binding_stack.collapse();
@@ -51,7 +51,7 @@ impl Compile {
                     Stmt::Assign(a)
                 }
                 Stmt::Expr(e) => Stmt::Expr(expr_precedence(e, &self.precedence)),
-                Stmt::FunDef(_) => {
+                Stmt::TypeDef(_) | Stmt::FunDef(_) => {
                     /*
                      * no-op - stay on lexical level, this is taken care of during translation
                      */

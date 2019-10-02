@@ -47,6 +47,7 @@ lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, TokenKind> = hashmap! {
         "fn" => TokenKind::KwFn,
         "retn" => TokenKind::KwRetn,
+        "type" => TokenKind::KwType,
     };
 }
 
@@ -620,10 +621,12 @@ multiline string""#,
             r#"
             fn
             retn
+            type
             "#,
         );
         verify!(lexer, TokenKind::KwFn, "fn");
         verify!(lexer, TokenKind::KwRetn, "retn");
+        verify!(lexer, TokenKind::KwType, "type");
         verify_eof!(lexer);
     }
 

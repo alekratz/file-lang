@@ -74,6 +74,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
 
     fn translate_stmt(&mut self, stmt: ast::Stmt) -> Result<Stmt> {
         let stmt = match stmt {
+            ast::Stmt::TypeDef(_) => unimplemented!("TODO(object)"),
             ast::Stmt::Assign(assign) => Stmt::Assign(self.translate_assign(assign)?),
             ast::Stmt::Expr(expr) => Stmt::Expr(self.translate_expr(expr)?),
             ast::Stmt::FunDef(_) => unreachable!(),
