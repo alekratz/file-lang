@@ -270,7 +270,12 @@ impl<'text> Lexer<'text> {
             self.adv_char();
         }
         self.expect_char(string_char, "end of string")?;
-        Ok(self.make_token(TokenKind::String))
+        let kind = if escaped {
+            TokenKind::String
+        } else {
+            TokenKind::RawString
+        };
+        Ok(self.make_token(kind))
     }
 
     pub fn next_op(&mut self) -> Result<Token> {
@@ -524,8 +529,6 @@ mod test {
             "this is an \"escaped\" string"
             "this is a
 multiline string"
-            r"this is a raw string"
-            r"this is a raw string with an escape\"
             "#,
         );
         verify! {
@@ -534,6 +537,20 @@ multiline string"
             r#""this is an \"escaped\" string""#,
             r#""this is a
 multiline string""#,
+        }
+        verify_eof!(lexer);
+    }
+
+    #[test]
+    fn test_raw_strings() {
+        let mut lexer = Lexer::new(
+            r#"
+            r"this is a raw string"
+            r"this is a raw string with an escape\"
+            "#,
+        );
+        verify! {
+            lexer, TokenKind::RawString;
             r#""this is a raw string""#,
             r#""this is a raw string with an escape\""#,
         }
