@@ -49,17 +49,19 @@ pub enum LValue {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    FunCall(Box<FunCall>),
-    Un(Box<UnExpr>),
     Bin(Box<BinExpr>),
+    Un(Box<UnExpr>),
+    Access(Box<Access>),
+    FunCall(Box<FunCall>),
     Atom(Atom),
 }
 
 #[derive(Debug, Clone)]
-pub struct FunCall {
+pub struct BinExpr {
     pub span: Span,
-    pub fun: Expr,
-    pub args: Vec<Expr>,
+    pub lhs: Expr,
+    pub op: Binding,
+    pub rhs: Expr,
 }
 
 #[derive(Debug, Clone)]
@@ -70,11 +72,17 @@ pub struct UnExpr {
 }
 
 #[derive(Debug, Clone)]
-pub struct BinExpr {
+pub struct Access {
     pub span: Span,
-    pub lhs: Expr,
-    pub op: Binding,
-    pub rhs: Expr,
+    pub head: Expr,
+    pub tail: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunCall {
+    pub span: Span,
+    pub fun: Expr,
+    pub args: Vec<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -128,3 +136,38 @@ impl Debug for BoundFun {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// impl Spanned
+////////////////////////////////////////////////////////////////////////////////
+impl Spanned for Stmt {
+    fn span(&self) -> Span {
+        match self {
+            Stmt::Assign(a) => a.span(),
+            Stmt::Expr(e) => e.span(),
+            Stmt::Retn(r) => r.span(),
+        }
+    }
+}
+
+impl Spanned for Expr {
+    fn span(&self) -> Span {
+        match self {
+            Expr::Bin(b) => b.span(),
+            Expr::Un(u) => u.span(),
+            Expr::Access(a) => a.span(),
+            Expr::FunCall(f) => f.span(),
+            Expr::Atom(a) => a.span(),
+        }
+    }
+}
+
+spanned!(TypeDef, span);
+spanned!(FunDef, span);
+spanned!(Assign, span);
+spanned!(BinExpr, span);
+spanned!(UnExpr, span);
+spanned!(Access, span);
+spanned!(FunCall, span);
+spanned!(Atom, span);
+spanned!(Retn, span);

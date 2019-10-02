@@ -1,15 +1,11 @@
 use crate::{
-    common::span::*,
     compile::{
         bindings::*,
-        error::*,
         ir::*,
-        translate::{ast_to_ir::*, collect::CollectStringConstants},
+        translate::collect::CollectStringConstants,
     },
-    syn::{ast, op::OpKind},
     vm::{fun::*, pool::Pool, value::*, Inst},
 };
-use matches::matches;
 use std::{
     collections::{BTreeMap, HashMap},
     rc::Rc,
@@ -177,20 +173,6 @@ impl IrToInst {
     fn translate_expr(&self, expr: Expr, ctx: ExprCtx) -> Vec<Inst> {
         let mut body = Vec::new();
         match expr {
-            Expr::FunCall(fun_call) => {
-                let FunCall { fun, args, .. } = *fun_call;
-                let arg_count = args.len();
-                for arg in args {
-                    body.extend(self.translate_expr(arg, ExprCtx::Push));
-                }
-                body.extend(self.translate_expr(fun, ExprCtx::Push));
-                body.push(Inst::PopCall(arg_count));
-                match ctx {
-                    ExprCtx::Push => body.push(Inst::PushReturn),
-                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
-                    ExprCtx::Return => { /* return value is already set */ }
-                }
-            }
             Expr::Bin(bin) => {
                 let BinExpr { lhs, op, rhs, .. } = *bin;
                 body.extend(self.translate_expr(lhs, ExprCtx::Push));
@@ -210,6 +192,23 @@ impl IrToInst {
                 let ref_id = self.get_fun_ref(op);
                 body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
                 body.push(Inst::PopCall(1));
+                match ctx {
+                    ExprCtx::Push => body.push(Inst::PushReturn),
+                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+                    ExprCtx::Return => { /* return value is already set */ }
+                }
+            }
+            Expr::Access(_) => {
+                unimplemented!("TODO(object)")
+            }
+            Expr::FunCall(fun_call) => {
+                let FunCall { fun, args, .. } = *fun_call;
+                let arg_count = args.len();
+                for arg in args {
+                    body.extend(self.translate_expr(arg, ExprCtx::Push));
+                }
+                body.extend(self.translate_expr(fun, ExprCtx::Push));
+                body.push(Inst::PopCall(arg_count));
                 match ctx {
                     ExprCtx::Push => body.push(Inst::PushReturn),
                     ExprCtx::Stmt => body.push(Inst::DiscardReturn),

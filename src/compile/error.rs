@@ -10,6 +10,9 @@ pub enum CompileError {
     InvalidLValue { span: Span, what: String },
 
     #[snafu(display("{}", what))]
+    InvalidAccess { span: Span, what: String },
+
+    #[snafu(display("{}", what))]
     InvalidStringEscape { span: Span, what: char },
 
     #[snafu(display("{}", error))]

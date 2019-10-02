@@ -1,8 +1,8 @@
 use crate::{
     common::span::*,
     compile::{bindings::*, error::*, ir::*, translate::ast_to_ir::*},
-    syn::{ast, op::OpKind},
-    vm::{fun::*, pool::Pool, value::*, Inst},
+    syn::ast,
+    vm::{pool::Pool, value::*},
 };
 use matches::matches;
 use std::collections::HashMap;
@@ -134,18 +134,22 @@ impl<'compile> CollectStringConstants<'compile> {
 
     fn collect_expr(&mut self, expr: &Expr) {
         match expr {
+            Expr::Bin(bin) => {
+                self.collect_expr(&bin.lhs);
+                self.collect_expr(&bin.rhs);
+            }
+            Expr::Un(un) => {
+                self.collect_expr(&un.expr);
+            }
+            Expr::Access(access) => {
+                self.collect_expr(&access.head);
+                self.collect_expr(&access.tail);
+            }
             Expr::FunCall(fun) => {
                 self.collect_expr(&fun.fun);
                 for arg in fun.args.iter() {
                     self.collect_expr(arg);
                 }
-            }
-            Expr::Un(un) => {
-                self.collect_expr(&un.expr);
-            }
-            Expr::Bin(bin) => {
-                self.collect_expr(&bin.lhs);
-                self.collect_expr(&bin.rhs);
             }
             Expr::Atom(atom) => {
                 match &atom.kind {

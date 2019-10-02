@@ -2,7 +2,7 @@ use crate::{
     common::span::*,
     compile::{bindings::*, error::*, ir::*, translate::collect::*},
     syn::{ast, op::OpKind},
-    vm::{fun::*, pool::Pool, value::*, Inst},
+    vm::value::*,
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -144,8 +144,25 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                 };
                 Expr::Un(un.into())
             }
-            ast::Expr::Access(_) => {
-                unimplemented!("TODO(object) access expression")
+            ast::Expr::Access(access) => {
+                let ast::Access { span, head, tail, } = *access;
+                let head = self.translate_expr(head)?;
+                match head {
+                    Expr::Un(_) | Expr::Bin(_) => {
+                        return Err(CompileError::InvalidAccess {
+                            span: head.span(),
+                            what: "unary and binary expressions are not allowed for value access".to_string(),
+                        });
+                    }
+                    _ => {}
+                }
+                let tail = self.translate_expr(tail)?;
+                let access = Access {
+                    span,
+                    head,
+                    tail,
+                };
+                Expr::Access(access.into())
             }
             ast::Expr::FunCall(fun) => {
                 let ast::FunCall { span, fun, args } = *fun;
