@@ -2,6 +2,7 @@ use crate::{
     common::span::*,
     syn::{op::*, token::TokenKind},
 };
+use derivative::Derivative;
 use lazy_static::lazy_static;
 use matches::matches;
 use std::fmt::{self, Display, Formatter};
@@ -92,15 +93,20 @@ pub enum Stmt {
 }
 
 /// A type definition.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct TypeDef {
+    #[derivative(Debug="ignore")]
     pub span: Span,
+    pub name: String,
     pub member_funs: Vec<FunDef>,
 }
 
 /// An assignment statement.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct Assign {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub lhs: Expr,
     pub op: AssignOp,
@@ -108,8 +114,10 @@ pub struct Assign {
 }
 
 /// A function definition.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct FunDef {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub name: String,
     pub params: Vec<String>,
@@ -117,8 +125,10 @@ pub struct FunDef {
 }
 
 /// A return statement, with an optional expression.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct Retn {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub expr: Option<Expr>,
 }
@@ -141,8 +151,10 @@ pub enum Expr {
 ///
 /// Access expressions are a "head" expression, followed by a "tail" expression (which itself may
 /// be another access). Accesses are split up by Dot tokens, e.g. `foo.bar.baz()`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct Access {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub head: Expr,
     pub tail: Expr,
@@ -151,8 +163,10 @@ pub struct Access {
 /// A function call.
 ///
 /// Function calls are composed of an expression (the function), and any number of arguments.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct FunCall {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub fun: Expr,
     pub args: Vec<Expr>,
@@ -161,8 +175,10 @@ pub struct FunCall {
 /// A unary expression.
 ///
 /// Un(ary) expressions start with an operator and are followed by an expression.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct UnExpr {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub op: Op,
     pub expr: Expr,
@@ -171,8 +187,10 @@ pub struct UnExpr {
 /// A binary expression.
 ///
 /// Bin(ary) expressions have a left hand expression, an operator, and a right hand expression.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct BinExpr {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub lhs: Expr,
     pub op: Op,
@@ -182,8 +200,10 @@ pub struct BinExpr {
 /// A literal value.
 ///
 /// Atom values are identifiers, strings, and numbers.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
 pub struct Atom {
+    #[derivative(Debug="ignore")]
     pub span: Span,
     pub kind: AtomKind,
 }
@@ -205,14 +225,16 @@ pub enum AtomKind {
 /// An operator that is used for constructing unary and binary expressions.
 ///
 /// Operators are parsed as a collection of individual operator characters.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq, Hash)]
 pub struct Op {
     pub span: Span,
     pub kind: Vec<OpKind>,
 }
 
 /// An operator used for assignment statements.
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq, Hash)]
 pub struct AssignOp {
     pub span: Span,
     pub kind: Vec<OpKind>,

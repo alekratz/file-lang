@@ -1,7 +1,4 @@
-use crate::{
-    common::span::*,
-    syn::prelude::*,
-};
+use crate::{common::span::*, syn::prelude::*};
 use std::mem;
 
 #[derive(Debug)]
@@ -24,6 +21,10 @@ impl<'text> Parser<'text> {
 
     pub fn lexer(&self) -> &Lexer<'text> {
         &self.lexer
+    }
+
+    pub fn curr_text(&self) -> &'text str {
+        self.lexer().curr_text()
     }
 
     pub fn text(&self) -> &'text str {
@@ -128,6 +129,8 @@ impl<'text> Parser<'text> {
 
     fn next_type_def(&mut self) -> Result<TypeDef> {
         let kw = self.expect_token_kind(TokenKind::KwType, "`type` keyword")?;
+        let name_token = self.expect_token_kind(TokenKind::Ident, "type definition name")?;
+        let name = self.lexer().text_at(name_token.span()).to_string();
         self.expect_token_kind(TokenKind::LBrace, "type definition start (left brace)")?;
 
         let mut member_funs = Vec::new();
@@ -137,10 +140,12 @@ impl<'text> Parser<'text> {
             member_funs.push(self.next_fun_def()?);
         }
 
-        let rbrace = self.expect_token_kind(TokenKind::RBrace, "type definition end (right brace)")?;
+        let rbrace =
+            self.expect_token_kind(TokenKind::RBrace, "type definition end (right brace)")?;
         let span = kw.span().union(&rbrace.span());
         Ok(TypeDef {
             span,
+            name,
             member_funs,
         })
     }
@@ -181,29 +186,12 @@ impl<'text> Parser<'text> {
             let span = op.span().union(&expr.span());
             Ok(Expr::Un(UnExpr { span, op, expr }.into()))
         } else {
-            self.next_access()
-        }
-    }
-
-    fn next_access(&mut self) -> Result<Expr> {
-        let fun = self.next_fun_call()?;
-        if self.curr.kind() == TokenKind::Dot {
-            self.adv_token()?;
-            let tail = self.next_access()?;
-            let span = fun.span().union(&tail.span());
-            let access = Access {
-                span,
-                head: fun,
-                tail,
-            };
-            Ok(Expr::Access(access.into()))
-        } else {
-            Ok(fun)
+            self.next_fun_call()
         }
     }
 
     fn next_fun_call(&mut self) -> Result<Expr> {
-        let fun = self.next_atom()?;
+        let fun = self.next_access()?;
         if self.curr.kind() == TokenKind::LParen {
             self.adv_token()?;
             let args = self.next_fun_call_args()?;
@@ -212,12 +200,34 @@ impl<'text> Parser<'text> {
                 "comma or right paren for function arguments",
             )?;
             let span = fun.span().union(&rparen.span());
-            Ok(Expr::FunCall(FunCall { span, fun, args }.into()))
+            let head = Expr::FunCall(FunCall { span, fun, args }.into());
+            self.next_access_tail(head)
         } else {
             Ok(fun)
         }
     }
 
+    fn next_access(&mut self) -> Result<Expr> {
+        let head = self.next_atom()?;
+        self.next_access_tail(head)
+    }
+
+    fn next_access_tail(&mut self, head: Expr) -> Result<Expr> {
+        if self.curr.kind() == TokenKind::Dot {
+            self.adv_token()?;
+            let tail = self.next_access()?;
+            let span = head.span().union(&tail.span());
+            let access = Access {
+                span,
+                head,
+                tail,
+            };
+            Ok(Expr::Access(access.into()))
+        } else {
+            Ok(head)
+        }
+    }
+    
     fn next_fun_call_args(&mut self) -> Result<Vec<Expr>> {
         let mut args = Vec::new();
 
@@ -333,7 +343,7 @@ impl<'text> Parser<'text> {
     }
 
     fn is_match(&self, kind: TokenKind) -> bool {
-        self.curr.kind() == kind 
+        self.curr.kind() == kind
     }
 
     fn adv_token(&mut self) -> Result<Token> {
@@ -520,12 +530,14 @@ mod test {
         verify! {
             parser, next_expr;
             access_expr!(
-                atom_expr!(AtomKind::Ident),
-                access_expr!(
-                    fun_call_expr!(
+                fun_call_expr!(
+                    access_expr!(
+                        atom_expr!(AtomKind::Ident),
                         atom_expr!(AtomKind::Ident)
-                    ),
-                    atom_expr!(AtomKind::Ident)))
+                    )
+                ),
+                atom_expr!(AtomKind::Ident)
+            )
         }
         verify_eof!(parser);
     }

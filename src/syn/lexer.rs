@@ -83,8 +83,12 @@ impl<'text> Lexer<'text> {
         &self.text[span.start.byte..span.end.byte]
     }
 
-    pub fn text(&self) -> &'text str {
+    pub fn curr_text(&self) -> &'text str {
         self.text_at(self.span())
+    }
+
+    pub fn text(&self) -> &'text str {
+        self.text
     }
 
     fn catchup(&mut self) -> Span {
@@ -174,7 +178,7 @@ impl<'text> Lexer<'text> {
         while self.match_predicate(is_ident_char).is_some() {}
         if self.is_any_match(&STRING_CHARS) {
             // "r" is reserved for raw strings
-            let is_raw = self.text() == "r";
+            let is_raw = self.curr_text() == "r";
             if is_raw {
                 self.catchup();
                 self.next_string(false)
@@ -184,7 +188,7 @@ impl<'text> Lexer<'text> {
                 Ok(Token::new(TokenKind::TaggedString, span))
             }
         } else {
-            let text = self.text();
+            let text = self.curr_text();
             let kind = KEYWORDS.get(text).copied().unwrap_or(TokenKind::Ident);
             Ok(self.make_token(kind))
         }
