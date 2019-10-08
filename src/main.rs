@@ -38,6 +38,9 @@ enum Dump {
     #[structopt(about = "Dump the tokens from a file")]
     Tokens,
 
+    #[structopt(about = "Dump syntax tree from a file")]
+    Tree,
+
     #[structopt(about = "Dump translated bytecode")]
     Bytecode,
 }
@@ -57,6 +60,13 @@ fn dump_tokens(text: &str) -> Result<()> {
             break;
         }
     }
+    Ok(())
+}
+
+fn dump_tree(text: &str) -> Result<()> {
+    let mut parser = Parser::new(text)?;
+    let body = parser.next_body()?;
+    println!("{:#?}", body);
     Ok(())
 }
 
@@ -135,6 +145,7 @@ fn main() -> Result<()> {
             let text = fs::read_to_string(file)?;
             match what {
                 Dump::Tokens => dump_tokens(&text)?,
+                Dump::Tree => dump_tree(&text)?,
                 Dump::Bytecode => dump_bytecode(&text)?,
             }
         }
