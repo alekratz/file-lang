@@ -122,19 +122,14 @@ impl Vm {
                 }
                 Inst::GetAttr(ref_id) => {
                     let obj_ref = self.stack_mut().pop().unwrap();
-                    let object = if let Some(object) = self.storage().deref_value(obj_ref) {
-                        if let Value::Object(object) = object {
-                            object
+                    let object = self.storage()
+                        .deref_value(obj_ref)
+                        .and_then(|object| if let Value::Object(object) = object {
+                            Some(object)
                         } else {
-                            // TODO(exception) 
-                            panic!("expected object ref on top of the stack, but got {:?} instead",
-                                   object);
-                        }
-                    } else {
-                        // TODO(exception) 
-                        panic!("expected object ref on top of the stack, but got {:?} instead",
-                               obj_ref);
-                    };
+                            None
+                        })
+                        .unwrap_or_else(|| panic!("expected object ref on top of the stack, got {:?} instead", self.storage().deref_value(obj_ref)));
                     let attr_value = self.storage().load_const(ref_id);
                     let attr = if let Value::String(s) = attr_value {
                         s
@@ -149,19 +144,14 @@ impl Vm {
                 Inst::SetAttr(ref_id) => {
                     let obj_ref = self.stack_mut().pop().unwrap();
                     let attr_value = self.stack_mut().pop().unwrap();
-                    let mut object = if let Some(object) = self.storage().deref_value(obj_ref) {
-                        if let Value::Object(object) = object {
-                            object
+                    let object = self.storage()
+                        .deref_value(obj_ref)
+                        .and_then(|object| if let Value::Object(object) = object {
+                            Some(object)
                         } else {
-                            // TODO(exception) 
-                            panic!("expected object ref on top of the stack, but got {:?} instead",
-                                   object);
-                        }
-                    } else {
-                        // TODO(exception) 
-                        panic!("expected object ref on top of the stack, but got {:?} instead",
-                               obj_ref);
-                    };
+                            None
+                        })
+                        .unwrap_or_else(|| panic!("expected object ref on top of the stack, got {:?} instead", self.storage().deref_value(obj_ref)));
                     let attr_name = if let Value::String(s) = self.storage().load_const(ref_id) {
                         s
                     } else {
