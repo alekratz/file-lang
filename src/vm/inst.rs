@@ -19,6 +19,9 @@ pub enum Inst {
     /// Loads a named attribute from the top value of the stack.
     GetAttr(ConstRef),
 
+    /// Sets a named attribute from the top value of the stack.
+    SetAttr(ConstRef),
+
     /// Pop the top value off of the stack and store it in a variable binding.
     Store(Binding),
 
@@ -110,6 +113,16 @@ impl<'inst> DumpInst<'inst> {
                     fmt,
                     "{: <width$} (const ref {})",
                     format!("get_attr {}", value),
+                    ref_id,
+                    width=Self::REF_PADDING
+                )
+            }
+            Inst::SetAttr(ConstRef(ref_id)) => {
+                let value = self.pool.get_const(ConstRef(*ref_id));
+                write!(
+                    fmt,
+                    "{: <width$} (const ref {})",
+                    format!("set_attr {}", value),
                     ref_id,
                     width=Self::REF_PADDING
                 )

@@ -1,5 +1,8 @@
 use crate::vm::value::{Binding, ValueRef, CopyValue};
-use std::collections::HashMap;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+};
 
 pub const CTOR_NAME: &str = "__init__";
 pub const CALL_NAME: &str = "__call__";
@@ -8,7 +11,7 @@ pub const CALL_NAME: &str = "__call__";
 pub struct Object {
     binding: Binding,
     type_ref: Option<ValueRef>,
-    members: HashMap<String, CopyValue>,
+    members: RefCell<HashMap<String, CopyValue>>,
 }
 
 impl Object {
@@ -20,7 +23,7 @@ impl Object {
         Object {
             binding,
             type_ref,
-            members,
+            members: RefCell::new(members),
         }
     }
 
@@ -32,11 +35,14 @@ impl Object {
         self.type_ref
     }
 
-    pub fn members(&self) -> &HashMap<String, CopyValue> {
-        &self.members
+    pub fn get_attr(&self, attr: impl AsRef<str>) -> Option<CopyValue> {
+        let members = self.members.borrow();
+        members.get(attr.as_ref())
+            .copied()
     }
 
-    pub fn members_mut(&mut self) -> &mut HashMap<String, CopyValue> {
-        &mut self.members
+    pub fn set_attr(&self, attr: String, value: CopyValue) {
+        let mut members = self.members.borrow_mut();
+        members.insert(attr, value);
     }
 }

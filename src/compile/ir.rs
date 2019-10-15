@@ -45,6 +45,7 @@ pub struct Assign {
 #[derive(Debug, Clone)]
 pub enum LValue {
     Ident(Span, Binding),
+    Access(Access),
     Complex(Expr),
 }
 

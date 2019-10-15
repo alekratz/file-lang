@@ -123,6 +123,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                     });
                 }
             },
+            ast::Expr::Access(access) => Ok(LValue::Access(self.translate_access(*access)?)),
             e => Ok(LValue::Complex(self.translate_expr(e)?)),
         }
     }
@@ -149,37 +150,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                 Expr::Un(un.into())
             }
             ast::Expr::Access(access) => {
-                let ast::Access { span, head, tail, } = *access;
-                let head = self.translate_expr(head)?;
-                match head {
-                    Expr::Un(_) | Expr::Bin(_) => {
-                        return Err(CompileError::InvalidAccess {
-                            span: head.span(),
-                            what: "unary and binary expressions are not allowed for value access".to_string(),
-                        });
-                    }
-                    _ => {}
-                }
-                let tail_span = tail.span();
-                let tail = if let Expr::Atom(atom) = self.translate_atom(tail)? {
-                    if !matches!(atom.kind, AtomKind::Ident(_)) {
-                        return Err(CompileError::InvalidAccess {
-                            span: atom.span,
-                            what: "only identifiers may be used for object access".to_string(),
-                        });
-                    }
-                    atom.text(self.text).to_string()
-                } else {
-                    return Err(CompileError::InvalidAccess {
-                        span: tail_span,
-                        what: "only identifiers may be used for object access".to_string(),
-                    });
-                };
-                let access = Access {
-                    span,
-                    head,
-                    tail,
-                };
+                let access = self.translate_access(*access)?;
                 Expr::Access(access.into())
             }
             ast::Expr::FunCall(fun) => {
@@ -197,6 +168,39 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             ast::Expr::Atom(atom) => self.translate_atom(*atom)?,
         };
         Ok(expr)
+    }
+
+    fn translate_access(&mut self, ast::Access { span, head, tail }: ast::Access) -> Result<Access> {
+        let head = self.translate_expr(head)?;
+        match head {
+            Expr::Un(_) | Expr::Bin(_) => {
+                return Err(CompileError::InvalidAccess {
+                    span: head.span(),
+                    what: "unary and binary expressions are not allowed for value access".to_string(),
+                });
+            }
+            _ => {}
+        }
+        let tail_span = tail.span();
+        let tail = if let Expr::Atom(atom) = self.translate_atom(tail)? {
+            if !matches!(atom.kind, AtomKind::Ident(_)) {
+                return Err(CompileError::InvalidAccess {
+                    span: atom.span,
+                    what: "only identifiers may be used for object access".to_string(),
+                });
+            }
+            atom.text(self.text).to_string()
+        } else {
+            return Err(CompileError::InvalidAccess {
+                span: tail_span,
+                what: "only identifiers may be used for object access".to_string(),
+            });
+        };
+        Ok(Access {
+            span,
+            head,
+            tail,
+        })
     }
 
     fn translate_atom(&mut self, ast::Atom { span, kind }: ast::Atom) -> Result<Expr> {

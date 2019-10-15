@@ -175,6 +175,7 @@ impl IrToInst {
                     span: *span,
                     kind: AtomKind::Ident(*binding),
                 }),
+                LValue::Access(access) => Expr::Access(access.clone().into()),
                 LValue::Complex(e) => e.clone(),
             };
             rhs = Expr::Bin(BinExpr { span, lhs, op, rhs }.into());
@@ -183,6 +184,11 @@ impl IrToInst {
         match lhs {
             LValue::Ident(_, binding) => {
                 body.push(Inst::Store(binding));
+            }
+            LValue::Access(Access { span, head, tail, }) => {
+                body.extend(self.translate_expr(head, ExprCtx::Push));
+                let ref_id = *self.const_strings.get(&tail).unwrap();
+                body.push(Inst::SetAttr(ref_id));
             }
             LValue::Complex(e) => {
                 body.extend(self.translate_expr(e, ExprCtx::Push));

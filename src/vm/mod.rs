@@ -142,10 +142,33 @@ impl Vm {
                         // TODO(exception) 
                         panic!("expected string attribute, but got {:?} instead", attr_value);
                     };
-                    let value = object.members().get(attr)
-                        .copied()
-                        .unwrap_or(CopyValue::Empty);
+                    let value = object.get_attr(attr)
+                        .expect(&format!("no such attribute {:?}", attr));
                     self.stack_mut().push(value);
+                }
+                Inst::SetAttr(ref_id) => {
+                    let obj_ref = self.stack_mut().pop().unwrap();
+                    let attr_value = self.stack_mut().pop().unwrap();
+                    let mut object = if let Some(object) = self.storage().deref_value(obj_ref) {
+                        if let Value::Object(object) = object {
+                            object
+                        } else {
+                            // TODO(exception) 
+                            panic!("expected object ref on top of the stack, but got {:?} instead",
+                                   object);
+                        }
+                    } else {
+                        // TODO(exception) 
+                        panic!("expected object ref on top of the stack, but got {:?} instead",
+                               obj_ref);
+                    };
+                    let attr_name = if let Value::String(s) = self.storage().load_const(ref_id) {
+                        s
+                    } else {
+                        // TODO(exception) 
+                        panic!("expected string attribute, but got {:?} instead", attr_value);
+                    };
+                    object.set_attr(attr_name.clone(), attr_value);
                 }
                 Inst::PopStore => {
                     let target = self
@@ -253,7 +276,7 @@ impl Vm {
             }
             Value::Object(obj) => {
                 if obj.type_ref().is_none() {
-                    let ctor = obj.members().get(CTOR_NAME).copied();
+                    let ctor = obj.get_attr(CTOR_NAME);
                     let obj = obj.clone();
                     let obj_ref = self.allocate_heap(Value::Object(obj));
                     // call the constructor, if any
@@ -264,6 +287,7 @@ impl Vm {
                             // TODO(exception)
                             panic!("{} must be a function", CTOR_NAME);
                         };
+                        // add self reference
                         args.insert(0, CopyValue::HeapRef(obj_ref));
                         self.call(&fun.clone(), args);
                     } else {

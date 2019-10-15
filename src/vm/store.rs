@@ -84,6 +84,12 @@ impl Storage {
             .expect("attempted to load freed heap reference")
     }
 
+    pub fn load_heap_mut(&mut self, ref_id: HeapRef) -> &mut Value {
+        self.heap[*ref_id]
+            .as_mut()
+            .expect("attempted to load freed heap reference")
+    }
+
     pub fn store_heap(&mut self, ref_id: HeapRef, value: Value) {
         assert!(self.heap[*ref_id].is_some(), "attempted to store to freed heap reference");
         self.heap[*ref_id] = Some(value);
