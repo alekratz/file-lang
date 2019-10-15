@@ -170,13 +170,17 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
         Ok(expr)
     }
 
-    fn translate_access(&mut self, ast::Access { span, head, tail }: ast::Access) -> Result<Access> {
+    fn translate_access(
+        &mut self,
+        ast::Access { span, head, tail }: ast::Access,
+    ) -> Result<Access> {
         let head = self.translate_expr(head)?;
         match head {
             Expr::Un(_) | Expr::Bin(_) => {
                 return Err(CompileError::InvalidAccess {
                     span: head.span(),
-                    what: "unary and binary expressions are not allowed for value access".to_string(),
+                    what: "unary and binary expressions are not allowed for value access"
+                        .to_string(),
                 });
             }
             _ => {}
@@ -196,11 +200,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                 what: "only identifiers may be used for object access".to_string(),
             });
         };
-        Ok(Access {
-            span,
-            head,
-            tail,
-        })
+        Ok(Access { span, head, tail })
     }
 
     fn translate_atom(&mut self, ast::Atom { span, kind }: ast::Atom) -> Result<Expr> {
@@ -223,14 +223,13 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             // preceded by two ASCII characters, which are one byte each.
             ast::AtomKind::BinInt => AtomKind::Int(
                 i64::from_str_radix(&text[2..], 2).expect("invalid binary int reached"),
-                ),
+            ),
             ast::AtomKind::OctInt => AtomKind::Int(
                 i64::from_str_radix(&text[2..], 8).expect("invalid octal int reached"),
-                ),
+            ),
             ast::AtomKind::HexInt => AtomKind::Int(
-                i64::from_str_radix(&text[2..], 16)
-                .expect("invalid hexadecimal int reached"),
-                ),
+                i64::from_str_radix(&text[2..], 16).expect("invalid hexadecimal int reached"),
+            ),
             ast::AtomKind::Real => {
                 AtomKind::Real(text.parse().expect("invalid real number reached"))
             }
@@ -241,10 +240,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                 let raw: String = chars.collect();
                 let string = match unescape_string(&raw) {
                     Ok(string) => string,
-                    Err(c) => return Err(CompileError::InvalidStringEscape {
-                        span,
-                        what: c,
-                    }),
+                    Err(c) => return Err(CompileError::InvalidStringEscape { span, what: c }),
                 };
                 AtomKind::String(string)
             }

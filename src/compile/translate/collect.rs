@@ -64,8 +64,7 @@ impl<'compile, 'bindings: 'compile> CollectDefs<'compile, 'bindings> {
             .into_iter()
             .map(|param| self.bindings.create_binding(param))
             .collect();
-        let body = AstToIr::new(self.text, self.types, self.funs, self.bindings)
-            .translate(body)?;
+        let body = AstToIr::new(self.text, self.types, self.funs, self.bindings).translate(body)?;
         let bindings = self.bindings.pop_expect();
         let def = FunDef {
             span,
@@ -76,7 +75,7 @@ impl<'compile, 'bindings: 'compile> CollectDefs<'compile, 'bindings> {
         };
         Ok(def)
     }
-    
+
     fn collect_types(&mut self, ast: Vec<ast::Stmt>) -> Result<Vec<ast::Stmt>> {
         let (types, ast) = ast
             .into_iter()
@@ -171,8 +170,14 @@ pub struct CollectStringConstants<'compile> {
 }
 
 impl<'compile> CollectStringConstants<'compile> {
-    pub fn new(pool: &'compile mut Pool, const_strings: &'compile mut HashMap<String, ConstRef>) -> Self {
-        CollectStringConstants { pool, const_strings, }
+    pub fn new(
+        pool: &'compile mut Pool,
+        const_strings: &'compile mut HashMap<String, ConstRef>,
+    ) -> Self {
+        CollectStringConstants {
+            pool,
+            const_strings,
+        }
     }
 
     pub fn collect_fun(&mut self, fun: &BoundFun) {
@@ -191,8 +196,10 @@ impl<'compile> CollectStringConstants<'compile> {
                     self.collect_expr(&assign.rhs);
                 }
                 Stmt::Expr(e) => self.collect_expr(e),
-                Stmt::Retn(retn) => if let Some(e) = &retn.expr {
-                    self.collect_expr(e);
+                Stmt::Retn(retn) => {
+                    if let Some(e) = &retn.expr {
+                        self.collect_expr(e);
+                    }
                 }
             }
         }
@@ -217,13 +224,11 @@ impl<'compile> CollectStringConstants<'compile> {
                     self.collect_expr(arg);
                 }
             }
-            Expr::Atom(atom) => {
-                match &atom.kind {
-                    AtomKind::String(s) => self.insert_string(s),
-                    AtomKind::TaggedString { string, .. } => self.insert_string(string),
-                    _ => {}
-                }
-            }
+            Expr::Atom(atom) => match &atom.kind {
+                AtomKind::String(s) => self.insert_string(s),
+                AtomKind::TaggedString { string, .. } => self.insert_string(string),
+                _ => {}
+            },
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::vm::{
+    fun::Fun,
     pool::Pool,
     value::{Binding, ConstRef, CopyValue, Value},
-    fun::Fun,
 };
 use std::fmt::{self, Display, Formatter};
 
@@ -70,8 +70,8 @@ impl Display for DumpValue<'_> {
             Value::Fun(fun) => {
                 let name = pool.get_binding_name(fun.binding());
                 match fun {
-                    Fun::User(_) => { write!(fmt, "function {}", name) }
-                    Fun::Builtin(_) => { write!(fmt, "builtin {}", name) }
+                    Fun::User(_) => write!(fmt, "function {}", name),
+                    Fun::Builtin(_) => write!(fmt, "builtin {}", name),
                 }
             }
         }
@@ -104,7 +104,7 @@ impl<'inst> DumpInst<'inst> {
                     "{: <width$} (binding {})",
                     format!("load {}", binding_name),
                     binding,
-                    width=Self::REF_PADDING
+                    width = Self::REF_PADDING
                 )
             }
             Inst::GetAttr(ConstRef(ref_id)) => {
@@ -114,7 +114,7 @@ impl<'inst> DumpInst<'inst> {
                     "{: <width$} (const ref {})",
                     format!("get_attr {}", value),
                     ref_id,
-                    width=Self::REF_PADDING
+                    width = Self::REF_PADDING
                 )
             }
             Inst::SetAttr(ConstRef(ref_id)) => {
@@ -124,7 +124,7 @@ impl<'inst> DumpInst<'inst> {
                     "{: <width$} (const ref {})",
                     format!("set_attr {}", value),
                     ref_id,
-                    width=Self::REF_PADDING
+                    width = Self::REF_PADDING
                 )
             }
             Inst::Store(Binding(binding)) => {
@@ -134,7 +134,7 @@ impl<'inst> DumpInst<'inst> {
                     "{: <width$} (binding {})",
                     format!("store {}", binding_name),
                     binding,
-                    width=Self::REF_PADDING
+                    width = Self::REF_PADDING
                 )
             }
             Inst::PopStore => write!(fmt, "pop_store"),
@@ -155,7 +155,7 @@ impl<'inst> DumpInst<'inst> {
             "{: <width$} (const ref {})",
             format!("{} {}", base, DumpValue(&value, self.pool)),
             ref_id,
-            width=Self::REF_PADDING
+            width = Self::REF_PADDING
         )
     }
 }

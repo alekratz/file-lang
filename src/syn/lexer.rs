@@ -1,6 +1,6 @@
 use crate::{
     common::span::*,
-    syn::{error::*, op::*, token::*, STRING_ESCAPE_CHAR, STRING_CHARS},
+    syn::{error::*, op::*, token::*, STRING_CHARS, STRING_ESCAPE_CHAR},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -543,7 +543,7 @@ multiline string"
             r#""this is a string""#,
             r#""this is an \"escaped\" string""#,
             r#""this is a
-multiline string""#,
+        multiline string""#,
         }
         verify_eof!(lexer);
     }

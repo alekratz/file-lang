@@ -1,8 +1,5 @@
-use crate::vm::value::{Binding, ValueRef, CopyValue};
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-};
+use crate::vm::value::{Binding, CopyValue, ValueRef};
+use std::{cell::RefCell, collections::HashMap};
 
 pub const CTOR_NAME: &str = "__init__";
 pub const CALL_NAME: &str = "__call__";
@@ -37,8 +34,7 @@ impl Object {
 
     pub fn get_attr(&self, attr: impl AsRef<str>) -> Option<CopyValue> {
         let members = self.members.borrow();
-        members.get(attr.as_ref())
-            .copied()
+        members.get(attr.as_ref()).copied()
     }
 
     pub fn set_attr(&self, attr: String, value: CopyValue) {

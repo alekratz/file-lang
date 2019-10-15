@@ -22,7 +22,7 @@ impl Storage {
     pub fn new(pool: Pool) -> Self {
         Storage {
             stack: Default::default(),
-            heap: vec!(None; HEAP_INITIAL_SIZE),
+            heap: vec![None; HEAP_INITIAL_SIZE],
             pool: pool,
         }
     }
@@ -59,8 +59,7 @@ impl Storage {
 
     pub fn allocate_heap(&mut self, value: Value) -> HeapRef {
         // TODO better heap allocator implementation
-        let next_ref = self.heap.iter()
-            .position(|v| v.is_none());
+        let next_ref = self.heap.iter().position(|v| v.is_none());
         let next_ref = if let Some(next_ref) = next_ref {
             next_ref
         } else {
@@ -74,7 +73,10 @@ impl Storage {
     }
 
     pub fn free_heap(&mut self, ref_id: HeapRef) {
-        assert!(self.heap[*ref_id].is_some(), "attempted to free freed heap reference");
+        assert!(
+            self.heap[*ref_id].is_some(),
+            "attempted to free freed heap reference"
+        );
         self.heap[*ref_id] = None;
     }
 
@@ -91,7 +93,10 @@ impl Storage {
     }
 
     pub fn store_heap(&mut self, ref_id: HeapRef, value: Value) {
-        assert!(self.heap[*ref_id].is_some(), "attempted to store to freed heap reference");
+        assert!(
+            self.heap[*ref_id].is_some(),
+            "attempted to store to freed heap reference"
+        );
         self.heap[*ref_id] = Some(value);
     }
 

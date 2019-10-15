@@ -1,20 +1,20 @@
 pub mod fun;
+pub mod inst;
+pub mod object;
 pub mod pool;
 pub mod stack;
 pub mod store;
 pub mod value;
-pub mod object;
-pub mod inst;
 
 pub mod prelude {
     pub use super::fun::{BuiltinFun, Fun, UserFun};
+    pub use super::inst::*;
     pub use super::pool::*;
     pub use super::value::*;
-    pub use super::inst::*;
     pub use super::Vm;
 }
 
-use crate::vm::{fun::*, pool::*, stack::*, store::*, value::*, inst::*, object::*};
+use crate::vm::{fun::*, inst::*, object::*, pool::*, stack::*, store::*, value::*};
 use std::mem;
 
 #[derive(Debug, Clone)]
@@ -122,41 +122,64 @@ impl Vm {
                 }
                 Inst::GetAttr(ref_id) => {
                     let obj_ref = self.stack_mut().pop().unwrap();
-                    let object = self.storage()
+                    let object = self
+                        .storage()
                         .deref_value(obj_ref)
-                        .and_then(|object| if let Value::Object(object) = object {
-                            Some(object)
-                        } else {
-                            None
+                        .and_then(|object| {
+                            if let Value::Object(object) = object {
+                                Some(object)
+                            } else {
+                                None
+                            }
                         })
-                        .unwrap_or_else(|| panic!("expected object ref on top of the stack, got {:?} instead", self.storage().deref_value(obj_ref)));
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "expected object ref on top of the stack, got {:?} instead",
+                                self.storage().deref_value(obj_ref)
+                            )
+                        });
                     let attr_value = self.storage().load_const(ref_id);
                     let attr = if let Value::String(s) = attr_value {
                         s
                     } else {
-                        // TODO(exception) 
-                        panic!("expected string attribute, but got {:?} instead", attr_value);
+                        // TODO(exception)
+                        panic!(
+                            "expected string attribute, but got {:?} instead",
+                            attr_value
+                        );
                     };
-                    let value = object.get_attr(attr)
+                    let value = object
+                        .get_attr(attr)
                         .expect(&format!("no such attribute {:?}", attr));
                     self.stack_mut().push(value);
                 }
                 Inst::SetAttr(ref_id) => {
                     let obj_ref = self.stack_mut().pop().unwrap();
                     let attr_value = self.stack_mut().pop().unwrap();
-                    let object = self.storage()
+                    let object = self
+                        .storage()
                         .deref_value(obj_ref)
-                        .and_then(|object| if let Value::Object(object) = object {
-                            Some(object)
-                        } else {
-                            None
+                        .and_then(|object| {
+                            if let Value::Object(object) = object {
+                                Some(object)
+                            } else {
+                                None
+                            }
                         })
-                        .unwrap_or_else(|| panic!("expected object ref on top of the stack, got {:?} instead", self.storage().deref_value(obj_ref)));
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "expected object ref on top of the stack, got {:?} instead",
+                                self.storage().deref_value(obj_ref)
+                            )
+                        });
                     let attr_name = if let Value::String(s) = self.storage().load_const(ref_id) {
                         s
                     } else {
-                        // TODO(exception) 
-                        panic!("expected string attribute, but got {:?} instead", attr_value);
+                        // TODO(exception)
+                        panic!(
+                            "expected string attribute, but got {:?} instead",
+                            attr_value
+                        );
                     };
                     object.set_attr(attr_name.clone(), attr_value);
                 }
@@ -255,7 +278,8 @@ impl Vm {
     fn pop_call(&mut self, argc: usize) {
         let mut args = self.stack_mut().pop_args(argc);
         let tos = self.stack_mut().pop().expect("no tos for pop_call");
-        let fun = self.storage()
+        let fun = self
+            .storage()
             .deref_value(tos)
             .expect(&format!("empty reference {:?}", tos));
         match fun {

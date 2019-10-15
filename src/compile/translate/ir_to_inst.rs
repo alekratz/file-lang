@@ -185,7 +185,7 @@ impl IrToInst {
             LValue::Ident(_, binding) => {
                 body.push(Inst::Store(binding));
             }
-            LValue::Access(Access { span, head, tail, }) => {
+            LValue::Access(Access { span, head, tail }) => {
                 body.extend(self.translate_expr(head, ExprCtx::Push));
                 let ref_id = *self.const_strings.get(&tail).unwrap();
                 body.push(Inst::SetAttr(ref_id));

@@ -1,10 +1,6 @@
 use crate::{
     syn::{op::OpKind, parser::Parser},
-    vm::{
-        fun::BuiltinFunPtr,
-        value::CopyValue,
-        Vm,
-    },
+    vm::{fun::BuiltinFunPtr, value::CopyValue, Vm},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;

@@ -2,7 +2,7 @@ use crate::vm::{fun::Fun, object::Object};
 use shrinkwraprs::Shrinkwrap;
 use std::{
     collections::HashMap,
-    fmt::{self, Formatter, Display},
+    fmt::{self, Display, Formatter},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]

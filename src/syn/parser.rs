@@ -216,19 +216,18 @@ impl<'text> Parser<'text> {
         if self.curr.kind() == TokenKind::Dot {
             self.adv_token()?;
             let ident = self.expect_token_kind(TokenKind::Ident, "identifier for access tail")?;
-            let tail = Atom { span: ident.span(), kind: AtomKind::Ident };
-            let span = head.span().union(&tail.span());
-            let access = Access {
-                span,
-                head,
-                tail,
+            let tail = Atom {
+                span: ident.span(),
+                kind: AtomKind::Ident,
             };
+            let span = head.span().union(&tail.span());
+            let access = Access { span, head, tail };
             self.next_access_tail(Expr::Access(access.into()))
         } else {
             Ok(head)
         }
     }
-    
+
     fn next_fun_call_args(&mut self) -> Result<Vec<Expr>> {
         let mut args = Vec::new();
 

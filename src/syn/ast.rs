@@ -96,7 +96,7 @@ pub enum Stmt {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct TypeDef {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub name: String,
     pub member_funs: Vec<FunDef>,
@@ -106,7 +106,7 @@ pub struct TypeDef {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct Assign {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub lhs: Expr,
     pub op: AssignOp,
@@ -117,7 +117,7 @@ pub struct Assign {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct FunDef {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub name: String,
     pub params: Vec<String>,
@@ -128,7 +128,7 @@ pub struct FunDef {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct Retn {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub expr: Option<Expr>,
 }
@@ -154,7 +154,7 @@ pub enum Expr {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct Access {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub head: Expr,
     pub tail: Atom,
@@ -166,7 +166,7 @@ pub struct Access {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct FunCall {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub fun: Expr,
     pub args: Vec<Expr>,
@@ -178,7 +178,7 @@ pub struct FunCall {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct UnExpr {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub op: Op,
     pub expr: Expr,
@@ -190,7 +190,7 @@ pub struct UnExpr {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct BinExpr {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub lhs: Expr,
     pub op: Op,
@@ -203,7 +203,7 @@ pub struct BinExpr {
 #[derive(Derivative)]
 #[derivative(Debug, Clone, PartialEq)]
 pub struct Atom {
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     pub span: Span,
     pub kind: AtomKind,
 }

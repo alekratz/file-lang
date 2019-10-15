@@ -222,10 +222,7 @@ mod test {
 
     lazy_static! {
         static ref PRECEDENCE: Precedence = vec![
-            vec![
-                vec![OpKind::Splat],
-                vec![OpKind::FSlash],
-            ],
+            vec![vec![OpKind::Splat], vec![OpKind::FSlash],],
             vec![vec![OpKind::Plus], vec![OpKind::Minus]],
         ];
     }

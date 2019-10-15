@@ -5,10 +5,7 @@ mod syn;
 mod compile;
 mod vm;
 
-use crate::{
-    common::span::*,
-    compile::Compile,
-};
+use crate::{common::span::*, compile::Compile};
 use matches::matches;
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
@@ -98,7 +95,9 @@ fn dump_bytecode(text: &str) -> Result<()> {
     );
 
     if !const_values.is_empty() {
-        println!("= CONSTANTS ====================================================================");
+        println!(
+            "= CONSTANTS ===================================================================="
+        );
         for c in &const_values {
             println!("{:?}", c);
         }
