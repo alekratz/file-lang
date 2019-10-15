@@ -120,111 +120,18 @@ impl Vm {
                         .expect("no value on top of stack for store");
                     self.storage_mut().store_binding(binding, value);
                 }
-                Inst::GetAttr(ref_id) => {
-                    let obj_ref = self.stack_mut().pop().unwrap();
-                    let object = self
-                        .storage()
-                        .deref_value(obj_ref)
-                        .and_then(|object| {
-                            if let Value::Object(object) = object {
-                                Some(object)
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "expected object ref on top of the stack, got {:?} instead",
-                                self.storage().deref_value(obj_ref)
-                            )
-                        });
-                    let attr = self.storage().load_const(ref_id);
-                    let attr_name = if let Value::String(s) = attr {
-                        s
-                    } else {
-                        // TODO(exception)
-                        panic!(
-                            "expected string attribute, but got {:?} instead",
-                            attr
-                        );
-                    };
-                    let attr_value = object
-                        .get_attr(attr_name)
-                        .expect(&format!("no such attribute {:?}", attr_name));
-                    self.stack_mut().push(attr_value);
-                }
-                Inst::SetAttr(ref_id) => {
-                    let obj_ref = self.stack_mut().pop().unwrap();
-                    let attr_value = self.stack_mut().pop().unwrap();
-                    let object = self
-                        .storage()
-                        .deref_value(obj_ref)
-                        .and_then(|object| {
-                            if let Value::Object(object) = object {
-                                Some(object)
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "expected object ref on top of the stack, got {:?} instead",
-                                self.storage().deref_value(obj_ref)
-                            )
-                        });
-                    let attr_name = if let Value::String(s) = self.storage().load_const(ref_id) {
-                        s
-                    } else {
-                        // TODO(exception)
-                        panic!(
-                            "expected string attribute, but got {:?} instead",
-                            attr_value
-                        );
-                    };
-                    object.set_attr(attr_name.clone(), attr_value);
-                }
+                Inst::GetAttr(ref_id) => self.get_attr(ref_id),
+                Inst::SetAttr(ref_id) => self.set_attr(ref_id),
                 Inst::PopStore => {
-                    let target = self
-                        .stack_mut()
-                        .pop()
-                        .expect("no value on top of stack for pop_store target");
-                    // TODO(exception) : Raise an error here when exceptions are ready, instead of a hard crash
-                    assert!(
-                        target.is_ref(),
-                        "cannot store values in a non-ref target {:?}",
-                        target
-                    );
-                    let value = self
-                        .stack_mut()
-                        .pop()
-                        .expect("no value on top of stack for pop_store value");
-                    match (target, value) {
-                        (CopyValue::ConstRef(_), _) => panic!(
-                            "tried to store a value {:?} in a const ref {:?}",
-                            value, target
-                        ),
-                        (CopyValue::HeapRef(target_id), value) => {
-                            if let Some(value) = self.deref_value(value) {
-                                let value = value.clone();
-                                self.storage_mut().store_heap(target_id, value);
-                            } else {
-                                self.storage_mut()
-                                    .store_heap(target_id, Value::CopyValue(value));
-                            }
-                        }
-                        v => panic!(
-                            // TODO(exception)
-                            "tried to store a value in a non-ref, non-literal value: {:?}",
-                            v
-                        ),
-                    }
+                    self.pop_store()
                 }
                 Inst::StoreReturn => {
                     let value = self
                         .stack_mut()
                         .pop()
                         .expect("no value on top of stack for store_return");
-                    self.store_return(value);
+                    let stack_frame = self.stack_frame_mut();
+                    stack_frame.return_value = Some(value);
                 }
                 Inst::PushReturn => {
                     let return_value =
@@ -234,9 +141,7 @@ impl Vm {
                 Inst::DiscardReturn => {
                     self.return_value = None;
                 }
-                Inst::PopCall(argc) => {
-                    self.pop_call(argc);
-                }
+                Inst::PopCall(argc) => self.pop_call(argc),
                 Inst::Return => {
                     let frame = self
                         .stack_mut()
@@ -270,9 +175,109 @@ impl Vm {
         }
     }
 
-    fn store_return(&mut self, value: CopyValue) {
-        let stack_frame = self.stack_frame_mut();
-        stack_frame.return_value = Some(value);
+    #[inline]
+    fn get_attr(&mut self, ref_id: ConstRef) {
+        let obj_ref = self.stack_mut().pop().unwrap();
+        let object = self
+            .storage()
+            .deref_value(obj_ref)
+            .and_then(|object| {
+                if let Value::Object(object) = object {
+                    Some(object)
+                } else {
+                    None
+                }
+            })
+        .unwrap_or_else(|| {
+            panic!(
+                "expected object ref on top of the stack, got {:?} instead",
+                self.storage().deref_value(obj_ref)
+            )
+        });
+        let attr = self.storage().load_const(ref_id);
+        let attr_name = if let Value::String(s) = attr {
+            s
+        } else {
+            // TODO(exception)
+            panic!(
+                "expected string attribute, but got {:?} instead",
+                attr
+            );
+        };
+        let attr_value = object
+            .get_attr(attr_name)
+            .expect(&format!("no such attribute {:?}", attr_name));
+        self.stack_mut().push(attr_value);
+    }
+
+    #[inline]
+    fn set_attr(&mut self, ref_id: ConstRef) {
+        let obj_ref = self.stack_mut().pop().unwrap();
+        let attr_value = self.stack_mut().pop().unwrap();
+        let object = self
+            .storage()
+            .deref_value(obj_ref)
+            .and_then(|object| {
+                if let Value::Object(object) = object {
+                    Some(object)
+                } else {
+                    None
+                }
+            })
+        .unwrap_or_else(|| {
+            panic!(
+                "expected object ref on top of the stack, got {:?} instead",
+                self.storage().deref_value(obj_ref)
+            )
+        });
+        let attr_name = if let Value::String(s) = self.storage().load_const(ref_id) {
+            s
+        } else {
+            // TODO(exception)
+            panic!(
+                "expected string attribute, but got {:?} instead",
+                attr_value
+            );
+        };
+        object.set_attr(attr_name.clone(), attr_value);
+    }
+
+    #[inline]
+    fn pop_store(&mut self) {
+        let target = self
+            .stack_mut()
+            .pop()
+            .expect("no value on top of stack for pop_store target");
+        // TODO(exception) : Raise an error here when exceptions are ready, instead of a hard crash
+        assert!(
+            target.is_ref(),
+            "cannot store values in a non-ref target {:?}",
+            target
+        );
+        let value = self
+            .stack_mut()
+            .pop()
+            .expect("no value on top of stack for pop_store value");
+        match (target, value) {
+            (CopyValue::ConstRef(_), _) => panic!(
+                "tried to store a value {:?} in a const ref {:?}",
+                value, target
+            ),
+            (CopyValue::HeapRef(target_id), value) => {
+                if let Some(value) = self.deref_value(value) {
+                    let value = value.clone();
+                    self.storage_mut().store_heap(target_id, value);
+                } else {
+                    self.storage_mut()
+                        .store_heap(target_id, Value::CopyValue(value));
+                }
+            }
+            v => panic!(
+                // TODO(exception)
+                "tried to store a value in a non-ref, non-literal value: {:?}",
+                v
+            ),
+        }
     }
 
     fn pop_call(&mut self, argc: usize) {
