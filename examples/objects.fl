@@ -1,0 +1,28 @@
+type TaggedValue {
+    fn __init__(self, tag, value) {
+        self.tag = tag;
+        self.value = value;
+
+        retn self;
+    }
+
+    fn display(self) {
+        println(self.tag + ": " + str(self.value));
+    }
+
+    fn new(self) {
+        println(self);
+    }
+}
+
+# Create a TaggedValue using a constructor:
+tagged_int = TaggedValue("boring number", 42);
+
+println(tagged_int.tag);
+println(tagged_int.value);
+
+nested_value = TaggedValue("nested", tagged_int);
+
+nested_value.value.value = 1000;
+println(nested_value.value.value);
+println(tagged_int.value);
