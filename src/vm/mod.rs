@@ -122,9 +122,7 @@ impl Vm {
                 }
                 Inst::GetAttr(ref_id) => self.get_attr(ref_id),
                 Inst::SetAttr(ref_id) => self.set_attr(ref_id),
-                Inst::PopStore => {
-                    self.pop_store()
-                }
+                Inst::PopStore => self.pop_store(),
                 Inst::StoreReturn => {
                     let value = self
                         .stack_mut()
@@ -188,21 +186,18 @@ impl Vm {
                     None
                 }
             })
-        .unwrap_or_else(|| {
-            panic!(
-                "expected object ref on top of the stack, got {:?} instead",
-                self.storage().deref_value(obj_ref)
-            )
-        });
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected object ref on top of the stack, got {:?} instead",
+                    self.storage().deref_value(obj_ref)
+                )
+            });
         let attr = self.storage().load_const(ref_id);
         let attr_name = if let Value::String(s) = attr {
             s
         } else {
             // TODO(exception)
-            panic!(
-                "expected string attribute, but got {:?} instead",
-                attr
-            );
+            panic!("expected string attribute, but got {:?} instead", attr);
         };
         let attr_value = object
             .get_attr(attr_name)
@@ -224,12 +219,12 @@ impl Vm {
                     None
                 }
             })
-        .unwrap_or_else(|| {
-            panic!(
-                "expected object ref on top of the stack, got {:?} instead",
-                self.storage().deref_value(obj_ref)
-            )
-        });
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected object ref on top of the stack, got {:?} instead",
+                    self.storage().deref_value(obj_ref)
+                )
+            });
         let attr_name = if let Value::String(s) = self.storage().load_const(ref_id) {
             s
         } else {
@@ -280,6 +275,7 @@ impl Vm {
         }
     }
 
+    #[inline]
     fn pop_call(&mut self, argc: usize) {
         let mut args = self.stack_mut().pop_args(argc);
         let tos = self.stack_mut().pop().expect("no tos for pop_call");
