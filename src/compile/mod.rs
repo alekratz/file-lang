@@ -32,9 +32,11 @@ impl Compile {
     pub fn compile(mut self, text: &str) -> Result<(Fun, Pool)> {
         let ast = self.expr_precedence(Parser::new(text)?.next_body()?);
         let mut binding_stack = BindingStack::new(&mut self.bindings);
+        // TODO(object) builtin types
+        let mut types = Vec::new();
         let mut funs = binding_stack.insert_builtin_functions();
 
-        let ir = AstToIr::new(text, &mut funs, &mut binding_stack).translate(ast)?;
+        let ir = AstToIr::new(text, &mut types, &mut funs, &mut binding_stack).translate(ast)?;
         let main_bindings = binding_stack.collapse();
         let Compile { bindings, .. } = self;
         Ok(IrToInst::new(funs, bindings).translate(ir, main_bindings))

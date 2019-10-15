@@ -3,53 +3,19 @@ pub mod pool;
 pub mod stack;
 pub mod store;
 pub mod value;
+pub mod object;
+pub mod inst;
 
 pub mod prelude {
     pub use super::fun::{BuiltinFun, Fun, UserFun};
     pub use super::pool::*;
     pub use super::value::*;
-    pub use super::{Inst, Vm};
+    pub use super::inst::*;
+    pub use super::Vm;
 }
 
-use crate::vm::{fun::*, pool::*, stack::*, store::*, value::*};
+use crate::vm::{fun::*, pool::*, stack::*, store::*, value::*, inst::*};
 use std::mem;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Inst {
-    /// Pop N values off of the stack.
-    Pop(usize),
-
-    /// Push a constant value to the stack.
-    PushValue(CopyValue),
-
-    /// Load a variable binding and push it to the stack.
-    Load(Binding),
-
-    /// Pop the top value off of the stack and store it in a variable binding.
-    Store(Binding),
-
-    /// Pop a storage target followed by a value off of the stack, and store the value in the
-    /// target.
-    PopStore,
-
-    /// Pop the top value off of the stack and store it in the return value register.
-    StoreReturn,
-
-    /// Loads the return value from the return register and pushes it to the top of the stack.
-    PushReturn,
-
-    /// Discards the return value from the return register.
-    DiscardReturn,
-
-    /// Pop the top value off of the stack and attempt to call it with the given number of arguments.
-    PopCall(usize),
-
-    /// Exit the current function.
-    Return,
-
-    /// Halt the VM.
-    Halt,
-}
 
 #[derive(Debug, Clone)]
 pub struct Vm {
@@ -154,6 +120,33 @@ impl Vm {
                         .expect("no value on top of stack for store");
                     self.storage_mut().store_binding(binding, value);
                 }
+                Inst::GetAttr(ref_id) => {
+                    let obj_ref = self.stack_mut().pop().unwrap();
+                    let object = if let Some(object) = self.storage().deref_value(obj_ref) {
+                        if let Value::Object(object) = object {
+                            object
+                        } else {
+                            // TODO(exception) 
+                            panic!("expected object ref on top of the stack, but got {:?} instead",
+                                   object);
+                        }
+                    } else {
+                        // TODO(exception) 
+                        panic!("expected object ref on top of the stack, but got {:?} instead",
+                               obj_ref);
+                    };
+                    let attr_value = self.storage().load_const(ref_id);
+                    let attr = if let Value::String(s) = attr_value {
+                        s
+                    } else {
+                        // TODO(exception) 
+                        panic!("expected string attribute, but got {:?} instead", attr_value);
+                    };
+                    let value = object.members().get(attr)
+                        .copied()
+                        .unwrap_or(CopyValue::Empty);
+                    self.stack_mut().push(value);
+                }
                 Inst::PopStore => {
                     let target = self
                         .stack_mut()
@@ -206,8 +199,8 @@ impl Vm {
                     self.return_value = None;
                 }
                 Inst::PopCall(argc) => {
-                    let tos = self.stack_mut().pop().expect("no tos for pop_call");
                     let args = self.stack_mut().pop_args(argc);
+                    let tos = self.stack_mut().pop().expect("no tos for pop_call");
                     let fun = if let Some(Value::Fun(fun)) = self.storage().deref_value(tos) {
                         // TODO - cheaper cloning or ref-counting functions in the pool (?)
                         fun.clone()

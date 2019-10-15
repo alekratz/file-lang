@@ -1,10 +1,6 @@
 use crate::{
-    compile::{
-        bindings::*,
-        ir::*,
-        translate::collect::CollectStringConstants,
-    },
-    vm::{fun::*, pool::Pool, value::*, Inst},
+    compile::{bindings::*, ir::*, translate::collect::CollectStringConstants},
+    vm::{fun::*, pool::Pool, value::*, inst::Inst},
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -57,9 +53,7 @@ impl IrToInst {
         collector.collect(&body);
         for (_, (_, fun)) in self.funs.iter() {
             match fun {
-                BoundFun::User(fun) => {
-                    collector.collect(&fun.body);
-                }
+                BoundFun::User(fun) => collector.collect(&fun.body),
                 _ => {}
             }
         }
@@ -171,73 +165,94 @@ impl IrToInst {
 
     /// Translate an expression into a list of VM instructions.
     fn translate_expr(&self, expr: Expr, ctx: ExprCtx) -> Vec<Inst> {
-        let mut body = Vec::new();
         match expr {
-            Expr::Bin(bin) => {
-                let BinExpr { lhs, op, rhs, .. } = *bin;
-                body.extend(self.translate_expr(lhs, ExprCtx::Push));
-                body.extend(self.translate_expr(rhs, ExprCtx::Push));
-                let ref_id = self.get_fun_ref(op);
-                body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
-                body.push(Inst::PopCall(2));
-                match ctx {
-                    ExprCtx::Push => body.push(Inst::PushReturn),
-                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
-                    ExprCtx::Return => { /* return value is already set */ }
-                }
-            }
-            Expr::Un(un) => {
-                let UnExpr { op, expr, .. } = *un;
-                body.extend(self.translate_expr(expr, ExprCtx::Push));
-                let ref_id = self.get_fun_ref(op);
-                body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
-                body.push(Inst::PopCall(1));
-                match ctx {
-                    ExprCtx::Push => body.push(Inst::PushReturn),
-                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
-                    ExprCtx::Return => { /* return value is already set */ }
-                }
-            }
-            Expr::Access(_) => {
-                unimplemented!("TODO(object)")
-            }
-            Expr::FunCall(fun_call) => {
-                let FunCall { fun, args, .. } = *fun_call;
-                let arg_count = args.len();
-                for arg in args {
-                    body.extend(self.translate_expr(arg, ExprCtx::Push));
-                }
-                body.extend(self.translate_expr(fun, ExprCtx::Push));
-                body.push(Inst::PopCall(arg_count));
-                match ctx {
-                    ExprCtx::Push => body.push(Inst::PushReturn),
-                    ExprCtx::Stmt => body.push(Inst::DiscardReturn),
-                    ExprCtx::Return => { /* return value is already set */ }
-                }
-            }
-            Expr::Atom(Atom { kind, .. }) => {
-                match kind {
-                    AtomKind::Ident(binding) => body.push(Inst::Load(binding)),
-                    AtomKind::String(s) => {
-                        let ref_id = *self.const_strings.get(&s).unwrap();
-                        body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
-                    }
-                    AtomKind::TaggedString { .. } => {
-                        unimplemented!("TODO(string) Tagged string behavior")
-                    }
-                    AtomKind::Int(i) => body.push(Inst::PushValue(CopyValue::Int(i as i64))),
-                    AtomKind::Real(f) => body.push(Inst::PushValue(CopyValue::Real(f))),
-                }
-                match ctx {
-                    ExprCtx::Push => { /* no-op - expression should remain on the stack */ }
-                    ExprCtx::Stmt => {
-                        body.push(Inst::Pop(1));
-                    }
-                    ExprCtx::Return => body.push(Inst::StoreReturn),
-                }
-            }
+            Expr::Bin(bin) => self.translate_bin_expr(*bin, ctx),
+            Expr::Un(un) => self.translate_un_expr(*un, ctx),
+            Expr::Access(access) => self.translate_access(*access, ctx),
+            Expr::FunCall(fun_call) => self.translate_fun_call(*fun_call, ctx),
+            Expr::Atom(atom) => self.translate_atom(atom, ctx),
         }
+    }
 
+    fn translate_bin_expr(&self, BinExpr { lhs, op, rhs, .. }: BinExpr, ctx: ExprCtx) -> Vec<Inst> {
+        let mut body = Vec::new();
+        let ref_id = self.get_fun_ref(op);
+        body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
+        body.extend(self.translate_expr(lhs, ExprCtx::Push));
+        body.extend(self.translate_expr(rhs, ExprCtx::Push));
+        body.push(Inst::PopCall(2));
+        match ctx {
+            ExprCtx::Push => body.push(Inst::PushReturn),
+            ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+            ExprCtx::Return => { /* return value is already set */ }
+        }
+        body
+    }
+
+    fn translate_un_expr(&self, UnExpr { op, expr, .. }: UnExpr, ctx: ExprCtx) -> Vec<Inst> {
+        let mut body = Vec::new();
+        let ref_id = self.get_fun_ref(op);
+        body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
+        body.extend(self.translate_expr(expr, ExprCtx::Push));
+        body.push(Inst::PopCall(1));
+        match ctx {
+            ExprCtx::Push => body.push(Inst::PushReturn),
+            ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+            ExprCtx::Return => { /* return value is already set */ }
+        }
+        body
+    }
+
+    fn translate_access(&self, Access { head, tail, .. }: Access, ctx: ExprCtx) -> Vec<Inst> {
+        let mut body = Vec::new();
+        body.extend(self.translate_expr(head, ExprCtx::Push));
+        let ref_id = *self.const_strings.get(&tail).unwrap();
+        body.push(Inst::GetAttr(ref_id));
+        match ctx {
+            ExprCtx::Push => { /* no-op - expression should remain on the stack */ }
+            ExprCtx::Stmt => {
+                body.push(Inst::Pop(1));
+            }
+            ExprCtx::Return => body.push(Inst::StoreReturn),
+        }
+        body
+    }
+
+    fn translate_fun_call(&self, FunCall { fun, args, .. }: FunCall, ctx: ExprCtx) -> Vec<Inst> {
+        let mut body = Vec::new();
+        let arg_count = args.len();
+        body.extend(self.translate_expr(fun, ExprCtx::Push));
+        for arg in args {
+            body.extend(self.translate_expr(arg, ExprCtx::Push));
+        }
+        body.push(Inst::PopCall(arg_count));
+        match ctx {
+            ExprCtx::Push => body.push(Inst::PushReturn),
+            ExprCtx::Stmt => body.push(Inst::DiscardReturn),
+            ExprCtx::Return => { /* return value is already set */ }
+        }
+        body
+    }
+
+    fn translate_atom(&self, Atom { kind, .. }: Atom, ctx: ExprCtx) -> Vec<Inst> {
+        let mut body = Vec::new();
+        match kind {
+            AtomKind::Ident(binding) => body.push(Inst::Load(binding)),
+            AtomKind::String(s) => {
+                let ref_id = *self.const_strings.get(&s).unwrap();
+                body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
+            }
+            AtomKind::TaggedString { .. } => unimplemented!("TODO(string) Tagged string behavior"),
+            AtomKind::Int(i) => body.push(Inst::PushValue(CopyValue::Int(i as i64))),
+            AtomKind::Real(f) => body.push(Inst::PushValue(CopyValue::Real(f))),
+        }
+        match ctx {
+            ExprCtx::Push => { /* no-op - expression should remain on the stack */ }
+            ExprCtx::Stmt => {
+                body.push(Inst::Pop(1));
+            }
+            ExprCtx::Return => body.push(Inst::StoreReturn),
+        }
         body
     }
 

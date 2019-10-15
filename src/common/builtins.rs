@@ -101,10 +101,6 @@ bin_op_builtins! {
         unimplemented!();
     }
 
-    "./" => fn builtin_bin_dot_fslash_op(_vm: &mut Vm, _args: Vec<CopyValue>) {
-        unimplemented!();
-    }
-
     "|>" => fn builtin_bin_pipe_gt_op(_vm: &mut Vm, _args: Vec<CopyValue>) {
         unimplemented!();
     }

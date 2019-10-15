@@ -8,57 +8,107 @@ use matches::matches;
 use std::collections::HashMap;
 
 #[derive(Debug)]
-pub struct CollectFuns<'compile, 'bindings: 'compile> {
+pub struct CollectDefs<'compile, 'bindings: 'compile> {
     text: &'compile str,
+    types: &'compile mut Vec<TypeDef>,
     funs: &'compile mut Vec<BoundFun>,
     bindings: &'compile mut BindingStack<'bindings>,
 }
 
-impl<'compile, 'bindings: 'compile> CollectFuns<'compile, 'bindings> {
+impl<'compile, 'bindings: 'compile> CollectDefs<'compile, 'bindings> {
     pub fn new(
         text: &'compile str,
+        types: &'compile mut Vec<TypeDef>,
         funs: &'compile mut Vec<BoundFun>,
         bindings: &'compile mut BindingStack<'bindings>,
     ) -> Self {
-        CollectFuns {
+        CollectDefs {
             text,
+            types,
             funs,
             bindings,
         }
     }
 
-    pub fn collect(self, ast: Vec<ast::Stmt>) -> Result<Vec<ast::Stmt>> {
+    pub fn collect(mut self, ast: Vec<ast::Stmt>) -> Result<Vec<ast::Stmt>> {
+        let ast = self.collect_funs(ast)?;
+        self.collect_types(ast)
+    }
+
+    fn collect_funs(&mut self, ast: Vec<ast::Stmt>) -> Result<Vec<ast::Stmt>> {
         let (funs, ast) = ast
             .into_iter()
             .partition(|stmt| matches!(stmt, ast::Stmt::FunDef(_)));
         for fun_def in funs {
-            let ast::FunDef {
-                span,
-                name,
-                params,
-                body,
-            } = if let ast::Stmt::FunDef(def) = fun_def {
+            let fun_def = if let ast::Stmt::FunDef(def) = fun_def {
                 def
             } else {
                 unreachable!();
             };
+            let fun_def = self.collect_fun(fun_def)?;
+            self.funs.push(BoundFun::User(fun_def));
+        }
+        Ok(ast)
+    }
+
+    fn collect_fun(&mut self, fun_def: ast::FunDef) -> Result<FunDef> {
+        let ast::FunDef {
+            span,
+            name,
+            params,
+            body,
+        } = fun_def;
+        let binding = self.bindings.get_local_binding(&name).unwrap();
+        self.bindings.push_default();
+        let params: Vec<Binding> = params
+            .into_iter()
+            .map(|param| self.bindings.create_binding(param))
+            .collect();
+        let body = AstToIr::new(self.text, self.types, self.funs, self.bindings)
+            .translate(body)?;
+        let bindings = self.bindings.pop_expect();
+        let def = FunDef {
+            span,
+            params,
+            binding,
+            bindings,
+            body,
+        };
+        Ok(def)
+    }
+    
+    fn collect_types(&mut self, ast: Vec<ast::Stmt>) -> Result<Vec<ast::Stmt>> {
+        let (types, ast) = ast
+            .into_iter()
+            .partition(|stmt| matches!(stmt, ast::Stmt::TypeDef(_)));
+        for type_def in types {
+            let ast::TypeDef {
+                span,
+                name,
+                member_funs,
+            } = if let ast::Stmt::TypeDef(def) = type_def {
+                def
+            } else {
+                unreachable!()
+            };
+
             let binding = self.bindings.get_local_binding(&name).unwrap();
             self.bindings.push_default();
-            let params: Vec<Binding> = params
-                .into_iter()
-                .map(|param| self.bindings.create_binding(param))
-                .collect();
-            let body = AstToIr::new(self.text, self.funs, self.bindings).translate(body)?;
+            // Don't create function bindings - they will be useless in a dynamic runtime
+            // collect functions
+            for fun in member_funs.into_iter() {
+                let fun = self.collect_fun(fun)?;
+                self.funs.push(BoundFun::User(fun));
+            }
             let bindings = self.bindings.pop_expect();
-            let def = FunDef {
+            let ty = TypeDef {
                 span,
-                params,
                 binding,
                 bindings,
-                body,
             };
-            self.funs.push(BoundFun::User(def));
+            self.types.push(ty);
         }
+
         Ok(ast)
     }
 }
@@ -79,6 +129,9 @@ impl<'compile, 'bindings: 'compile> CollectBindings<'compile, 'bindings> {
         // then it is added as a local binding.
         for stmt in ast {
             match stmt {
+                ast::Stmt::TypeDef(def) => {
+                    self.bindings.get_or_create_local_binding(&def.name);
+                }
                 ast::Stmt::FunDef(def) => {
                     self.bindings.get_or_create_local_binding(&def.name);
                 }
@@ -100,6 +153,9 @@ impl<'compile, 'bindings: 'compile> CollectBindings<'compile, 'bindings> {
                 ast::AtomKind::Expr(e) => self.collect_lvalue(e),
                 _ => { /* no-op - no bindings to collect */ }
             },
+            ast::Expr::Access(access) => {
+                self.collect_lvalue(&access.head);
+            }
             _ => { /* no-op - only identifiers can be collected */ }
         }
     }
@@ -143,7 +199,7 @@ impl<'compile> CollectStringConstants<'compile> {
             }
             Expr::Access(access) => {
                 self.collect_expr(&access.head);
-                self.collect_expr(&access.tail);
+                self.insert_string(&access.tail);
             }
             Expr::FunCall(fun) => {
                 self.collect_expr(&fun.fun);

@@ -215,14 +215,15 @@ impl<'text> Parser<'text> {
     fn next_access_tail(&mut self, head: Expr) -> Result<Expr> {
         if self.curr.kind() == TokenKind::Dot {
             self.adv_token()?;
-            let tail = self.next_access()?;
+            let ident = self.expect_token_kind(TokenKind::Ident, "identifier for access tail")?;
+            let tail = Atom { span: ident.span(), kind: AtomKind::Ident };
             let span = head.span().union(&tail.span());
             let access = Access {
                 span,
                 head,
                 tail,
             };
-            Ok(Expr::Access(access.into()))
+            self.next_access_tail(Expr::Access(access.into()))
         } else {
             Ok(head)
         }
@@ -533,10 +534,10 @@ mod test {
                 fun_call_expr!(
                     access_expr!(
                         atom_expr!(AtomKind::Ident),
-                        atom_expr!(AtomKind::Ident)
+                        atom!(AtomKind::Ident)
                     )
                 ),
-                atom_expr!(AtomKind::Ident)
+                atom!(AtomKind::Ident)
             )
         }
         verify_eof!(parser);

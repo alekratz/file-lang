@@ -14,7 +14,8 @@ pub enum BoundFun {
 #[derive(Debug, Clone)]
 pub struct TypeDef {
     pub span: Span,
-    pub member_funs: Vec<Binding>,
+    pub binding: Binding,
+    pub bindings: Bindings,
 }
 
 #[derive(Debug, Clone)]
@@ -75,7 +76,7 @@ pub struct UnExpr {
 pub struct Access {
     pub span: Span,
     pub head: Expr,
-    pub tail: Expr,
+    pub tail: String,
 }
 
 #[derive(Debug, Clone)]

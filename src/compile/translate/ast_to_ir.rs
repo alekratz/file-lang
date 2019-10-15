@@ -6,6 +6,7 @@ use crate::{
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
+use matches::matches;
 use std::collections::HashMap;
 
 /// Replaces escape sequences in a string with the appropriate escape values.
@@ -46,6 +47,7 @@ fn unescape_string(s: &str) -> std::result::Result<String, char> {
 
 pub struct AstToIr<'compile, 'bindings> {
     text: &'compile str,
+    types: &'compile mut Vec<TypeDef>,
     funs: &'compile mut Vec<BoundFun>,
     bindings: &'compile mut BindingStack<'bindings>,
 }
@@ -53,11 +55,13 @@ pub struct AstToIr<'compile, 'bindings> {
 impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
     pub fn new(
         text: &'compile str,
+        types: &'compile mut Vec<TypeDef>,
         funs: &'compile mut Vec<BoundFun>,
         bindings: &'compile mut BindingStack<'bindings>,
     ) -> Self {
         AstToIr {
             text,
+            types,
             funs,
             bindings,
         }
@@ -65,7 +69,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
 
     pub fn translate(mut self, ast: Vec<ast::Stmt>) -> Result<Vec<Stmt>> {
         CollectBindings::new(self.text, self.bindings).collect(&ast);
-        CollectFuns::new(self.text, self.funs, self.bindings)
+        CollectDefs::new(self.text, self.types, self.funs, self.bindings)
             .collect(ast)?
             .into_iter()
             .map(|stmt| self.translate_stmt(stmt))
@@ -74,7 +78,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
 
     fn translate_stmt(&mut self, stmt: ast::Stmt) -> Result<Stmt> {
         let stmt = match stmt {
-            ast::Stmt::TypeDef(_) => unimplemented!("TODO(object)"),
+            ast::Stmt::TypeDef(_) => unreachable!(),
             ast::Stmt::Assign(assign) => Stmt::Assign(self.translate_assign(assign)?),
             ast::Stmt::Expr(expr) => Stmt::Expr(self.translate_expr(expr)?),
             ast::Stmt::FunDef(_) => unreachable!(),
@@ -156,7 +160,21 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                     }
                     _ => {}
                 }
-                let tail = self.translate_expr(tail)?;
+                let tail_span = tail.span();
+                let tail = if let Expr::Atom(atom) = self.translate_atom(tail)? {
+                    if !matches!(atom.kind, AtomKind::Ident(_)) {
+                        return Err(CompileError::InvalidAccess {
+                            span: atom.span,
+                            what: "only identifiers may be used for object access".to_string(),
+                        });
+                    }
+                    atom.text(self.text).to_string()
+                } else {
+                    return Err(CompileError::InvalidAccess {
+                        span: tail_span,
+                        what: "only identifiers may be used for object access".to_string(),
+                    });
+                };
                 let access = Access {
                     span,
                     head,
@@ -176,72 +194,73 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
                 };
                 Expr::FunCall(fun.into())
             }
-            ast::Expr::Atom(atom) => {
-                let ast::Atom { span, kind } = *atom;
-                // this is where numbers *actually* get parsed
-                let text = span.text(self.text);
-                let kind = match kind {
-                    ast::AtomKind::Expr(e) => return self.translate_expr(e),
-                    ast::AtomKind::Ident => {
-                        // by this point, all bindings are collected so if it's not declared in
-                        // this lexical scope, it will traverse up the scope until the next best
-                        // binding is found - otherwise, the binding will be created.
-                        // NOTE this may be a good spot to put a lint for use-before-assign
-                        let binding = self.bindings.get_or_create_binding(text);
-                        AtomKind::Ident(binding)
-                    }
-                    ast::AtomKind::DecInt => {
-                        AtomKind::Int(text.parse().expect("invalid decimal int reached"))
-                    }
-                    // in the non-decimal parsing it's okay to use [2..] on the str because they're
-                    // preceded by two ASCII characters, which are one byte each.
-                    ast::AtomKind::BinInt => AtomKind::Int(
-                        i64::from_str_radix(&text[2..], 2).expect("invalid binary int reached"),
-                    ),
-                    ast::AtomKind::OctInt => AtomKind::Int(
-                        i64::from_str_radix(&text[2..], 8).expect("invalid octal int reached"),
-                    ),
-                    ast::AtomKind::HexInt => AtomKind::Int(
-                        i64::from_str_radix(&text[2..], 16)
-                            .expect("invalid hexadecimal int reached"),
-                    ),
-                    ast::AtomKind::Real => {
-                        AtomKind::Real(text.parse().expect("invalid real number reached"))
-                    }
-                    ast::AtomKind::String => {
-                        let mut chars = text.chars();
-                        chars.next().unwrap();
-                        chars.next_back().unwrap();
-                        let raw: String = chars.collect();
-                        let string = match unescape_string(&raw) {
-                            Ok(string) => string,
-                            Err(c) => return Err(CompileError::InvalidStringEscape {
-                                span,
-                                what: c,
-                            }),
-                        };
-                        AtomKind::String(string)
-                    }
-                    ast::AtomKind::RawString => {
-                        let mut chars = text.chars();
-                        chars.next().unwrap();
-                        chars.next_back().unwrap();
-                        AtomKind::String(chars.collect())
-                    }
-                    ast::AtomKind::TaggedString => {
-                        let mut chars = text.chars();
-                        let quote_char = chars.next_back().unwrap();
-                        let tag: String = chars.clone().take_while(|c| *c != quote_char).collect();
-                        let mut chars = chars.skip_while(|c| *c != quote_char);
-                        assert_eq!(chars.next(), Some(quote_char));
-                        let string: String = chars.collect();
-                        AtomKind::TaggedString { tag, string }
-                    }
-                };
-                Expr::Atom(Atom { span, kind }.into())
-            }
+            ast::Expr::Atom(atom) => self.translate_atom(*atom)?,
         };
         Ok(expr)
+    }
+
+    fn translate_atom(&mut self, ast::Atom { span, kind }: ast::Atom) -> Result<Expr> {
+        // this is where numbers *actually* get parsed
+        let text = span.text(self.text);
+        let kind = match kind {
+            ast::AtomKind::Expr(e) => return self.translate_expr(e),
+            ast::AtomKind::Ident => {
+                // by this point, all bindings are collected so if it's not declared in
+                // this lexical scope, it will traverse up the scope until the next best
+                // binding is found - otherwise, the binding will be created.
+                // NOTE this may be a good spot to put a lint for use-before-assign
+                let binding = self.bindings.get_or_create_binding(text);
+                AtomKind::Ident(binding)
+            }
+            ast::AtomKind::DecInt => {
+                AtomKind::Int(text.parse().expect("invalid decimal int reached"))
+            }
+            // in the non-decimal parsing it's okay to use [2..] on the str because they're
+            // preceded by two ASCII characters, which are one byte each.
+            ast::AtomKind::BinInt => AtomKind::Int(
+                i64::from_str_radix(&text[2..], 2).expect("invalid binary int reached"),
+                ),
+            ast::AtomKind::OctInt => AtomKind::Int(
+                i64::from_str_radix(&text[2..], 8).expect("invalid octal int reached"),
+                ),
+            ast::AtomKind::HexInt => AtomKind::Int(
+                i64::from_str_radix(&text[2..], 16)
+                .expect("invalid hexadecimal int reached"),
+                ),
+            ast::AtomKind::Real => {
+                AtomKind::Real(text.parse().expect("invalid real number reached"))
+            }
+            ast::AtomKind::String => {
+                let mut chars = text.chars();
+                chars.next().unwrap();
+                chars.next_back().unwrap();
+                let raw: String = chars.collect();
+                let string = match unescape_string(&raw) {
+                    Ok(string) => string,
+                    Err(c) => return Err(CompileError::InvalidStringEscape {
+                        span,
+                        what: c,
+                    }),
+                };
+                AtomKind::String(string)
+            }
+            ast::AtomKind::RawString => {
+                let mut chars = text.chars();
+                chars.next().unwrap();
+                chars.next_back().unwrap();
+                AtomKind::String(chars.collect())
+            }
+            ast::AtomKind::TaggedString => {
+                let mut chars = text.chars();
+                let quote_char = chars.next_back().unwrap();
+                let tag: String = chars.clone().take_while(|c| *c != quote_char).collect();
+                let mut chars = chars.skip_while(|c| *c != quote_char);
+                assert_eq!(chars.next(), Some(quote_char));
+                let string: String = chars.collect();
+                AtomKind::TaggedString { tag, string }
+            }
+        };
+        Ok(Expr::Atom(Atom { span, kind }))
     }
 
     fn translate_retn(&mut self, retn: ast::Retn) -> Result<Retn> {

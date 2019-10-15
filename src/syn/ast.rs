@@ -157,7 +157,7 @@ pub struct Access {
     #[derivative(Debug="ignore")]
     pub span: Span,
     pub head: Expr,
-    pub tail: Expr,
+    pub tail: Atom,
 }
 
 /// A function call.

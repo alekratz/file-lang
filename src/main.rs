@@ -118,11 +118,8 @@ fn dump_bytecode(text: &str) -> Result<()> {
             println!("= {}", pool.get_binding_name(fun.binding()));
             println!();
 
-            for (i, inst) in fun.code().iter().enumerate() {
-                println!("{:0>4x}  {:?}", i, inst);
-            }
-
-            println!();
+            let body = Inst::dump_body(&fun.code(), &pool);
+            println!("{}", body);
         }
     }
 
