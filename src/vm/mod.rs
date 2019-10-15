@@ -138,20 +138,20 @@ impl Vm {
                                 self.storage().deref_value(obj_ref)
                             )
                         });
-                    let attr_value = self.storage().load_const(ref_id);
-                    let attr = if let Value::String(s) = attr_value {
+                    let attr = self.storage().load_const(ref_id);
+                    let attr_name = if let Value::String(s) = attr {
                         s
                     } else {
                         // TODO(exception)
                         panic!(
                             "expected string attribute, but got {:?} instead",
-                            attr_value
+                            attr
                         );
                     };
-                    let value = object
-                        .get_attr(attr)
-                        .expect(&format!("no such attribute {:?}", attr));
-                    self.stack_mut().push(value);
+                    let attr_value = object
+                        .get_attr(attr_name)
+                        .expect(&format!("no such attribute {:?}", attr_name));
+                    self.stack_mut().push(attr_value);
                 }
                 Inst::SetAttr(ref_id) => {
                     let obj_ref = self.stack_mut().pop().unwrap();
