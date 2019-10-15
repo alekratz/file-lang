@@ -8,10 +8,13 @@ use crate::{
 };
 use std::rc::Rc;
 
+const HEAP_GROWTH_FACTOR: f64 = 2.0;
+const HEAP_INITIAL_SIZE: usize = 128;
+
 #[derive(Debug, Clone)]
 pub struct Storage {
     stack: Stack,
-    heap: Vec<Value>,
+    heap: Vec<Option<Value>>,
     pool: Pool,
 }
 
@@ -19,7 +22,7 @@ impl Storage {
     pub fn new(pool: Pool) -> Self {
         Storage {
             stack: Default::default(),
-            heap: Default::default(),
+            heap: vec!(None; HEAP_INITIAL_SIZE),
             pool: pool,
         }
     }
@@ -54,12 +57,36 @@ impl Storage {
         }
     }
 
+    pub fn allocate_heap(&mut self, value: Value) -> HeapRef {
+        // TODO better heap allocator implementation
+        let next_ref = self.heap.iter()
+            .position(|v| v.is_none());
+        let next_ref = if let Some(next_ref) = next_ref {
+            next_ref
+        } else {
+            let end = self.heap.len();
+            let new_length = ((end as f64) * HEAP_GROWTH_FACTOR) as usize;
+            self.heap.resize_with(new_length, || None);
+            end
+        };
+        self.heap[next_ref] = Some(value);
+        HeapRef(next_ref)
+    }
+
+    pub fn free_heap(&mut self, ref_id: HeapRef) {
+        assert!(self.heap[*ref_id].is_some(), "attempted to free freed heap reference");
+        self.heap[*ref_id] = None;
+    }
+
     pub fn load_heap(&self, ref_id: HeapRef) -> &Value {
-        &self.heap[*ref_id]
+        self.heap[*ref_id]
+            .as_ref()
+            .expect("attempted to load freed heap reference")
     }
 
     pub fn store_heap(&mut self, ref_id: HeapRef, value: Value) {
-        self.heap[*ref_id] = value;
+        assert!(self.heap[*ref_id].is_some(), "attempted to store to freed heap reference");
+        self.heap[*ref_id] = Some(value);
     }
 
     pub fn load_const(&self, ref_id: ConstRef) -> &Value {

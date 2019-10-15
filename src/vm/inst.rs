@@ -1,6 +1,7 @@
 use crate::vm::{
     pool::Pool,
-    value::{Binding, ConstRef, CopyValue},
+    value::{Binding, ConstRef, CopyValue, Value},
+    fun::Fun,
 };
 use std::fmt::{self, Display, Formatter};
 
@@ -50,6 +51,30 @@ impl Inst {
     }
 }
 
+/// Helper struct for dumping named values.
+struct DumpValue<'inst>(&'inst Value, &'inst Pool);
+
+impl Display for DumpValue<'_> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        let DumpValue(value, pool) = self;
+        match value {
+            Value::CopyValue(value) => write!(fmt, "{:?}", value),
+            Value::String(value) => write!(fmt, "{:?}", value),
+            Value::Object(obj) => {
+                let name = pool.get_binding_name(obj.binding());
+                write!(fmt, "object {}", name)
+            }
+            Value::Fun(fun) => {
+                let name = pool.get_binding_name(fun.binding());
+                match fun {
+                    Fun::User(_) => { write!(fmt, "function {}", name) }
+                    Fun::Builtin(_) => { write!(fmt, "builtin {}", name) }
+                }
+            }
+        }
+    }
+}
+
 /// Helper struct for dumping instructions to a writer.
 struct DumpInst<'inst> {
     body: &'inst [Inst],
@@ -57,19 +82,14 @@ struct DumpInst<'inst> {
 }
 
 impl<'inst> DumpInst<'inst> {
+    const REF_PADDING: usize = 45;
+
     fn fmt_dump(&self, fmt: &mut Formatter, inst: &'inst Inst) -> fmt::Result {
         match inst {
             Inst::Pop(n) => write!(fmt, "pop {}", n),
             Inst::PushValue(value) => {
                 if let CopyValue::ConstRef(ref_id) = value {
-                    let const_value = self.pool.get_const(*ref_id);
-                    let ConstRef(ref_id) = ref_id;
-                    write!(
-                        fmt,
-                        "{: <15} {}",
-                        format!("push_value (const ref {})", const_value),
-                        ref_id
-                    )
+                    self.fmt_ref(fmt, "push_value", *ref_id)
                 } else {
                     write!(fmt, "push_value {}", value)
                 }
@@ -78,27 +98,30 @@ impl<'inst> DumpInst<'inst> {
                 let binding_name = self.pool.get_binding_name(Binding(*binding));
                 write!(
                     fmt,
-                    "{: <15} (binding {})",
+                    "{: <width$} (binding {})",
                     format!("load {}", binding_name),
-                    binding
+                    binding,
+                    width=Self::REF_PADDING
                 )
             }
             Inst::GetAttr(ConstRef(ref_id)) => {
                 let value = self.pool.get_const(ConstRef(*ref_id));
                 write!(
                     fmt,
-                    "{: <15} (const ref {})",
+                    "{: <width$} (const ref {})",
                     format!("get_attr {}", value),
-                    ref_id
+                    ref_id,
+                    width=Self::REF_PADDING
                 )
             }
             Inst::Store(Binding(binding)) => {
                 let binding_name = self.pool.get_binding_name(Binding(*binding));
                 write!(
                     fmt,
-                    "{: <15} (binding {})",
+                    "{: <width$} (binding {})",
                     format!("store {}", binding_name),
-                    binding
+                    binding,
+                    width=Self::REF_PADDING
                 )
             }
             Inst::PopStore => write!(fmt, "pop_store"),
@@ -109,6 +132,18 @@ impl<'inst> DumpInst<'inst> {
             Inst::Return => write!(fmt, "return"),
             Inst::Halt => write!(fmt, "halt"),
         }
+    }
+
+    fn fmt_ref(&self, fmt: &mut Formatter, base: impl Display, ref_id: ConstRef) -> fmt::Result {
+        let value = self.pool.get_const(ref_id);
+        let ConstRef(ref_id) = ref_id;
+        write!(
+            fmt,
+            "{: <width$} (const ref {})",
+            format!("{} {}", base, DumpValue(&value, self.pool)),
+            ref_id,
+            width=Self::REF_PADDING
+        )
     }
 }
 

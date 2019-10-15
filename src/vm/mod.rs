@@ -14,7 +14,7 @@ pub mod prelude {
     pub use super::Vm;
 }
 
-use crate::vm::{fun::*, pool::*, stack::*, store::*, value::*, inst::*};
+use crate::vm::{fun::*, pool::*, stack::*, store::*, value::*, inst::*, object::*};
 use std::mem;
 
 #[derive(Debug, Clone)]
@@ -199,15 +199,7 @@ impl Vm {
                     self.return_value = None;
                 }
                 Inst::PopCall(argc) => {
-                    let args = self.stack_mut().pop_args(argc);
-                    let tos = self.stack_mut().pop().expect("no tos for pop_call");
-                    let fun = if let Some(Value::Fun(fun)) = self.storage().deref_value(tos) {
-                        // TODO - cheaper cloning or ref-counting functions in the pool (?)
-                        fun.clone()
-                    } else {
-                        panic!("could not call value {:?} as a function", tos);
-                    };
-                    self.call(&fun, args);
+                    self.pop_call(argc);
                 }
                 Inst::Return => {
                     let frame = self
@@ -232,7 +224,6 @@ impl Vm {
                 for (arg, binding) in args.into_iter().zip(fun.params().iter().copied()) {
                     frame.store_register(binding, arg);
                 }
-                //println!("frame registers: {:#?}", frame.registers);
                 self.stack_mut().push_frame(frame);
             }
             Fun::Builtin(fun) => {
@@ -246,5 +237,53 @@ impl Vm {
     fn store_return(&mut self, value: CopyValue) {
         let stack_frame = self.stack_frame_mut();
         stack_frame.return_value = Some(value);
+    }
+
+    fn pop_call(&mut self, argc: usize) {
+        let mut args = self.stack_mut().pop_args(argc);
+        let tos = self.stack_mut().pop().expect("no tos for pop_call");
+        let fun = self.storage()
+            .deref_value(tos)
+            .expect(&format!("empty reference {:?}", tos));
+        match fun {
+            Value::Fun(fun) => {
+                // Cloning a function should be relatively cheap
+                let fun = fun.clone();
+                self.call(&fun, args);
+            }
+            Value::Object(obj) => {
+                if obj.type_ref().is_none() {
+                    let ctor = obj.members().get(CTOR_NAME).copied();
+                    let obj = obj.clone();
+                    let obj_ref = self.allocate_heap(Value::Object(obj));
+                    // call the constructor, if any
+                    if let Some(ctor_value) = ctor {
+                        let fun = if let Some(Value::Fun(value)) = self.deref_value(ctor_value) {
+                            value
+                        } else {
+                            // TODO(exception)
+                            panic!("{} must be a function", CTOR_NAME);
+                        };
+                        args.insert(0, CopyValue::HeapRef(obj_ref));
+                        self.call(&fun.clone(), args);
+                    } else {
+                        if !args.is_empty() {
+                            // TODO(exception)
+                            panic!("wrong number of arguments: got {}, expected 0", args.len());
+                        }
+                        unimplemented!("TODO object default ctor");
+                    }
+                } else {
+                    // call
+                    unimplemented!("TODO object calling");
+                }
+            }
+            // TODO(exception)
+            v => panic!("could not call value {:?} as a function", v),
+        }
+    }
+
+    fn allocate_heap(&mut self, value: Value) -> HeapRef {
+        self.storage_mut().allocate_heap(value)
     }
 }

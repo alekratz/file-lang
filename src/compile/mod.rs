@@ -39,7 +39,7 @@ impl Compile {
         let ir = AstToIr::new(text, &mut types, &mut funs, &mut binding_stack).translate(ast)?;
         let main_bindings = binding_stack.collapse();
         let Compile { bindings, .. } = self;
-        Ok(IrToInst::new(funs, bindings).translate(ir, main_bindings))
+        Ok(IrToInst::new(funs, types, bindings).translate(ir, main_bindings))
     }
 
     /// Rearrange expression trees in this level of the AST so that they follow the specified
@@ -56,6 +56,8 @@ impl Compile {
                 Stmt::TypeDef(_) | Stmt::FunDef(_) => {
                     /*
                      * no-op - stay on lexical level, this is taken care of during translation
+                     * TODO this is probably *not* taken care of during translation anymore, so this
+                     * should probably be revisited
                      */
                     stmt
                 }

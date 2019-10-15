@@ -62,7 +62,7 @@ impl Display for Value {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match self {
             Value::CopyValue(value) => write!(fmt, "{}", value),
-            Value::String(value) => write!(fmt, "{}", value),
+            Value::String(value) => write!(fmt, "{:?}", value),
             Value::Object(obj) => write!(fmt, "{:?}", obj),
             Value::Fun(fun) => write!(fmt, "{:?}", fun),
         }

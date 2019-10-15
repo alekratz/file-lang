@@ -1,6 +1,6 @@
 use crate::{
     compile::{bindings::*, ir::*, translate::collect::CollectStringConstants},
-    vm::{fun::*, pool::Pool, value::*, inst::Inst},
+    vm::{fun::*, inst::Inst, object::*, pool::Pool, value::*},
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -17,29 +17,56 @@ enum ExprCtx {
 
 pub struct IrToInst {
     funs: BTreeMap<Binding, (ConstRef, BoundFun)>,
+    types: BTreeMap<Binding, (ConstRef, TypeDef)>,
     const_strings: HashMap<String, ConstRef>,
     pool: Pool,
 }
 
 impl IrToInst {
-    pub fn new(funs: Vec<BoundFun>, bindings: Vec<String>) -> Self {
+    pub fn new(funs: Vec<BoundFun>, types: Vec<TypeDef>, bindings: Vec<String>) -> Self {
         let mut pool = Pool::new(bindings);
+        // Convert the list of functions into a BTreeMap of bindings pointing at the pair of IR
+        // item and its const reference
+        let funs: BTreeMap<_, _> = funs
+            .into_iter()
+            .map(|fun| {
+                // this pre-allocates the function pool, which will have functions inserted as
+                // during compile-time
+                let value = match &fun {
+                    BoundFun::User(_) => Value::CopyValue(CopyValue::Empty),
+                    BoundFun::Builtin(binding, builtin) => {
+                        Value::Fun(Fun::Builtin(BuiltinFun::new(*binding, builtin.clone())))
+                    }
+                };
+                let ref_id = pool.insert_const(value);
+                (fun.binding(), (ref_id, fun))
+            })
+            .collect();
+        // Convert the list of types into a BTreeMap of bindings pointing at the pair of IR item
+        // and its const reference
+        let types = types
+            .into_iter()
+            .map(|ty| {
+                let value = Value::Object(Object::new(
+                    ty.binding,
+                    None,
+                    ty.bindings
+                        .iter()
+                        .map(|(name, binding)| {
+                            // collect function members, whose references are defined in the 'funs'
+                            // collection above
+                            let (fun_ref, _) = funs.get(binding).unwrap();
+                            (name.clone(), CopyValue::ConstRef(*fun_ref))
+                        })
+                        .collect(),
+                ));
+                let ref_id = pool.insert_const(value);
+                (ty.binding, (ref_id, ty))
+            })
+            .collect();
         IrToInst {
-            funs: funs
-                .into_iter()
-                .map(|fun| {
-                    // this pre-allocates the function pool, which will have functions inserted as
-                    // during compile-time
-                    let value = match &fun {
-                        BoundFun::User(_) => Value::CopyValue(CopyValue::Empty),
-                        BoundFun::Builtin(binding, builtin) => {
-                            Value::Fun(Fun::Builtin(BuiltinFun::new(*binding, builtin.clone())))
-                        }
-                    };
-                    let ref_id = pool.insert_const(value);
-                    (fun.binding(), (ref_id, fun))
-                })
-                .collect(),
+            funs,
+            types,
             const_strings: Default::default(),
             pool,
         }
@@ -49,13 +76,13 @@ impl IrToInst {
     /// main function and VM constant pool.
     pub fn translate(mut self, body: Vec<Stmt>, main_bindings: Bindings) -> (Fun, Pool) {
         // collect strings in all functions and main body
+        //
+        // NOTE: this collects strings in types too since this is a list of ALL functions, not just
+        // the types' functions.
         let mut collector = CollectStringConstants::new(&mut self.pool, &mut self.const_strings);
-        collector.collect(&body);
+        collector.collect_body(&body);
         for (_, (_, fun)) in self.funs.iter() {
-            match fun {
-                BoundFun::User(fun) => collector.collect(&fun.body),
-                _ => {}
-            }
+            collector.collect_fun(&fun);
         }
 
         // translate functions and insert them as constants
@@ -112,6 +139,8 @@ impl IrToInst {
             .into_iter()
             .map(|(_, binding)| {
                 if let Some((ref_id, _)) = self.funs.get(&binding) {
+                    (binding, CopyValue::ConstRef(*ref_id))
+                } else if let Some((ref_id, _)) = self.types.get(&binding) {
                     (binding, CopyValue::ConstRef(*ref_id))
                 } else {
                     (binding, CopyValue::Empty)

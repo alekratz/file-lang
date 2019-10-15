@@ -94,7 +94,11 @@ impl<'compile, 'bindings: 'compile> CollectDefs<'compile, 'bindings> {
 
             let binding = self.bindings.get_local_binding(&name).unwrap();
             self.bindings.push_default();
-            // Don't create function bindings - they will be useless in a dynamic runtime
+            // collect function bindings - these are necessary because user functions require a
+            // binding, even if it's not accessed by its binding name
+            for fun in member_funs.iter() {
+                self.bindings.create_binding(fun.name.to_string());
+            }
             // collect functions
             for fun in member_funs.into_iter() {
                 let fun = self.collect_fun(fun)?;
@@ -171,7 +175,13 @@ impl<'compile> CollectStringConstants<'compile> {
         CollectStringConstants { pool, const_strings, }
     }
 
-    pub fn collect(&mut self, body: &Vec<Stmt>) {
+    pub fn collect_fun(&mut self, fun: &BoundFun) {
+        if let BoundFun::User(fun) = fun {
+            self.collect_body(&fun.body);
+        }
+    }
+
+    pub fn collect_body(&mut self, body: &Vec<Stmt>) {
         for stmt in body.iter() {
             match stmt {
                 Stmt::Assign(assign) => {

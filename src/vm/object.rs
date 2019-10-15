@@ -1,8 +1,8 @@
-use crate::vm::{
-    pool::Pool,
-    value::{Binding, ValueRef, CopyValue},
-};
+use crate::vm::value::{Binding, ValueRef, CopyValue};
 use std::collections::HashMap;
+
+pub const CTOR_NAME: &str = "__init__";
+pub const CALL_NAME: &str = "__call__";
 
 #[derive(Debug, Clone)]
 pub struct Object {
