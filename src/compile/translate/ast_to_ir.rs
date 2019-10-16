@@ -83,6 +83,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             ast::Stmt::Expr(expr) => Stmt::Expr(self.translate_expr(expr)?),
             ast::Stmt::FunDef(_) => unreachable!(),
             ast::Stmt::Retn(retn) => Stmt::Retn(self.translate_retn(retn)?),
+            ast::Stmt::If(_) => unimplemented!("TODO(branch)"),
         };
         Ok(stmt)
     }

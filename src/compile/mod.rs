@@ -65,6 +65,9 @@ impl Compile {
                     r.expr = r.expr.map(|expr| expr_precedence(expr, &self.precedence));
                     Stmt::Retn(r)
                 }
+                Stmt::If(_) => {
+                    unimplemented!("TODO(branch)")
+                }
             })
             .collect()
     }

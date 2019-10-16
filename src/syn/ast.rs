@@ -90,6 +90,7 @@ pub enum Stmt {
     Expr(Expr),
     FunDef(FunDef),
     Retn(Retn),
+    If(If),
 }
 
 /// A type definition.
@@ -131,6 +132,16 @@ pub struct Retn {
     #[derivative(Debug = "ignore")]
     pub span: Span,
     pub expr: Option<Expr>,
+}
+
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
+pub struct If {
+    #[derivative(Debug = "ignore")]
+    pub span: Span,
+    pub condition: Expr,
+    pub elif: Vec<If>,
+    pub else_block: Option<Vec<Stmt>>,
 }
 
 /// Base expression node.
@@ -284,6 +295,7 @@ impl Spanned for Stmt {
             Stmt::Expr(e) => e.span(),
             Stmt::FunDef(f) => f.span(),
             Stmt::Retn(r) => r.span(),
+            Stmt::If(i) => i.span(),
         }
     }
 }
@@ -305,6 +317,7 @@ spanned!(AssignOp, span);
 spanned!(Assign, span);
 spanned!(FunDef, span);
 spanned!(Retn, span);
+spanned!(If, span);
 spanned!(BinExpr, span);
 spanned!(UnExpr, span);
 spanned!(Access, span);
@@ -323,6 +336,7 @@ impl Ast for Stmt {
         FunDef::lookaheads(),
         Expr::lookaheads(),
         Retn::lookaheads(),
+        If::lookaheads(),
     }
 }
 
@@ -347,6 +361,12 @@ impl Ast for FunDef {
 impl Ast for Retn {
     ast_lookaheads! {
         TokenKind::KwRetn,
+    }
+}
+
+impl Ast for If {
+    ast_lookaheads! {
+        TokenKind::KwIf,
     }
 }
 
