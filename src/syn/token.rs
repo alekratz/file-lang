@@ -30,6 +30,9 @@ pub enum TokenKind {
     KwFn,
     KwRetn,
     KwType,
+    KwIf,
+    KwElIf,
+    KwEl,
 }
 
 impl Display for TokenKind {
@@ -62,6 +65,10 @@ impl Display for TokenKind {
             TokenKind::KwFn => write!(fmt, "`fn` keyword"),
             TokenKind::KwRetn => write!(fmt, "`retn` keyword"),
             TokenKind::KwType => write!(fmt, "`type` keyword"),
+
+            TokenKind::KwIf => write!(fmt, "`if` keyword"),
+            TokenKind::KwElIf => write!(fmt, "`elif` keyword"),
+            TokenKind::KwEl => write!(fmt, "`el` keyword"),
         }
     }
 }

@@ -48,6 +48,9 @@ lazy_static! {
         "fn" => TokenKind::KwFn,
         "retn" => TokenKind::KwRetn,
         "type" => TokenKind::KwType,
+        "if" => TokenKind::KwIf,
+        "elif" => TokenKind::KwElIf,
+        "el" => TokenKind::KwEl,
     };
 }
 
@@ -628,11 +631,17 @@ multiline string""#,
             fn
             retn
             type
+            if
+            elif
+            el
             "#,
         );
         verify!(lexer, TokenKind::KwFn, "fn");
         verify!(lexer, TokenKind::KwRetn, "retn");
         verify!(lexer, TokenKind::KwType, "type");
+        verify!(lexer, TokenKind::KwIf, "if");
+        verify!(lexer, TokenKind::KwElIf, "elif");
+        verify!(lexer, TokenKind::KwEl, "el");
         verify_eof!(lexer);
     }
 
