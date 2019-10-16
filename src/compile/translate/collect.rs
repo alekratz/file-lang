@@ -201,6 +201,11 @@ impl<'compile> CollectStringConstants<'compile> {
                         self.collect_expr(e);
                     }
                 }
+                Stmt::Branch(branch) => {
+                    self.collect_expr(&branch.condition);
+                    self.collect_body(&branch.body_true);
+                    self.collect_body(&branch.body_false);
+                }
             }
         }
     }

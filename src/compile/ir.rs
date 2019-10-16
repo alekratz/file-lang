@@ -32,6 +32,7 @@ pub enum Stmt {
     Assign(Assign),
     Expr(Expr),
     Retn(Retn),
+    Branch(Branch),
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +109,14 @@ pub struct Retn {
     pub expr: Option<Expr>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Branch {
+    pub span: Span,
+    pub condition: Expr,
+    pub body_true: Vec<Stmt>,
+    pub body_false: Vec<Stmt>,
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Base impl
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,6 +157,7 @@ impl Spanned for Stmt {
             Stmt::Assign(a) => a.span(),
             Stmt::Expr(e) => e.span(),
             Stmt::Retn(r) => r.span(),
+            Stmt::Branch(b) => b.span(),
         }
     }
 }
@@ -173,3 +183,4 @@ spanned!(Access, span);
 spanned!(FunCall, span);
 spanned!(Atom, span);
 spanned!(Retn, span);
+spanned!(Branch, span);

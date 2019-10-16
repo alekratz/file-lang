@@ -155,6 +155,7 @@ impl IrToInst {
             Stmt::Assign(assign) => self.translate_assign(assign),
             Stmt::Expr(expr) => self.translate_expr(expr, ExprCtx::Stmt),
             Stmt::Retn(retn) => self.translate_retn(retn),
+            Stmt::Branch(_) => unimplemented!("TODO(branch)")
         }
     }
 

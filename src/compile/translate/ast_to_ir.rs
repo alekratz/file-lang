@@ -83,7 +83,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             ast::Stmt::Expr(expr) => Stmt::Expr(self.translate_expr(expr)?),
             ast::Stmt::FunDef(_) => unreachable!(),
             ast::Stmt::Retn(retn) => Stmt::Retn(self.translate_retn(retn)?),
-            ast::Stmt::If(_) => unimplemented!("TODO(branch)"),
+            ast::Stmt::If(i) => Stmt::Branch(self.translate_if(i)?),
         };
         Ok(stmt)
     }
@@ -270,6 +270,10 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             span,
             expr: expr.map(|expr| self.translate_expr(expr)).transpose()?,
         })
+    }
+
+    fn translate_if(&mut self, ast::If { span, condition_body, elif_bodies, else_body }: ast::If) -> Result<Branch> {
+        unimplemented!()
     }
 
     fn get_bin_op_binding(&self, op: &ast::Op) -> Result<Binding> {
