@@ -543,7 +543,7 @@ multiline string"
             r#""this is a string""#,
             r#""this is an \"escaped\" string""#,
             r#""this is a
-        multiline string""#,
+multiline string""#,
         }
         verify_eof!(lexer);
     }
