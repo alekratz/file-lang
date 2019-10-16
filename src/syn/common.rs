@@ -34,6 +34,64 @@ mod test {
     }
 
     #[macro_export]
+    macro_rules! if_stmt {
+        ($($tt:tt)*) => {{
+            Stmt::If(if_ast!($($tt)*))
+        }}
+    }
+
+    #[macro_export]
+    macro_rules! if_ast {
+        (
+            if $if_condition:expr => {
+                $($if_body:expr),*
+            } $(
+                elif $elif_condition:expr => {
+                    $($elif_body:expr),*
+                }
+            )*
+            $(
+                el => {
+                    $($el_body:expr),*
+                }
+            )?
+        ) => {{
+            ast! {
+                If {
+                    condition_body: condition_body!($if_condition $(, $if_body)*),
+                    elif_bodies: vec![
+                        $(
+                            condition_body!($elif_condition $(, $elif_body)*)
+                        ),*
+                    ],
+                    else_body: body!($($($el_body),*)?),
+                }
+            }
+        }};
+    }
+
+    #[macro_export]
+    macro_rules! condition_body {
+        ($condition:expr $(, $body:expr)*) => {{
+            ast! {
+                ConditionBody {
+                    condition: $condition,
+                    body: body!($($body),*),
+                }
+            }
+        }};
+    }
+
+    #[macro_export]
+    macro_rules! body {
+        ($($stmt:expr),*) => {{
+            vec![
+                $($stmt),*
+            ]
+        }};
+    }
+
+    #[macro_export]
     macro_rules! un {
         ($op:expr, $expr:expr) => {{
             ast!(UnExpr {

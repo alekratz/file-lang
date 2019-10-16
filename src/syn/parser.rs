@@ -53,6 +53,8 @@ impl<'text> Parser<'text> {
             self.next_assign_or_expr_stmt()?
         } else if self.is_any_lookahead::<Retn>() {
             Stmt::Retn(self.next_retn_stmt()?)
+        } else if self.is_any_lookahead::<If>() {
+            Stmt::If(self.next_if_stmt()?)
         } else {
             return Err(SyntaxError::ExpectedGot {
                 span: self.curr.span(),
@@ -161,6 +163,52 @@ impl<'text> Parser<'text> {
             None
         };
         Ok(Retn { span, expr })
+    }
+
+    fn next_if_stmt(&mut self) -> Result<If> {
+        let kw = self.expect_token_kind(TokenKind::KwIf, "`if` keyword")?;
+        let mut span = kw.span();
+        let condition_body = self.next_condition_body()?;
+        span = span.union(&condition_body.span());
+
+        let mut elif_bodies = Vec::new();
+        while self.is_match(TokenKind::KwElIf) {
+            self.adv_token()?;
+            let elif_body = self.next_condition_body()?;
+            span = span.union(&elif_body.span());
+            elif_bodies.push(elif_body);
+        }
+
+        let else_body = if self.is_match(TokenKind::KwEl) {
+            self.adv_token()?;
+            self.expect_token_kind(TokenKind::LBrace, "left brace")?;
+            let body = self.next_body()?;
+            let rbrace_token = self.expect_token_kind(TokenKind::RBrace, "right brace")?;
+            span = span.union(&rbrace_token.span());
+            body
+        } else {
+            Vec::new()
+        };
+
+        Ok(If {
+            span,
+            condition_body,
+            elif_bodies,
+            else_body,
+        })
+    }
+
+    fn next_condition_body(&mut self) -> Result<ConditionBody> {
+        let condition = self.next_expr()?;
+        self.expect_token_kind(TokenKind::LBrace, "left brace")?;
+        let body = self.next_body()?;
+        let rbrace_token = self.expect_token_kind(TokenKind::RBrace, "right brace")?;
+
+        Ok(ConditionBody {
+            span: condition.span().union(&rbrace_token.span()),
+            condition,
+            body,
+        })
     }
 
     pub fn next_expr(&mut self) -> Result<Expr> {
@@ -615,5 +663,75 @@ mod test {
                 }
             })
         }
+    }
+
+    #[test]
+    fn test_parser_if_stmt() {
+        let mut parser = Parser::new(
+            r#"
+            if foo {
+                bar();
+            }
+
+            if foo {
+                bar();
+            } el {
+                baz();
+            }
+
+            if foo {
+                bar();
+            } elif bar() {
+                baz();
+            } el {
+                baz();
+            }
+
+            if foo {
+                bar();
+            } elif bar() {
+                baz();
+            } elif baz() {
+                quux();
+            } el {
+                baz();
+            }
+            "#,
+        )
+        .unwrap();
+        verify!(parser, next_stmt;
+                if_stmt! {
+                    if atom_expr!(AtomKind::Ident) => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    }
+                },
+                if_stmt! {
+                    if atom_expr!(AtomKind::Ident) => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    } el => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    }
+                },
+                if_stmt! {
+                    if atom_expr!(AtomKind::Ident) => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    } elif fun_call_expr!(atom_expr!(AtomKind::Ident)) => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    } el => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    }
+                },
+                if_stmt! {
+                    if atom_expr!(AtomKind::Ident) => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    } elif fun_call_expr!(atom_expr!(AtomKind::Ident)) => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    } elif fun_call_expr!(atom_expr!(AtomKind::Ident)) => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    } el => {
+                        Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
+                    }
+                }
+        )
     }
 }

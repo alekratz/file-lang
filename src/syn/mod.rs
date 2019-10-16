@@ -9,8 +9,8 @@ pub mod token;
 
 pub mod prelude {
     pub use super::ast::{
-        Access, Assign, AssignOp, Ast, Atom, AtomKind, BinExpr, Expr, FunCall, FunDef, Op, Retn,
-        Stmt, TypeDef, UnExpr,
+        Access, Assign, AssignOp, Ast, Atom, AtomKind, BinExpr, ConditionBody, Expr, FunCall,
+        FunDef, If, Op, Retn, Stmt, TypeDef, UnExpr,
     };
     pub use super::common::*;
     pub use super::error::*;

@@ -139,9 +139,18 @@ pub struct Retn {
 pub struct If {
     #[derivative(Debug = "ignore")]
     pub span: Span,
+    pub condition_body: ConditionBody,
+    pub elif_bodies: Vec<ConditionBody>,
+    pub else_body: Vec<Stmt>,
+}
+
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
+pub struct ConditionBody {
+    #[derivative(Debug = "ignore")]
+    pub span: Span,
     pub condition: Expr,
-    pub elif: Vec<If>,
-    pub else_block: Option<Vec<Stmt>>,
+    pub body: Vec<Stmt>,
 }
 
 /// Base expression node.
@@ -318,6 +327,7 @@ spanned!(Assign, span);
 spanned!(FunDef, span);
 spanned!(Retn, span);
 spanned!(If, span);
+spanned!(ConditionBody, span);
 spanned!(BinExpr, span);
 spanned!(UnExpr, span);
 spanned!(Access, span);
