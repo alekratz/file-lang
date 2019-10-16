@@ -272,8 +272,44 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
         })
     }
 
-    fn translate_if(&mut self, ast::If { span, condition_body, elif_bodies, else_body }: ast::If) -> Result<Branch> {
-        unimplemented!()
+    fn translate_if(&mut self, ast::If { condition_body, elif_bodies, else_body, .. }: ast::If) -> Result<Branch> {
+        let ast::ConditionBody { span, condition, body, } = condition_body;
+        let if_condition = self.translate_expr(condition)?;
+        let if_body = body.into_iter()
+            .map(|stmt| self.translate_stmt(stmt))
+            .collect::<Result<Vec<_>>>()?;
+
+        let mut if_branch = Branch {
+            span,
+            condition: if_condition,
+            body_true: if_body,
+            body_false: Vec::new(),
+        };
+        let mut branch = &mut if_branch;
+        for ast::ConditionBody { condition, body, span, } in elif_bodies.into_iter() {
+            let condition = self.translate_expr(condition)?;
+            let body_true = body.into_iter()
+                .map(|stmt| self.translate_stmt(stmt))
+                .collect::<Result<Vec<_>>>()?;
+            let elif_branch = Branch {
+                span,
+                condition,
+                body_true,
+                body_false: Vec::new(),
+            };
+            branch.body_false = vec![
+                Stmt::Branch(elif_branch)
+            ];
+            branch = if let Stmt::Branch(branch) = &mut branch.body_false[0] {
+                branch
+            } else { unreachable!() };
+        }
+
+        branch.body_false = else_body.into_iter()
+            .map(|stmt| self.translate_stmt(stmt))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(if_branch)
     }
 
     fn get_bin_op_binding(&self, op: &ast::Op) -> Result<Binding> {
