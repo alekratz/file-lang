@@ -372,6 +372,11 @@ impl Ast for Stmt {
         Expr::lookaheads(),
         Retn::lookaheads(),
         If::lookaheads(),
+        While::lookaheads(),
+        Loop::lookaheads(),
+
+        TokenKind::KwCtu,
+        TokenKind::KwBrk,
     }
 }
 

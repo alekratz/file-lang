@@ -71,6 +71,50 @@ mod test {
     }
 
     #[macro_export]
+    macro_rules! while_stmt {
+        ($($tt:tt)*) => {{
+            Stmt::While(while_ast!($($tt)*))
+        }}
+    }
+
+    #[macro_export]
+    macro_rules! while_ast {
+        (
+            while $condition_expr:expr => {
+                $($while_body:expr),*
+            }
+        ) => {{
+            ast! {
+                While {
+                    condition_body: condition_body!($condition_expr $(, $while_body)*),
+                }
+            }
+        }};
+    }
+
+    #[macro_export]
+    macro_rules! loop_stmt {
+        ($($tt:tt)*) => {{
+            Stmt::Loop(loop_ast!($($tt)*))
+        }}
+    }
+
+    #[macro_export]
+    macro_rules! loop_ast {
+        (
+            loop => {
+                $($loop_body:expr),*
+            }
+        ) => {{
+            ast! {
+                Loop {
+                    body: body!($($loop_body),*),
+                }
+            }
+        }};
+    }
+
+    #[macro_export]
     macro_rules! condition_body {
         ($condition:expr $(, $body:expr)*) => {{
             ast! {

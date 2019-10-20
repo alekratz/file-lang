@@ -55,6 +55,14 @@ impl<'text> Parser<'text> {
             Stmt::Retn(self.next_retn_stmt()?)
         } else if self.is_any_lookahead::<If>() {
             Stmt::If(self.next_if_stmt()?)
+        } else if self.is_any_lookahead::<While>() {
+            Stmt::While(self.next_while_stmt()?)
+        } else if self.is_any_lookahead::<Loop>() {
+            Stmt::Loop(self.next_loop_stmt()?)
+        } else if self.is_match(TokenKind::KwCtu) {
+            Stmt::Ctu(self.adv_token()?.span())
+        } else if self.is_match(TokenKind::KwBrk) {
+            Stmt::Brk(self.adv_token()?.span())
         } else {
             return Err(SyntaxError::ExpectedGot {
                 span: self.curr.span(),
@@ -207,6 +215,28 @@ impl<'text> Parser<'text> {
         Ok(ConditionBody {
             span: condition.span().union(&rbrace_token.span()),
             condition,
+            body,
+        })
+    }
+
+    fn next_while_stmt(&mut self) -> Result<While> {
+        let start = self.expect_token_kind(TokenKind::KwWhile, "while keyword")?;
+        let condition_body = self.next_condition_body()?;
+        let span = start.span().union(&condition_body.span());
+        Ok(While {
+            span,
+            condition_body,
+        })
+    }
+
+    fn next_loop_stmt(&mut self) -> Result<Loop> {
+        let start = self.expect_token_kind(TokenKind::KwLoop, "loop keyword")?;
+        self.expect_token_kind(TokenKind::LBrace, "left brace")?;
+        let body = self.next_body()?;
+        let rbrace_token = self.expect_token_kind(TokenKind::RBrace, "right brace")?;
+        let span = start.span().union(&rbrace_token.span());
+        Ok(Loop {
+            span,
             body,
         })
     }
@@ -732,6 +762,39 @@ mod test {
                         Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident)))
                     }
                 }
+        );
+        verify_eof!(parser);
+    }
+
+    #[test]
+    fn test_parser_loops() {
+        let mut parser = Parser::new(
+            r#"
+            while 1 {
+                foo();
+                brk;
+            }
+
+            loop {
+                ctu;
+            }
+            "#,
         )
+        .unwrap();
+        verify!(
+            parser, next_stmt;
+            while_stmt! {
+                while atom_expr!(AtomKind::DecInt) => {
+                    Stmt::Expr(fun_call_expr!(atom_expr!(AtomKind::Ident))),
+                    Stmt::Brk(Default::default())
+                }
+            },
+            loop_stmt! {
+                loop => {
+                    Stmt::Ctu(Default::default())
+                }
+            }
+        );
+        verify_eof!(parser);
     }
 }
