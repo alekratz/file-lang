@@ -140,6 +140,10 @@ impl Vm {
                     self.return_value = None;
                 }
                 Inst::PopCall(argc) => self.pop_call(argc),
+                Inst::PopCmp => unimplemented!(),
+                Inst::Jump(_) => unimplemented!(),
+                Inst::JumpTrue(_) => unimplemented!(),
+                Inst::JumpFalse(_) => unimplemented!(),
                 Inst::Return => {
                     let frame = self
                         .stack_mut()

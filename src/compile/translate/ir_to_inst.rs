@@ -1,5 +1,5 @@
 use crate::{
-    compile::{bindings::*, ir::*, translate::collect::CollectStringConstants},
+    compile::{bindings::*, ir::*, translate::collect::CollectStringConstants, thunk::Thunk},
     vm::{fun::*, inst::Inst, object::*, pool::Pool, value::*},
 };
 use std::{
@@ -99,7 +99,8 @@ impl IrToInst {
         }
 
         // translate main function
-        let mut main_body = self.translate_body(body);
+        let mut main_body = self.translate_body(body)
+            .flatten();
         main_body.push(Inst::Halt);
         let main_binding = Binding(self.pool.bindings().len());
         self.pool.bindings_mut().push("#*main*#".to_string());
@@ -112,10 +113,12 @@ impl IrToInst {
     }
 
     /// Translate a list of IR statements into a list of VM instructions.
-    pub fn translate_body(&self, body: Vec<Stmt>) -> Vec<Inst> {
+    pub fn translate_body(&self, body: Vec<Stmt>) -> Thunk {
         body.into_iter()
-            .flat_map(|stmt| self.translate_stmt(stmt))
-            .collect()
+            .fold(Thunk::default(), |mut thunk, stmt| {
+                thunk.extend(self.translate_stmt(stmt));
+                thunk
+            })
     }
 
     /// Translate an IR function definition into a VM user function.
@@ -127,7 +130,8 @@ impl IrToInst {
             body,
             ..
         } = fun_def;
-        let mut body = self.translate_body(body);
+        let mut body = self.translate_body(body)
+            .flatten();
         body.push(Inst::Return);
         let registers = self.translate_bindings(bindings);
         UserFun::new(params, binding, body, registers)
@@ -150,7 +154,7 @@ impl IrToInst {
     }
 
     /// Translate an IR statement into a list of VM instructions.
-    fn translate_stmt(&self, stmt: Stmt) -> Vec<Inst> {
+    fn translate_stmt(&self, stmt: Stmt) -> Thunk {
         match stmt {
             Stmt::Assign(assign) => self.translate_assign(assign),
             Stmt::Expr(expr) => self.translate_expr(expr, ExprCtx::Stmt),
@@ -168,8 +172,8 @@ impl IrToInst {
             op,
             mut rhs,
         }: Assign,
-    ) -> Vec<Inst> {
-        let mut body = Vec::new();
+    ) -> Thunk {
+        let mut body = Thunk::default();
         if let Some(op) = op {
             let lhs = match &lhs {
                 LValue::Ident(span, binding) => Expr::Atom(Atom {
@@ -200,7 +204,7 @@ impl IrToInst {
     }
 
     /// Translate an expression into a list of VM instructions.
-    fn translate_expr(&self, expr: Expr, ctx: ExprCtx) -> Vec<Inst> {
+    fn translate_expr(&self, expr: Expr, ctx: ExprCtx) -> Thunk {
         match expr {
             Expr::Bin(bin) => self.translate_bin_expr(*bin, ctx),
             Expr::Un(un) => self.translate_un_expr(*un, ctx),
@@ -210,8 +214,8 @@ impl IrToInst {
         }
     }
 
-    fn translate_bin_expr(&self, BinExpr { lhs, op, rhs, .. }: BinExpr, ctx: ExprCtx) -> Vec<Inst> {
-        let mut body = Vec::new();
+    fn translate_bin_expr(&self, BinExpr { lhs, op, rhs, .. }: BinExpr, ctx: ExprCtx) -> Thunk {
+        let mut body = Thunk::default();
         let ref_id = self.get_fun_ref(op);
         body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
         body.extend(self.translate_expr(lhs, ExprCtx::Push));
@@ -225,8 +229,8 @@ impl IrToInst {
         body
     }
 
-    fn translate_un_expr(&self, UnExpr { op, expr, .. }: UnExpr, ctx: ExprCtx) -> Vec<Inst> {
-        let mut body = Vec::new();
+    fn translate_un_expr(&self, UnExpr { op, expr, .. }: UnExpr, ctx: ExprCtx) -> Thunk {
+        let mut body = Thunk::default();
         let ref_id = self.get_fun_ref(op);
         body.push(Inst::PushValue(CopyValue::ConstRef(ref_id)));
         body.extend(self.translate_expr(expr, ExprCtx::Push));
@@ -239,8 +243,8 @@ impl IrToInst {
         body
     }
 
-    fn translate_access(&self, Access { head, tail, .. }: Access, ctx: ExprCtx) -> Vec<Inst> {
-        let mut body = Vec::new();
+    fn translate_access(&self, Access { head, tail, .. }: Access, ctx: ExprCtx) -> Thunk {
+        let mut body = Thunk::default();
         body.extend(self.translate_expr(head, ExprCtx::Push));
         let ref_id = *self.const_strings.get(&tail).unwrap();
         body.push(Inst::GetAttr(ref_id));
@@ -254,8 +258,8 @@ impl IrToInst {
         body
     }
 
-    fn translate_fun_call(&self, FunCall { fun, args, .. }: FunCall, ctx: ExprCtx) -> Vec<Inst> {
-        let mut body = Vec::new();
+    fn translate_fun_call(&self, FunCall { fun, args, .. }: FunCall, ctx: ExprCtx) -> Thunk {
+        let mut body = Thunk::default();
         let arg_count = args.len();
         body.extend(self.translate_expr(fun, ExprCtx::Push));
         for arg in args {
@@ -270,8 +274,8 @@ impl IrToInst {
         body
     }
 
-    fn translate_atom(&self, Atom { kind, .. }: Atom, ctx: ExprCtx) -> Vec<Inst> {
-        let mut body = Vec::new();
+    fn translate_atom(&self, Atom { kind, .. }: Atom, ctx: ExprCtx) -> Thunk {
+        let mut body = Thunk::default();
         match kind {
             AtomKind::Ident(binding) => body.push(Inst::Load(binding)),
             AtomKind::String(s) => {
@@ -293,8 +297,8 @@ impl IrToInst {
     }
 
     /// Translate a return statement into a list of VM instructions.
-    fn translate_retn(&self, Retn { expr, .. }: Retn) -> Vec<Inst> {
-        let mut body = Vec::new();
+    fn translate_retn(&self, Retn { expr, .. }: Retn) -> Thunk {
+        let mut body = Thunk::default();
         if let Some(expr) = expr {
             body.extend(self.translate_expr(expr, ExprCtx::Return));
         }

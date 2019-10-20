@@ -41,6 +41,19 @@ pub enum Inst {
     /// Pop the top value off of the stack and attempt to call it with the given number of arguments.
     PopCall(usize),
 
+    /// Pop the top value off of the stack and checks its truthiness, setting the comparison flag
+    /// in the VM.
+    PopCmp,
+
+    /// Jumps to the specified address, unconditionally.
+    Jump(usize),
+
+    /// Jumps to the specified address if the comparison flag is true.
+    JumpTrue(usize),
+
+    /// Jumps to the specified address if the comparison flag is false.
+    JumpFalse(usize),
+
     /// Exit the current function.
     Return,
 
@@ -142,6 +155,10 @@ impl<'inst> DumpInst<'inst> {
             Inst::StoreReturn => write!(fmt, "store_return"),
             Inst::DiscardReturn => write!(fmt, "discard_return"),
             Inst::PopCall(n) => write!(fmt, "pop_call {}", n),
+            Inst::PopCmp => write!(fmt, "pop_cmp"),
+            Inst::Jump(a) => write!(fmt, "jump {:#06x}", a),
+            Inst::JumpTrue(a) => write!(fmt, "jump_true {:#06x}", a),
+            Inst::JumpFalse(a) => write!(fmt, "jump_false {:#06x}", a),
             Inst::Return => write!(fmt, "return"),
             Inst::Halt => write!(fmt, "halt"),
         }
@@ -162,7 +179,9 @@ impl<'inst> DumpInst<'inst> {
 
 impl Display for DumpInst<'_> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        for inst in self.body {
+        let width = ((self.body.len() as f64).log(16.0) as usize) + 1;
+        for (addr, inst) in self.body.iter().enumerate() {
+            write!(fmt, "{:0width$X} ", addr, width=width);
             self.fmt_dump(fmt, inst)?;
             writeln!(fmt)?;
         }
