@@ -330,7 +330,8 @@ impl Vm {
                         };
                         // add self reference
                         args.insert(0, CopyValue::HeapRef(obj_ref));
-                        self.call(&fun.clone(), args);
+                        let fun = fun.clone();
+                        self.call(&fun, args);
                     } else {
                         if !args.is_empty() {
                             // TODO(exception)
