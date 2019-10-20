@@ -51,6 +51,8 @@ lazy_static! {
         "if" => TokenKind::KwIf,
         "elif" => TokenKind::KwElIf,
         "el" => TokenKind::KwEl,
+        "loop" => TokenKind::KwLoop,
+        "while" => TokenKind::KwWhile,
     };
 }
 
@@ -634,6 +636,8 @@ multiline string""#,
             if
             elif
             el
+            loop
+            while
             "#,
         );
         verify!(lexer, TokenKind::KwFn, "fn");
@@ -642,6 +646,8 @@ multiline string""#,
         verify!(lexer, TokenKind::KwIf, "if");
         verify!(lexer, TokenKind::KwElIf, "elif");
         verify!(lexer, TokenKind::KwEl, "el");
+        verify!(lexer, TokenKind::KwLoop, "loop");
+        verify!(lexer, TokenKind::KwWhile, "while");
         verify_eof!(lexer);
     }
 

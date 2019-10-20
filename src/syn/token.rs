@@ -33,6 +33,8 @@ pub enum TokenKind {
     KwIf,
     KwElIf,
     KwEl,
+    KwLoop,
+    KwWhile,
 }
 
 impl Display for TokenKind {
@@ -69,6 +71,8 @@ impl Display for TokenKind {
             TokenKind::KwIf => write!(fmt, "`if` keyword"),
             TokenKind::KwElIf => write!(fmt, "`elif` keyword"),
             TokenKind::KwEl => write!(fmt, "`el` keyword"),
+            TokenKind::KwLoop => write!(fmt, "`loop` keyword"),
+            TokenKind::KwWhile => write!(fmt, "`while` keyword"),
         }
     }
 }
