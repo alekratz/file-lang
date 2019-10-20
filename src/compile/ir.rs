@@ -33,6 +33,9 @@ pub enum Stmt {
     Expr(Expr),
     Retn(Retn),
     Branch(Branch),
+    Loop(Loop),
+    Ctu(Span),
+    Brk(Span),
 }
 
 #[derive(Debug, Clone)]
@@ -117,6 +120,13 @@ pub struct Branch {
     pub body_false: Vec<Stmt>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Loop {
+    pub span: Span,
+    pub condition: Expr,
+    pub body: Vec<Stmt>,
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Base impl
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,6 +168,8 @@ impl Spanned for Stmt {
             Stmt::Expr(e) => e.span(),
             Stmt::Retn(r) => r.span(),
             Stmt::Branch(b) => b.span(),
+            Stmt::Loop(l) => l.span(),
+            Stmt::Ctu(s) | Stmt::Brk(s) => *s,
         }
     }
 }
@@ -184,3 +196,4 @@ spanned!(FunCall, span);
 spanned!(Atom, span);
 spanned!(Retn, span);
 spanned!(Branch, span);
+spanned!(Loop, span);

@@ -91,6 +91,10 @@ pub enum Stmt {
     FunDef(FunDef),
     Retn(Retn),
     If(If),
+    While(While),
+    Loop(Loop),
+    Ctu(Span),
+    Brk(Span),
 }
 
 /// A type definition.
@@ -142,6 +146,22 @@ pub struct If {
     pub condition_body: ConditionBody,
     pub elif_bodies: Vec<ConditionBody>,
     pub else_body: Vec<Stmt>,
+}
+
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
+pub struct While {
+    #[derivative(Debug = "ignore")]
+    pub span: Span,
+    pub condition_body: ConditionBody,
+}
+
+#[derive(Derivative)]
+#[derivative(Debug, Clone, PartialEq)]
+pub struct Loop {
+    #[derivative(Debug = "ignore")]
+    pub span: Span,
+    pub body: Vec<Stmt>,
 }
 
 #[derive(Derivative)]
@@ -266,7 +286,7 @@ pub struct AssignOp {
 
 impl Stmt {
     pub(super) fn expects_eol(&self) -> bool {
-        matches!(self, Stmt::Assign(_) | Stmt::Expr(_) | Stmt::Retn(_))
+        matches!(self, Stmt::Assign(_) | Stmt::Expr(_) | Stmt::Retn(_) | Stmt::Ctu(_) | Stmt::Brk(_))
     }
 }
 
@@ -305,6 +325,9 @@ impl Spanned for Stmt {
             Stmt::FunDef(f) => f.span(),
             Stmt::Retn(r) => r.span(),
             Stmt::If(i) => i.span(),
+            Stmt::While(w) => w.span(),
+            Stmt::Loop(l) => l.span(),
+            Stmt::Ctu(s) | Stmt::Brk(s) => *s,
         }
     }
 }
@@ -327,6 +350,8 @@ spanned!(Assign, span);
 spanned!(FunDef, span);
 spanned!(Retn, span);
 spanned!(If, span);
+spanned!(While, span);
+spanned!(Loop, span);
 spanned!(ConditionBody, span);
 spanned!(BinExpr, span);
 spanned!(UnExpr, span);
@@ -377,6 +402,18 @@ impl Ast for Retn {
 impl Ast for If {
     ast_lookaheads! {
         TokenKind::KwIf,
+    }
+}
+
+impl Ast for While {
+    ast_lookaheads! {
+        TokenKind::KwWhile,
+    }
+}
+
+impl Ast for Loop {
+    ast_lookaheads! {
+        TokenKind::KwLoop,
     }
 }
 

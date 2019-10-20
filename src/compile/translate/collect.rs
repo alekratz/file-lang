@@ -206,6 +206,11 @@ impl<'compile> CollectStringConstants<'compile> {
                     self.collect_body(&branch.body_true);
                     self.collect_body(&branch.body_false);
                 }
+                Stmt::Ctu(_) | Stmt::Brk(_) => {}
+                Stmt::Loop(l) => {
+                    self.collect_expr(&l.condition);
+                    self.collect_body(&l.body);
+                }
             }
         }
     }

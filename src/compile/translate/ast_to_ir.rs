@@ -84,6 +84,10 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             ast::Stmt::FunDef(_) => unreachable!(),
             ast::Stmt::Retn(retn) => Stmt::Retn(self.translate_retn(retn)?),
             ast::Stmt::If(i) => Stmt::Branch(self.translate_if(i)?),
+            ast::Stmt::While(w) => Stmt::Loop(self.translate_while(w)?),
+            ast::Stmt::Loop(l) => Stmt::Loop(self.translate_loop(l)?),
+            ast::Stmt::Ctu(s) => Stmt::Ctu(s),
+            ast::Stmt::Brk(s) => Stmt::Brk(s),
         };
         Ok(stmt)
     }
@@ -310,6 +314,14 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(if_branch)
+    }
+
+    fn translate_while(&self, _: ast::While) -> Result<Loop> {
+        unimplemented!()
+    }
+
+    fn translate_loop(&self, _: ast::Loop) -> Result<Loop> {
+        unimplemented!()
     }
 
     fn get_bin_op_binding(&self, op: &ast::Op) -> Result<Binding> {

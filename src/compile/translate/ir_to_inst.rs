@@ -160,6 +160,9 @@ impl IrToInst {
             Stmt::Expr(expr) => self.translate_expr(expr, ExprCtx::Stmt),
             Stmt::Retn(retn) => self.translate_retn(retn),
             Stmt::Branch(branch) => self.translate_branch(branch),
+            Stmt::Loop(_) => unimplemented!("TODO(branch)"),
+            Stmt::Ctu(_) => unimplemented!("TODO(branch)"),
+            Stmt::Brk(_) => unimplemented!("TODO(branch)"),
         }
     }
 

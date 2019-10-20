@@ -54,7 +54,11 @@ impl Compile {
                     Stmt::Assign(a)
                 }
                 Stmt::Expr(e) => Stmt::Expr(expr_precedence(e, &self.precedence)),
-                Stmt::TypeDef(_) | Stmt::FunDef(_) | Stmt::If(_) => {
+                Stmt::Retn(mut r) => {
+                    r.expr = r.expr.map(|expr| expr_precedence(expr, &self.precedence));
+                    Stmt::Retn(r)
+                }
+                _ => {
                     /*
                      * no-op - stay on lexical level, this is taken care of during translation
                      * TODO this is probably *not* taken care of during translation anymore, so this
@@ -62,10 +66,6 @@ impl Compile {
                      * TODO this should most certainly be put in its own translation level pass
                      */
                     stmt
-                }
-                Stmt::Retn(mut r) => {
-                    r.expr = r.expr.map(|expr| expr_precedence(expr, &self.precedence));
-                    Stmt::Retn(r)
                 }
             })
             .collect()
