@@ -159,7 +159,7 @@ impl IrToInst {
             Stmt::Assign(assign) => self.translate_assign(assign),
             Stmt::Expr(expr) => self.translate_expr(expr, ExprCtx::Stmt),
             Stmt::Retn(retn) => self.translate_retn(retn),
-            Stmt::Branch(_) => unimplemented!("TODO(branch)")
+            Stmt::Branch(branch) => self.translate_branch(branch),
         }
     }
 
@@ -304,6 +304,14 @@ impl IrToInst {
         }
         body.push(Inst::Return);
         body
+    }
+
+    fn translate_branch(&self, Branch { condition, body_true, body_false, .. }: Branch) -> Thunk {
+        Thunk::Condition {
+            condition: self.translate_expr(condition, ExprCtx::Push).into(),
+            thunk_true: self.translate_body(body_true).into(),
+            thunk_false: self.translate_body(body_false).into(),
+        }
     }
 
     /// Gets a `ConstRef` for a function with the given binding.

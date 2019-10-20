@@ -7,11 +7,12 @@ struct FlattenThunk {
     entry_address: usize,
     exit_address: usize,
     break_address: usize,
-    continue_address: usize,
+    condition_depth: usize,
 }
 
 impl FlattenThunk {
     fn flatten(&mut self, thunk: Thunk) -> Vec<Inst> {
+        let thunk_len = thunk.len();
         match thunk {
             Thunk::Block(body) => {
                 self.address += body.len();
@@ -23,45 +24,64 @@ impl FlattenThunk {
                     .collect()
             }
             Thunk::Condition { condition, thunk_true, thunk_false } => {
-                let mut body = self.flatten(*condition);
                 let old_exit_address = self.exit_address;
-                self.exit_address = self.address + thunk_true.len() + thunk_false.len();
+                if self.condition_depth == 0 {
+                    self.exit_address = self.address + thunk_len;
+                }
 
-                let false_address = self.address + thunk_true.len();
+                let mut body = self.flatten(*condition);
+                println!("address: {}, body len: {}", self.address, body.len());
+                body.push(Inst::PopCmp);
+                self.address += 1;
+                println!("address: {}, body len: {}", self.address, body.len());
+                self.condition_depth += 1;
+
+                let false_address = self.address + thunk_true.len() + 2;
                 body.push(Inst::JumpFalse(false_address));
+                self.address += 1;
                 body.extend(self.flatten(*thunk_true));
-
-                assert_eq!(false_address, body.len(), "possible incorrect Thunk::len() implementation");
                 body.push(Inst::Jump(self.exit_address));
+                self.address += 1;
                 body.extend(self.flatten(*thunk_false));
 
                 self.exit_address = old_exit_address;
+                self.condition_depth -= 1;
                 body
             }
             Thunk::Loop { condition, thunk, } => {
+                let old_exit_address = self.exit_address;
+                let old_break_address = self.break_address;
+                let old_entry_address = self.entry_address;
+
+                self.entry_address = self.address;
+                self.exit_address = self.address + thunk_len;
+
                 let mut body = if let Some(condition) = condition {
-                    self.flatten(*condition)
+                    let mut body = self.flatten(*condition);
+                    body.push(Inst::PopCmp);
+                    body
                 } else {
                     Vec::new()
                 };
 
-                let old_exit_address = self.exit_address;
-                let old_continue_address = self.continue_address;
-                let old_break_address = self.break_address;
-                self.continue_address = self.address;
-                self.exit_address = self.address + thunk.len();
                 self.break_address = self.exit_address;
 
                 body.extend(self.flatten(*thunk));
 
+                self.entry_address = old_entry_address;
                 self.break_address = old_break_address;
-                self.continue_address = old_continue_address;
                 self.exit_address = old_exit_address;
                 body
             }
 
-            Thunk::Continue => vec![Inst::Jump(self.continue_address)],
-            Thunk::Break => vec![Inst::Jump(self.break_address)],
+            Thunk::Continue => {
+                self.address += 1;
+                vec![Inst::Jump(self.entry_address)]
+            },
+            Thunk::Break => {
+                self.address += 1;
+                vec![Inst::Jump(self.break_address)]
+            },
         }
     }
 }
@@ -139,7 +159,7 @@ impl Thunk {
             Thunk::Chain(thunks) => thunks.iter().map(Thunk::len).sum(),
             Thunk::Condition { condition, thunk_true, thunk_false } => {
                 condition.len() + 
-                    1 + // JumpFalse
+                    2 + // PopCmp, JumpFalse
                     thunk_true.len() +
                     1 + // Jump
                     thunk_false.len()
@@ -148,7 +168,9 @@ impl Thunk {
             Thunk::Loop { condition, thunk } => condition
                 .as_ref()
                 .map(|c| c.len())
-                .unwrap_or(0) + thunk.len(),
+                .unwrap_or(0)
+                + 1 // PopCmp
+                + thunk.len(),
             Thunk::Continue => 1,
             Thunk::Break => 1,
         }

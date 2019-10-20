@@ -54,20 +54,18 @@ impl Compile {
                     Stmt::Assign(a)
                 }
                 Stmt::Expr(e) => Stmt::Expr(expr_precedence(e, &self.precedence)),
-                Stmt::TypeDef(_) | Stmt::FunDef(_) => {
+                Stmt::TypeDef(_) | Stmt::FunDef(_) | Stmt::If(_) => {
                     /*
                      * no-op - stay on lexical level, this is taken care of during translation
                      * TODO this is probably *not* taken care of during translation anymore, so this
                      * should probably be revisited
+                     * TODO this should most certainly be put in its own translation level pass
                      */
                     stmt
                 }
                 Stmt::Retn(mut r) => {
                     r.expr = r.expr.map(|expr| expr_precedence(expr, &self.precedence));
                     Stmt::Retn(r)
-                }
-                Stmt::If(_) => {
-                    unimplemented!("TODO(branch)")
                 }
             })
             .collect()
