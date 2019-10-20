@@ -181,7 +181,7 @@ impl Display for DumpInst<'_> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         let width = (((self.body.len() as f64).log(16.0) as usize) + 1).max(4);
         for (addr, inst) in self.body.iter().enumerate() {
-            write!(fmt, "{:0width$X} | ", addr, width=width);
+            write!(fmt, "{:0width$X} | ", addr, width=width)?;
             self.fmt_dump(fmt, inst)?;
             writeln!(fmt)?;
         }

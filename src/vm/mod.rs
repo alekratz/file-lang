@@ -21,6 +21,7 @@ use std::mem;
 pub struct Vm {
     storage: Storage,
     halt: bool,
+    compare: bool,
     return_value: Option<CopyValue>,
 }
 
@@ -29,6 +30,7 @@ impl Vm {
         Vm {
             storage: Storage::new(pool),
             halt: false,
+            compare: false,
             return_value: None,
         }
     }
@@ -74,6 +76,14 @@ impl Vm {
 
     pub fn deref_value(&self, value: CopyValue) -> Option<&Value> {
         self.storage().deref_value(value)
+    }
+
+    pub fn set_return_value(&mut self, value: Option<CopyValue>) {
+        self.return_value = value;
+    }
+
+    pub fn return_value(&self) -> Option<CopyValue> {
+        self.return_value
     }
 
     fn run(&mut self) -> Result<(), String> {
@@ -140,10 +150,22 @@ impl Vm {
                     self.return_value = None;
                 }
                 Inst::PopCall(argc) => self.pop_call(argc),
-                Inst::PopCmp => unimplemented!(),
-                Inst::Jump(_) => unimplemented!(),
-                Inst::JumpTrue(_) => unimplemented!(),
-                Inst::JumpFalse(_) => unimplemented!(),
+                Inst::PopCmp => {
+                    let tos = self.stack_mut().pop().expect("no tos for PopCmp");
+                    self.compare = tos.is_truthy();
+                }
+                Inst::Jump(addr) => {
+                    let stack_frame = self.stack_frame_mut();
+                    stack_frame.ip = addr;
+                },
+                Inst::JumpTrue(addr) => if self.compare {
+                    let stack_frame = self.stack_frame_mut();
+                    stack_frame.ip = addr;
+                },
+                Inst::JumpFalse(addr) => if !self.compare {
+                    let stack_frame = self.stack_frame_mut();
+                    stack_frame.ip = addr;
+                },
                 Inst::Return => {
                     let frame = self
                         .stack_mut()

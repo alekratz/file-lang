@@ -30,10 +30,8 @@ impl FlattenThunk {
                 }
 
                 let mut body = self.flatten(*condition);
-                println!("address: {}, body len: {}", self.address, body.len());
                 body.push(Inst::PopCmp);
                 self.address += 1;
-                println!("address: {}, body len: {}", self.address, body.len());
                 self.condition_depth += 1;
 
                 let false_address = self.address + thunk_true.len() + 2;

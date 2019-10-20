@@ -1,9 +1,28 @@
-use crate::vm::{fun::Fun, object::Object};
+use crate::vm::{fun::Fun, object::Object, store::Storage};
 use shrinkwraprs::Shrinkwrap;
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
 };
+
+pub struct ValueDisplay<'vm> {
+    value: CopyValue, storage: &'vm Storage
+}
+
+impl Display for ValueDisplay<'_> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        match self.value {
+            CopyValue::Empty => write!(fmt, ""),
+            CopyValue::Int(i) => write!(fmt, "{}", i),
+            CopyValue::Real(f) => write!(fmt, "{}", f),
+            CopyValue::HeapRef(_) | CopyValue::ConstRef(_) => {
+                let value = self.storage.deref_value(self.value)
+                    .expect("invalid pointer");
+                write!(fmt, "{}", value)
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum CopyValue {
@@ -19,6 +38,23 @@ impl CopyValue {
         match self {
             CopyValue::HeapRef(_) | CopyValue::ConstRef(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            CopyValue::Empty => false,
+            CopyValue::Int(i) => *i != 0,
+            CopyValue::Real(f) => (*f != 0.0 && !f.is_nan()),
+            // TODO : heap/const ref lookup
+            CopyValue::HeapRef(_) | CopyValue::ConstRef(_) => true,
+        }
+    }
+
+    pub fn value_display<'vm>(&self, storage: &'vm Storage) -> ValueDisplay<'vm> {
+        ValueDisplay {
+            value: *self,
+            storage,
         }
     }
 }
@@ -62,7 +98,7 @@ impl Display for Value {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match self {
             Value::CopyValue(value) => write!(fmt, "{}", value),
-            Value::String(value) => write!(fmt, "{:?}", value),
+            Value::String(value) => write!(fmt, "{}", value),
             Value::Object(obj) => write!(fmt, "{:?}", obj),
             Value::Fun(fun) => write!(fmt, "{:?}", fun),
         }

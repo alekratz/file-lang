@@ -1,6 +1,6 @@
 use crate::{
     syn::{op::OpKind, parser::Parser},
-    vm::{fun::BuiltinFunPtr, value::CopyValue, Vm},
+    vm::{fun::BuiltinFunPtr, value::{CopyValue, Value}, Vm},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -65,18 +65,25 @@ builtins! {
         println!();
     }
 
-    "print" => fn builtin_print(_vm: &mut Vm, args: Vec<CopyValue>) {
+    "print" => fn builtin_print(vm: &mut Vm, args: Vec<CopyValue>) {
         if args.len() == 0 {
             return;
         }
-        print!("{:?}", args.first().unwrap());
+        print!("{}", args.first().unwrap().value_display(vm.storage()));
         for arg in args.iter().skip(1) {
-            print!(" {:?}", arg);
+            print!(" {}", arg.value_display(vm.storage()));
         }
     }
 
-    "str" => fn builtin_str(_vm: &mut Vm, _args: Vec<CopyValue>) {
-        unimplemented!();
+    "str" => fn builtin_str(vm: &mut Vm, args: Vec<CopyValue>) {
+        let mut args = args;
+        let arg = args.pop()
+            .expect("no args");
+        assert!(args.is_empty());
+
+        let value_string = arg.value_display(vm.storage()).to_string();
+        let heap_ref = vm.storage_mut().allocate_heap(Value::String(value_string));
+        vm.set_return_value(Some(CopyValue::HeapRef(heap_ref)));
     }
 }
 
