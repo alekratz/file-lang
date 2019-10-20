@@ -35,6 +35,8 @@ pub enum TokenKind {
     KwEl,
     KwLoop,
     KwWhile,
+    KwCtu,
+    KwBrk,
 }
 
 impl Display for TokenKind {
@@ -73,6 +75,8 @@ impl Display for TokenKind {
             TokenKind::KwEl => write!(fmt, "`el` keyword"),
             TokenKind::KwLoop => write!(fmt, "`loop` keyword"),
             TokenKind::KwWhile => write!(fmt, "`while` keyword"),
+            TokenKind::KwCtu => write!(fmt, "`ctu` keyword"),
+            TokenKind::KwBrk => write!(fmt, "`brk` keyword"),
         }
     }
 }

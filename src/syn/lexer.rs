@@ -53,6 +53,8 @@ lazy_static! {
         "el" => TokenKind::KwEl,
         "loop" => TokenKind::KwLoop,
         "while" => TokenKind::KwWhile,
+        "ctu" => TokenKind::KwCtu,  // NOTE: maybe ctinu?
+        "brk" => TokenKind::KwBrk,
     };
 }
 
