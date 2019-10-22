@@ -160,9 +160,9 @@ impl IrToInst {
             Stmt::Expr(expr) => self.translate_expr(expr, ExprCtx::Stmt),
             Stmt::Retn(retn) => self.translate_retn(retn),
             Stmt::Branch(branch) => self.translate_branch(branch),
-            Stmt::Loop(_) => unimplemented!("TODO(branch)"),
-            Stmt::Ctu(_) => unimplemented!("TODO(branch)"),
-            Stmt::Brk(_) => unimplemented!("TODO(branch)"),
+            Stmt::Loop(l) => self.translate_loop(l),
+            Stmt::Ctu(_) => Thunk::Continue,
+            Stmt::Brk(_) => Thunk::Break,
         }
     }
 
@@ -314,6 +314,13 @@ impl IrToInst {
             condition: self.translate_expr(condition, ExprCtx::Push).into(),
             thunk_true: self.translate_body(body_true).into(),
             thunk_false: self.translate_body(body_false).into(),
+        }
+    }
+
+    fn translate_loop(&self, Loop { condition, body, .. }: Loop) -> Thunk {
+        Thunk::Loop {
+            condition: condition.map(|c| self.translate_expr(c, ExprCtx::Push).into()),
+            thunk: self.translate_body(body).into(),
         }
     }
 

@@ -40,6 +40,17 @@ macro_rules! bin_op_builtins {
     };
 }
 
+macro_rules! bin_op_builtin {
+    ($name:ident, $expr:expr) => {{
+        fn $name (vm: &mut Vm, args: Vec<CopyValue>) {
+            let mut args = args.into_iter();
+            let lhs = args.next().unwrap();
+            let rhs = args.next().unwrap();
+            $expr
+        }
+    }};
+}
+
 macro_rules! un_op_builtins {
     ($($builtin_name:expr => fn $fn_name:ident ($($param_name:ident : $param_t:ty),*) $fn_body:block)*) => {
         $(
@@ -88,23 +99,58 @@ builtins! {
 }
 
 bin_op_builtins! {
-    "+" => fn builtin_bin_plus_op(_vm: &mut Vm, _args: Vec<CopyValue>) {
+    "+" => fn builtin_bin_plus_op(vm: &mut Vm, args: Vec<CopyValue>) {
+        let mut args = args.into_iter();
+        let lhs = args.next().unwrap();
+        let rhs = args.next().unwrap();
+        assert_eq!(args.next(), None);
+
+        let result = match (lhs, rhs) {
+            (CopyValue::Int(i), CopyValue::Int(j)) => CopyValue::Int(i + j),
+            (CopyValue::Real(f), CopyValue::Int(i)) | (CopyValue::Int(i), CopyValue::Real(f)) => CopyValue::Real(i as f64 + f),
+            (CopyValue::Real(f), CopyValue::Real(r)) => CopyValue::Real(f + r),
+            _ => { unimplemented!() }
+        };
+        vm.set_return_value(Some(result));
+    }
+
+    "-" => fn builtin_bin_minus_op(vm: &mut Vm, args: Vec<CopyValue>) {
+        let mut args = args.into_iter();
+        let lhs = args.next().unwrap();
+        let rhs = args.next().unwrap();
+        assert_eq!(args.next(), None);
+
+        let result = match (lhs, rhs) {
+            (CopyValue::Int(i), CopyValue::Int(j)) => CopyValue::Int(i - j),
+            (CopyValue::Real(f), CopyValue::Int(i)) => CopyValue::Real(f - (i as f64)),
+            (CopyValue::Int(i), CopyValue::Real(f)) => CopyValue::Real((i as f64) - f),
+            (CopyValue::Real(f), CopyValue::Real(r)) => CopyValue::Real(f - r),
+            _ => { unimplemented!() }
+        };
+        vm.set_return_value(Some(result));
+    }
+
+    "*" => fn builtin_bin_splat_op(_vm: &mut Vm, args: Vec<CopyValue>) {
+        let mut args = args.into_iter();
+        let _lhs = args.next().unwrap();
+        let _rhs = args.next().unwrap();
+        assert_eq!(args.next(), None);
         unimplemented!();
     }
 
-    "-" => fn builtin_bin_minus_op(_vm: &mut Vm, _args: Vec<CopyValue>) {
+    "/" => fn builtin_bin_fslash_op(_vm: &mut Vm, args: Vec<CopyValue>) {
+        let mut args = args.into_iter();
+        let _lhs = args.next().unwrap();
+        let _rhs = args.next().unwrap();
+        assert_eq!(args.next(), None);
         unimplemented!();
     }
 
-    "*" => fn builtin_bin_splat_op(_vm: &mut Vm, _args: Vec<CopyValue>) {
-        unimplemented!();
-    }
-
-    "/" => fn builtin_bin_fslash_op(_vm: &mut Vm, _args: Vec<CopyValue>) {
-        unimplemented!();
-    }
-
-    "|>" => fn builtin_bin_pipe_gt_op(_vm: &mut Vm, _args: Vec<CopyValue>) {
+    "|>" => fn builtin_bin_pipe_gt_op(_vm: &mut Vm, args: Vec<CopyValue>) {
+        let mut args = args.into_iter();
+        let _lhs = args.next().unwrap();
+        let _rhs = args.next().unwrap();
+        assert_eq!(args.next(), None);
         unimplemented!();
     }
 }

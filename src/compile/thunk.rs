@@ -1,89 +1,6 @@
 use crate::vm::inst::Inst;
 use std::mem;
 
-#[derive(Debug, Clone, Default)]
-struct FlattenThunk {
-    address: usize,
-    entry_address: usize,
-    exit_address: usize,
-    break_address: usize,
-    condition_depth: usize,
-}
-
-impl FlattenThunk {
-    fn flatten(&mut self, thunk: Thunk) -> Vec<Inst> {
-        let thunk_len = thunk.len();
-        match thunk {
-            Thunk::Block(body) => {
-                self.address += body.len();
-                body
-            }
-            Thunk::Chain(thunks) => {
-                thunks.into_iter()
-                    .flat_map(|thunk| self.flatten(thunk))
-                    .collect()
-            }
-            Thunk::Condition { condition, thunk_true, thunk_false } => {
-                let old_exit_address = self.exit_address;
-                if self.condition_depth == 0 {
-                    self.exit_address = self.address + thunk_len;
-                }
-
-                let mut body = self.flatten(*condition);
-                body.push(Inst::PopCmp);
-                self.address += 1;
-                self.condition_depth += 1;
-
-                let false_address = self.address + thunk_true.len() + 2;
-                body.push(Inst::JumpFalse(false_address));
-                self.address += 1;
-                body.extend(self.flatten(*thunk_true));
-                body.push(Inst::Jump(self.exit_address));
-                self.address += 1;
-                body.extend(self.flatten(*thunk_false));
-
-                self.exit_address = old_exit_address;
-                self.condition_depth -= 1;
-                body
-            }
-            Thunk::Loop { condition, thunk, } => {
-                let old_exit_address = self.exit_address;
-                let old_break_address = self.break_address;
-                let old_entry_address = self.entry_address;
-
-                self.entry_address = self.address;
-                self.exit_address = self.address + thunk_len;
-
-                let mut body = if let Some(condition) = condition {
-                    let mut body = self.flatten(*condition);
-                    body.push(Inst::PopCmp);
-                    body
-                } else {
-                    Vec::new()
-                };
-
-                self.break_address = self.exit_address;
-
-                body.extend(self.flatten(*thunk));
-
-                self.entry_address = old_entry_address;
-                self.break_address = old_break_address;
-                self.exit_address = old_exit_address;
-                body
-            }
-
-            Thunk::Continue => {
-                self.address += 1;
-                vec![Inst::Jump(self.entry_address)]
-            },
-            Thunk::Break => {
-                self.address += 1;
-                vec![Inst::Jump(self.break_address)]
-            },
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum Thunk {
     Block(Vec<Inst>),
@@ -168,6 +85,8 @@ impl Thunk {
                 .map(|c| c.len())
                 .unwrap_or(0)
                 + 1 // PopCmp
+                + 1 // JumpFalse
+                + 1 // Jump
                 + thunk.len(),
             Thunk::Continue => 1,
             Thunk::Break => 1,
@@ -186,3 +105,93 @@ impl From<Thunk> for Vec<Inst> {
         other.flatten()
     }
 }
+
+#[derive(Debug, Clone, Default)]
+struct FlattenThunk {
+    address: usize,
+    entry_address: usize,
+    exit_address: usize,
+    break_address: usize,
+    condition_depth: usize,
+}
+
+impl FlattenThunk {
+    fn flatten(&mut self, thunk: Thunk) -> Vec<Inst> {
+        let thunk_len = thunk.len();
+        match thunk {
+            Thunk::Block(body) => {
+                self.address += body.len();
+                body
+            }
+            Thunk::Chain(thunks) => {
+                thunks.into_iter()
+                    .flat_map(|thunk| self.flatten(thunk))
+                    .collect()
+            }
+            Thunk::Condition { condition, thunk_true, thunk_false } => {
+                let old_exit_address = self.exit_address;
+                if self.condition_depth == 0 {
+                    self.exit_address = self.address + thunk_len;
+                }
+
+                let mut body = self.flatten(*condition);
+                body.push(Inst::PopCmp);
+                self.address += 1;
+                self.condition_depth += 1;
+
+                let false_address = self.address + thunk_true.len() + 2;
+                body.push(Inst::JumpFalse(false_address));
+                self.address += 1;
+                body.extend(self.flatten(*thunk_true));
+                body.push(Inst::Jump(self.exit_address));
+                self.address += 1;
+                body.extend(self.flatten(*thunk_false));
+
+                self.exit_address = old_exit_address;
+                self.condition_depth -= 1;
+                body
+            }
+            Thunk::Loop { condition, thunk, } => {
+                let old_exit_address = self.exit_address;
+                let old_break_address = self.break_address;
+                let old_entry_address = self.entry_address;
+
+                self.entry_address = self.address;
+                self.exit_address = self.address + thunk_len;
+
+                let mut body = if let Some(condition) = condition {
+                    let mut body = self.flatten(*condition);
+                    body.push(Inst::PopCmp);
+                    self.address += 1;
+                    body
+                } else {
+                    Vec::new()
+                };
+
+                body.push(Inst::JumpFalse(self.exit_address));
+                self.address += 1;
+
+                self.break_address = self.exit_address;
+
+                body.extend(self.flatten(*thunk));
+                body.push(Inst::Jump(self.entry_address));
+                self.address += 1;
+
+                self.entry_address = old_entry_address;
+                self.break_address = old_break_address;
+                self.exit_address = old_exit_address;
+                body
+            }
+
+            Thunk::Continue => {
+                self.address += 1;
+                vec![Inst::Jump(self.entry_address)]
+            },
+            Thunk::Break => {
+                self.address += 1;
+                vec![Inst::Jump(self.break_address)]
+            },
+        }
+    }
+}
+

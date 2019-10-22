@@ -208,7 +208,9 @@ impl<'compile> CollectStringConstants<'compile> {
                 }
                 Stmt::Ctu(_) | Stmt::Brk(_) => {}
                 Stmt::Loop(l) => {
-                    self.collect_expr(&l.condition);
+                    if let Some(condition) = &l.condition {
+                        self.collect_expr(&condition);
+                    }
                     self.collect_body(&l.body);
                 }
             }

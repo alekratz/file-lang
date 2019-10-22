@@ -123,7 +123,7 @@ pub struct Branch {
 #[derive(Debug, Clone)]
 pub struct Loop {
     pub span: Span,
-    pub condition: Expr,
+    pub condition: Option<Expr>,
     pub body: Vec<Stmt>,
 }
 

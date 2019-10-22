@@ -76,6 +76,12 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
             .collect()
     }
 
+    fn translate_body(&mut self, body: Vec<ast::Stmt>) -> Result<Vec<Stmt>> {
+        body.into_iter()
+            .map(|stmt| self.translate_stmt(stmt))
+            .collect()
+    }
+
     fn translate_stmt(&mut self, stmt: ast::Stmt) -> Result<Stmt> {
         let stmt = match stmt {
             ast::Stmt::TypeDef(_) => unreachable!(),
@@ -98,7 +104,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
         let op = if &op.kind == &[OpKind::Eq] {
             None
         } else {
-            let op_kind = binary_op_binding_name(&op.kind[..op.kind.len() - 2]);
+            let op_kind = binary_op_binding_name(&op.kind[..op.kind.len() - 1]);
             let binding = self.bindings.get_binding(&op_kind).ok_or_else(|| {
                 let span = op.span();
                 let what = format!("augmented assignment operator `{}`", op.text(self.text));
@@ -279,9 +285,7 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
     fn translate_if(&mut self, ast::If { condition_body, elif_bodies, else_body, .. }: ast::If) -> Result<Branch> {
         let ast::ConditionBody { span, condition, body, } = condition_body;
         let if_condition = self.translate_expr(condition)?;
-        let if_body = body.into_iter()
-            .map(|stmt| self.translate_stmt(stmt))
-            .collect::<Result<Vec<_>>>()?;
+        let if_body = self.translate_body(body)?;
 
         let mut if_branch = Branch {
             span,
@@ -316,12 +320,20 @@ impl<'compile, 'bindings: 'compile> AstToIr<'compile, 'bindings> {
         Ok(if_branch)
     }
 
-    fn translate_while(&self, _: ast::While) -> Result<Loop> {
-        unimplemented!()
+    fn translate_while(&mut self, ast::While { span, condition_body: ast::ConditionBody { condition, body, .. }, }: ast::While) -> Result<Loop> {
+        Ok(Loop {
+            span,
+            condition: Some(self.translate_expr(condition)?),
+            body: self.translate_body(body)?,
+        })
     }
 
-    fn translate_loop(&self, _: ast::Loop) -> Result<Loop> {
-        unimplemented!()
+    fn translate_loop(&mut self, ast::Loop { span, body, }: ast::Loop) -> Result<Loop> {
+        Ok(Loop {
+            span,
+            condition: None,
+            body: self.translate_body(body)?,
+        })
     }
 
     fn get_bin_op_binding(&self, op: &ast::Op) -> Result<Binding> {
