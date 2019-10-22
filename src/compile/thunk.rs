@@ -158,6 +158,7 @@ impl FlattenThunk {
 
                 self.entry_address = self.address;
                 self.exit_address = self.address + thunk_len;
+                self.break_address = self.exit_address;
 
                 let mut body = if let Some(condition) = condition {
                     let mut body = self.flatten(*condition);
@@ -170,8 +171,6 @@ impl FlattenThunk {
 
                 body.push(Inst::JumpFalse(self.exit_address));
                 self.address += 1;
-
-                self.break_address = self.exit_address;
 
                 body.extend(self.flatten(*thunk));
                 body.push(Inst::Jump(self.entry_address));
