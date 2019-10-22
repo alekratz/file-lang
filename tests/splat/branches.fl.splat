@@ -1,0 +1,20 @@
+foo = 0;
+
+if foo {
+    println("foo");
+} el {
+    println("not foo");
+}
+
+foo += 1;
+
+if foo {
+    println("foo");
+} el {
+    println("not foo");
+}
+
+%output
+not foo
+foo
+%output

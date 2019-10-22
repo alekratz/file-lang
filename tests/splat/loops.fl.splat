@@ -1,0 +1,16 @@
+count = 5;
+
+while count {
+    println(count);
+    count -= 1;
+}
+println(count);
+
+%output
+5
+4
+3
+2
+1
+0
+%output
