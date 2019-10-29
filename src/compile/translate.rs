@@ -54,7 +54,11 @@ impl<'ctx> AstToIr<'ctx> {
     }
 
     fn translate(mut self) -> Result<IrCtx<'ctx>> {
-        unimplemented!()
+        let ir = self.translate_body(&self.ctx.ast())?;
+        // TODO : collect constants
+        let constants = Vec::new();
+
+        Ok(IrCtx::new(self.ctx, constants, ir))
     }
 
     fn translate_body(&mut self, body: &Vec<ast::Stmt>) -> Result<Vec<Stmt>> {

@@ -1,6 +1,7 @@
 use crate::{
     compile::{binding::*, ir},
     syn::ast,
+    vm::value::ObjectValue,
 };
 use std::{collections::HashMap, rc::Rc};
 
@@ -39,8 +40,23 @@ impl<'ctx> SynCtx<'ctx> {
 
 #[derive(Debug)]
 pub struct IrCtx<'ctx> {
-    pub text: &'ctx str,
-    pub constants: HashMap<Binding, ()>,
-    pub bindings: Vec<String>,
-    pub ir: Vec<ir::Stmt>,
+    text: &'ctx str,
+    constants: Vec<ObjectValue>,
+    bindings: Vec<String>,
+    ir: Vec<ir::Stmt>,
+}
+
+impl<'ctx> IrCtx<'ctx> {
+    pub fn new(
+        SynCtx { text, bindings, .. }: SynCtx<'ctx>,
+        constants: Vec<ObjectValue>,
+        ir: Vec<ir::Stmt>,
+    ) -> Self {
+        IrCtx {
+            text,
+            constants,
+            bindings: bindings.into(),
+            ir,
+        }
+    }
 }

@@ -3,7 +3,10 @@ use crate::{
     vm::{inst::Inst, storage::Storage},
 };
 use shrinkwraprs::Shrinkwrap;
-use std::cell::RefCell;
+use std::{
+    fmt::Debug,
+    cell::RefCell,
+};
 
 #[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, Clone, Copy, Default)]
 pub struct ConstRef(pub usize);
@@ -24,7 +27,10 @@ pub enum StackValue {
     Empty,
 }
 
-pub trait Object {
+/// A boxed, "live" object value.
+pub type ObjectValue = Box<dyn Object>;
+
+pub trait Object: Debug {
     fn get_attr(&self, name: &str) -> Option<StackValue>;
     fn set_attr(&self, name: String, value: StackValue);
 }

@@ -1,7 +1,6 @@
 use crate::vm::value::*;
 use std::mem;
 
-pub type ObjectValue = Box<dyn Object>;
 pub type HeapSlot = Option<ObjectValue>;
 
 /// The initial number of slots for the heap to have.
