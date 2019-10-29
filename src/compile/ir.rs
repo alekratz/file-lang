@@ -1,14 +1,14 @@
 use crate::{
-    common::span::*,
-    compile::bindings::Bindings,
-    vm::{fun::BuiltinFunPtr, value::Binding},
+    common::{
+        span::*,
+        binding::*,
+    },
 };
-use std::fmt::{self, Debug, Formatter};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum BoundFun {
     User(FunDef),
-    Builtin(Binding, Box<BuiltinFunPtr>),
+    Builtin,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +36,7 @@ pub enum Stmt {
     Loop(Loop),
     Ctu(Span),
     Brk(Span),
+    Nop(Span),
 }
 
 #[derive(Debug, Clone)]
@@ -134,26 +135,7 @@ impl BoundFun {
     pub fn binding(&self) -> Binding {
         match self {
             BoundFun::User(fun) => fun.binding,
-            BoundFun::Builtin(binding, _) => *binding,
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// impl Debug
-////////////////////////////////////////////////////////////////////////////////
-impl Debug for BoundFun {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match self {
-            BoundFun::User(fun) => fmt.debug_tuple("BoundFun").field(&fun).finish(),
-            BoundFun::Builtin(binding, fun) => fmt
-                .debug_tuple("BoundFun")
-                .field(&binding)
-                .field(&format!(
-                    "builtin function at {:#x}",
-                    (&fun as *const _ as usize)
-                ))
-                .finish(),
+            BoundFun::Builtin => unimplemented!(),
         }
     }
 }
@@ -169,7 +151,7 @@ impl Spanned for Stmt {
             Stmt::Retn(r) => r.span(),
             Stmt::Branch(b) => b.span(),
             Stmt::Loop(l) => l.span(),
-            Stmt::Ctu(s) | Stmt::Brk(s) => *s,
+            Stmt::Ctu(s) | Stmt::Brk(s) | Stmt::Nop(s) => *s,
         }
     }
 }

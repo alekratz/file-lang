@@ -5,7 +5,7 @@ mod syn;
 mod compile;
 mod vm;
 
-use crate::{common::span::*, compile::Compile};
+use crate::common::span::*;
 use matches::matches;
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
@@ -15,31 +15,12 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "file language")]
-enum Opt {
-    #[structopt(about = "Transform the syntax in a file and print it to the command line")]
-    Dump {
-        #[structopt(parse(from_os_str))]
-        file: PathBuf,
+struct Opt {
+    #[structopt(skip)]
+    dump: String,
 
-        #[structopt(subcommand, about = "What kind of dump to perform")]
-        what: Dump,
-    },
-    Run {
-        #[structopt(parse(from_os_str))]
-        file: PathBuf,
-    },
-}
-
-#[derive(Debug, Copy, Clone, StructOpt)]
-enum Dump {
-    #[structopt(about = "Dump the tokens from a file")]
-    Tokens,
-
-    #[structopt(about = "Dump syntax tree from a file")]
-    Tree,
-
-    #[structopt(about = "Dump translated bytecode")]
-    Bytecode,
+    #[structopt(parse(from_os_str))]
+    file: PathBuf,
 }
 
 fn dump_tokens(text: &str) -> Result<()> {
@@ -67,89 +48,19 @@ fn dump_tree(text: &str) -> Result<()> {
     Ok(())
 }
 
-fn dump_bytecode(text: &str) -> Result<()> {
-    use vm::prelude::*;
-    let (main_fun, pool) = Compile::new().compile(text)?;
-
-    let (funs, const_values): (Vec<_>, Vec<_>) = pool
-        .const_pool()
-        .iter()
-        .partition(|value| matches!(value, Value::Fun(_)));
-
-    let mut funs: Vec<_> = funs
-        .into_iter()
-        .map(|fun| {
-            if let Value::Fun(fun) = fun {
-                fun
-            } else {
-                unreachable!()
-            }
-        })
-        .collect();
-    funs.push(&main_fun);
-
-    println!(
-        "{} functions, {} constant values",
-        funs.len(),
-        const_values.len()
-    );
-
-    if !const_values.is_empty() {
-        println!(
-            "= CONSTANTS ===================================================================="
-        );
-        for c in &const_values {
-            println!("{:?}", c);
-        }
-        println!();
-    }
-
-    println!("= FUNCTIONS ====================================================================");
-    for fun in &funs {
-        println!("{}", pool.get_binding_name(fun.binding()));
-    }
-    println!();
-
-    println!("= FUNCTION DUMP ================================================================");
-    println!();
-    for fun in &funs {
-        if let Fun::User(fun) = &fun {
-            println!("= {}", pool.get_binding_name(fun.binding()));
-            println!();
-
-            let body = Inst::dump_body(&fun.code(), &pool);
-            println!("{}", body);
-        }
-    }
-
-    Ok(())
-}
-
-fn run_text(text: &str) -> Result<()> {
-    use vm::prelude::*;
-    let (main_fun, pool) = Compile::new().compile(text)?;
-    let mut vm = Vm::new(pool);
-    vm.main(&main_fun)?;
-    Ok(())
-}
-
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
-    match opt {
-        Opt::Dump { file, what } => {
-            let text = fs::read_to_string(file)?;
-            match what {
-                Dump::Tokens => dump_tokens(&text)?,
-                Dump::Tree => dump_tree(&text)?,
-                Dump::Bytecode => dump_bytecode(&text)?,
-            }
-        }
-        Opt::Run { file } => {
-            let text = fs::read_to_string(file)?;
-            run_text(&text)?;
-        }
+    let text = fs::read_to_string(&opt.file)?;
+
+    match opt.dump.as_str() {
+        "" => {}
+        "tokens" => dump_tokens(&text)?,
+        "tree" => dump_tree(&text)?,
+        bad => println!("WARNING: unknown dump option '{}'", bad),
     }
+
+    compile::compile(&text)?;
 
     Ok(())
 }

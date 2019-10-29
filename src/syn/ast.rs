@@ -9,6 +9,15 @@ use std::fmt::{self, Display, Formatter};
 
 pub type Lookaheads = &'static [TokenKind];
 
+fn op_binding_name(op: &[OpKind]) -> String {
+    assert!(op.len() > 0);
+    let mut name = op[0].to_string();
+    for op in &op[1..] {
+        name += &op.to_string();
+    }
+    name
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Macros
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,6 +296,22 @@ pub struct AssignOp {
 impl Stmt {
     pub(super) fn expects_eol(&self) -> bool {
         matches!(self, Stmt::Assign(_) | Stmt::Expr(_) | Stmt::Retn(_) | Stmt::Ctu(_) | Stmt::Brk(_))
+    }
+}
+
+impl Op {
+    pub fn binary_binding_name(&self) -> String {
+        format!("#*binary op {}*#", op_binding_name(&self.kind))
+    }
+
+    pub fn unary_binding_name(&self) -> String {
+        format!("#*unary op {}*#", op_binding_name(&self.kind))
+    }
+}
+
+impl AssignOp {
+    pub fn binding_name(&self) -> String {
+        format!("#*assign op {}*#", op_binding_name(&self.kind))
     }
 }
 

@@ -1,123 +1,74 @@
-use crate::vm::{fun::Fun, object::Object, store::Storage};
-use shrinkwraprs::Shrinkwrap;
-use std::{
-    collections::HashMap,
-    fmt::{self, Display, Formatter},
+use crate::{
+    common::prelude::*,
+    vm::{inst::Inst, storage::Storage},
 };
+use shrinkwraprs::Shrinkwrap;
+use std::cell::RefCell;
 
-pub struct ValueDisplay<'vm> {
-    value: CopyValue, storage: &'vm Storage
-}
-
-impl Display for ValueDisplay<'_> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match self.value {
-            CopyValue::Empty => write!(fmt, ""),
-            CopyValue::Int(i) => write!(fmt, "{}", i),
-            CopyValue::Real(f) => write!(fmt, "{}", f),
-            CopyValue::HeapRef(_) | CopyValue::ConstRef(_) => {
-                let value = self.storage.deref_value(self.value)
-                    .expect("invalid pointer");
-                write!(fmt, "{}", value)
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub enum CopyValue {
-    Empty,
-    Int(i64),
-    Real(f64),
-    HeapRef(HeapRef),
-    ConstRef(ConstRef),
-}
-
-impl CopyValue {
-    pub fn is_ref(&self) -> bool {
-        match self {
-            CopyValue::HeapRef(_) | CopyValue::ConstRef(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_truthy(&self) -> bool {
-        match self {
-            CopyValue::Empty => false,
-            CopyValue::Int(i) => *i != 0,
-            CopyValue::Real(f) => (*f != 0.0 && !f.is_nan()),
-            // TODO : heap/const ref lookup
-            CopyValue::HeapRef(_) | CopyValue::ConstRef(_) => true,
-        }
-    }
-
-    pub fn value_display<'vm>(&self, storage: &'vm Storage) -> ValueDisplay<'vm> {
-        ValueDisplay {
-            value: *self,
-            storage,
-        }
-    }
-}
-
-impl From<ValueRef> for CopyValue {
-    fn from(other: ValueRef) -> Self {
-        match other {
-            ValueRef::Heap(r) => CopyValue::HeapRef(r),
-            ValueRef::Const(r) => CopyValue::ConstRef(r),
-        }
-    }
-}
-
-impl Default for CopyValue {
-    fn default() -> Self {
-        CopyValue::Empty
-    }
-}
-
-impl Display for CopyValue {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match self {
-            CopyValue::Empty => write!(fmt, ""),
-            CopyValue::Int(i) => write!(fmt, "{}", i),
-            CopyValue::Real(r) => write!(fmt, "{}", r),
-            CopyValue::HeapRef(HeapRef(r)) => write!(fmt, "<heap ref {}>", r),
-            CopyValue::ConstRef(ConstRef(r)) => write!(fmt, "<const ref {}>", r),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Value {
-    CopyValue(CopyValue),
-    String(String),
-    Object(Object),
-    Fun(Fun),
-}
-
-impl Display for Value {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match self {
-            Value::CopyValue(value) => write!(fmt, "{}", value),
-            Value::String(value) => write!(fmt, "{}", value),
-            Value::Object(obj) => write!(fmt, "{:?}", obj),
-            Value::Fun(fun) => write!(fmt, "{:?}", fun),
-        }
-    }
-}
-
-#[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
+#[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, Clone, Copy, Default)]
 pub struct ConstRef(pub usize);
 
-#[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
+#[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, Clone, Copy, Default)]
 pub struct HeapRef(pub usize);
 
-#[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
-pub struct Binding(pub usize);
+/// A value that lives on the stack.
+///
+/// Stack values must be lightweight, and more importantly, copyable. Stack values are either
+/// numbers, an empty ("unset") value, a heap reference, or a constant value reference.
+#[derive(Debug, Clone, Copy)]
+pub enum StackValue {
+    ConstRef(ConstRef),
+    HeapRef(HeapRef),
+    Int(i64),
+    Float(f64),
+    Empty,
+}
 
-pub type CopyValuePool = HashMap<Binding, CopyValue>;
+pub trait Object {
+    fn get_attr(&self, name: &str) -> Option<StackValue>;
+    fn set_attr(&self, name: String, value: StackValue);
+}
 
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum ValueRef {
-    Heap(HeapRef),
-    Const(ConstRef),
+/// The base object type.
+///
+/// This probably should not be used by the language directly, and instead should be used as a way
+/// of backing object storage.
+#[derive(Debug, Default)]
+struct BaseObject {
+    members: RefCell<Mapping<String, StackValue>>,
+}
+
+impl BaseObject {
+    pub fn new(members: Mapping<String, StackValue>) -> Self {
+        BaseObject {
+            members: members.into(),
+        }
+    }
+}
+
+impl Object for BaseObject {
+    fn get_attr(&self, name: &str) -> Option<StackValue> {
+        let members = self.members.borrow();
+        members.get(name)
+            .copied()
+    }
+
+    fn set_attr(&self, name: String, value: StackValue) {
+        let mut members = self.members.borrow_mut();
+        members.insert(name, value);
+    }
+}
+
+struct TypeObject {
+    type_name: ConstRef,
+    base_object: BaseObject,
+}
+
+impl TypeObject {
+    pub fn new(type_name: ConstRef, storage: &mut Storage) -> Self {
+        TypeObject {
+            type_name,
+            base_object: BaseObject::default(),
+        }
+    }
 }
