@@ -1,8 +1,4 @@
-use crate::{
-    common::prelude::*,
-    compile::error::*,
-    syn::prelude::{Op, OpKind},
-};
+use crate::syn::prelude::OpKind;
 
 pub use crate::common::binding::{
     Bindings,

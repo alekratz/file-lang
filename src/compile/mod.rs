@@ -5,9 +5,7 @@ pub mod error;
 mod ir;
 mod translate;
 
-use crate::{
-    compile::{binding::*, error::*, context::*},
-};
+use crate::compile::error::*;
 
 pub fn compile(text: &str) -> Result<()> {
     let _ir = translate::ast_to_ir(text)?;

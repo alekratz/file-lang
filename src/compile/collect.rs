@@ -1,4 +1,4 @@
-use crate::{common::span::*, compile::{binding::*, context::*}, syn::ast};
+use crate::{common::span::*, compile::context::*, syn::ast};
 
 struct CollectBindings<'ctx> {
     ctx: SynCtx<'ctx>,
@@ -25,9 +25,9 @@ impl<'ctx> CollectBindings<'ctx> {
         match stmt {
             ast::Stmt::TypeDef(type_def) => self.collect_type_def(type_def),
             ast::Stmt::Assign(assign) => self.collect_assign(assign),
-            ast::Stmt::Expr(expr) => {}
+            ast::Stmt::Expr(_expr) => {}
             ast::Stmt::FunDef(fun_def) => self.collect_fun_def(fun_def),
-            ast::Stmt::Retn(retn) => {}
+            ast::Stmt::Retn(_retn) => {}
             ast::Stmt::If(if_) => self.collect_if(if_),
             ast::Stmt::While(while_) => self.collect_while(while_),
             ast::Stmt::Loop(loop_) => self.collect_loop(loop_),

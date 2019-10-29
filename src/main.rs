@@ -6,7 +6,6 @@ mod compile;
 mod vm;
 
 use crate::common::span::*;
-use matches::matches;
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 use syn::prelude::*;
