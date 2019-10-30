@@ -388,12 +388,12 @@ impl<'t> IrToInst<'t> {
         IrToInst { ctx }
     }
 
-    fn translate(mut self) -> Result<Artifact> {
+    fn translate(self) -> Result<Artifact> {
         // Translate base IR, then translate functions.
         unimplemented!()
     }
 
-    fn translate_function(&mut self, fun_def: FunDef) -> UserFun {
+    fn translate_function(&mut self, _fun_def: FunDef) -> UserFun {
         unimplemented!()
     }
 }

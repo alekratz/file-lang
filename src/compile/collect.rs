@@ -1,4 +1,4 @@
-use crate::{common::span::*, compile::{context::*, ir::*}, syn::ast};
+use crate::{common::span::*, compile::{context::*}, syn::ast};
 
 struct CollectBindings<'t, 'ctx> {
     ctx: &'ctx mut SynCtx<'t>,

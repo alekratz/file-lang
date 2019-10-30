@@ -1,12 +1,4 @@
-use crate::{
-    common::prelude::*,
-    vm::{fun::BuiltinFun, inst::Inst, storage::Storage, value::*, object::*},
-};
-use std::{
-    any::Any,
-    cell::RefCell,
-    fmt::{self, Debug, Display, Formatter},
-};
+use crate::vm::{storage::Storage, value::*, object::*};
 
 pub struct TypeObject {
     type_name: ConstRef,
@@ -14,7 +6,7 @@ pub struct TypeObject {
 }
 
 impl TypeObject {
-    pub fn new(type_name: ConstRef, storage: &mut Storage) -> Self {
+    pub fn new(type_name: ConstRef, _storage: &mut Storage) -> Self {
         TypeObject {
             type_name,
             base_object: BaseObject::default(),

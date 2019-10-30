@@ -1,13 +1,13 @@
 use crate::{
     common::prelude::*,
-    vm::{fun::BuiltinFun, inst::Inst, storage::Storage, value::*, object::*},
+    vm::{value::*, object::*},
 };
 use lazy_static::lazy_static;
-use shrinkwraprs::Shrinkwrap;
+
 use std::{
     any::Any,
     cell::RefCell,
-    fmt::{self, Debug, Display, Formatter},
+    fmt::Debug,
 };
 
 /// The base object type.
@@ -52,7 +52,7 @@ enum ProtoValue {
 }
 
 impl ProtoValue {
-    fn into_stack_value(self, storage: &mut Storage) -> StackValue {
+    fn into_stack_value(self, _storage: &mut Storage) -> StackValue {
         unimplemented!()
     }
 }
@@ -65,7 +65,7 @@ struct BaseObjectBuilder {
 
 impl BaseObjectBuilder {
     fn builtin_fun(
-        mut self,
+        self,
         name: &str,
         value: impl 'static + Fn(&mut Storage, Vec<StackValue>) + Sync,
     ) -> Self {
@@ -85,7 +85,7 @@ impl BaseObjectBuilder {
         self
     }
 
-    fn finish(self, storage: &mut Storage) -> BaseObject {
+    fn finish(self, _storage: &mut Storage) -> BaseObject {
         unimplemented!()
     }
 }
