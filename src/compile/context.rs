@@ -3,7 +3,7 @@ use crate::{
     syn::ast,
     vm::object::*,
 };
-use std::{collections::HashMap, rc::Rc, mem};
+use std::{collections::HashMap, mem, rc::Rc};
 
 #[derive(Debug)]
 pub struct SynCtx<'t> {
@@ -27,7 +27,8 @@ impl<'t> SynCtx<'t> {
 
     /// This will use the same syntax context, while replacing the current AST with the given AST.
     pub fn with_ast<B, F>(&mut self, ast: Rc<Vec<ast::Stmt>>, mut fun: F)
-        where F: FnMut(&mut Self) -> B
+    where
+        F: FnMut(&mut Self) -> B,
     {
         let old_ast = mem::replace(&mut self.ast, ast);
         (fun)(self);

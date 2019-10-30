@@ -1,14 +1,10 @@
 use crate::{
     common::prelude::*,
-    vm::{value::*, object::*},
+    vm::{object::*, value::*},
 };
 use lazy_static::lazy_static;
 
-use std::{
-    any::Any,
-    cell::RefCell,
-    fmt::Debug,
-};
+use std::{any::Any, cell::RefCell, fmt::Debug};
 
 /// The base object type.
 ///
@@ -89,7 +85,6 @@ impl BaseObjectBuilder {
         unimplemented!()
     }
 }
-
 
 lazy_static! {
     static ref BASE_OBJECT_BUILDER: BaseObjectBuilder = {

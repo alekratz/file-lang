@@ -1,9 +1,4 @@
-use crate::{
-    common::{
-        span::*,
-        binding::*,
-    },
-};
+use crate::common::{binding::*, span::*};
 
 #[derive(Debug, Clone)]
 pub enum BoundFun {

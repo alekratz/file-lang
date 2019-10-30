@@ -1,3 +1,2 @@
 #[derive(Debug, Clone)]
-pub enum Inst {
-}
+pub enum Inst {}

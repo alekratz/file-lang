@@ -1,9 +1,4 @@
-use crate::{
-    vm::{
-        value::*,
-        object::*,
-    }
-};
+use crate::vm::{object::*, value::*};
 
 pub struct Artifact {
     main_function_ref: ConstRef,

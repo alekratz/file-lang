@@ -1,9 +1,6 @@
 use crate::syn::prelude::OpKind;
 
-pub use crate::common::binding::{
-    Bindings,
-    Binding,
-};
+pub use crate::common::binding::{Binding, Bindings};
 
 fn op_binding_name(op: &[OpKind]) -> String {
     assert!(op.len() > 0);
@@ -55,18 +52,15 @@ impl BindingStack {
     }
 
     pub fn pop_expect(&mut self) -> Bindings {
-        self.pop_layer()
-            .expect("empty binding stack")
+        self.pop_layer().expect("empty binding stack")
     }
 
     pub fn last_layer(&self) -> Option<&Bindings> {
-        self.stack
-            .last()
+        self.stack.last()
     }
 
     pub fn last_layer_mut(&mut self) -> Option<&mut Bindings> {
-        self.stack
-            .last_mut()
+        self.stack.last_mut()
     }
 
     pub fn create_binding(&mut self, name: String) -> Binding {
@@ -79,7 +73,8 @@ impl BindingStack {
     }
 
     pub fn get_or_create_binding(&mut self, name: &str) -> Binding {
-        self.stack.iter()
+        self.stack
+            .iter()
             .rev()
             .filter_map(|layer| layer.get(name).copied())
             .next()
@@ -95,13 +90,15 @@ impl BindingStack {
     }
 
     pub fn get_local_binding(&self, name: &str) -> Option<Binding> {
-        self.stack.last()
+        self.stack
+            .last()
             .and_then(|bindings| bindings.get(name))
             .copied()
     }
 
     pub fn get_binding(&self, name: &str) -> Option<Binding> {
-        self.stack.iter()
+        self.stack
+            .iter()
             .rev()
             .filter_map(|layer| layer.get(name).copied())
             .next()

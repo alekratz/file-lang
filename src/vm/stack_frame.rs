@@ -1,7 +1,4 @@
-use crate::vm::{
-    inst::Inst,
-    value::StackValue,
-};
+use crate::vm::{inst::Inst, value::StackValue};
 
 #[derive(Debug, Clone)]
 pub struct StackFrame {
@@ -16,6 +13,5 @@ pub struct StackFrame {
 
     /// The return value for this stack frame.
     return_value: Option<StackValue>,
-
     // TODO(exception) stack frame exception object
 }

@@ -1,18 +1,14 @@
-mod ty;
 mod base;
 mod string;
+mod ty;
 
-pub use self::ty::*;
 pub use self::base::*;
 pub use self::string::*;
+pub use self::ty::*;
 
 use crate::vm::{fun::BuiltinFun, storage::Storage, value::*};
 
-
-use std::{
-    any::Any,
-    fmt::Debug,
-};
+use std::{any::Any, fmt::Debug};
 
 pub trait Object: Debug {
     fn get_attr(&self, name: &str) -> Option<StackValue>;

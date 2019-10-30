@@ -235,10 +235,7 @@ impl<'text> Parser<'text> {
         let body = self.next_body()?;
         let rbrace_token = self.expect_token_kind(TokenKind::RBrace, "right brace")?;
         let span = start.span().union(&rbrace_token.span());
-        Ok(Loop {
-            span,
-            body,
-        })
+        Ok(Loop { span, body })
     }
 
     pub fn next_expr(&mut self) -> Result<Expr> {

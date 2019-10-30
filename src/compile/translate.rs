@@ -1,16 +1,13 @@
 use crate::{
     common::prelude::*,
-    compile::{collect, context::*, error::*, ir::*, },
+    compile::{collect, context::*, error::*, ir::*},
     syn::{ast, op::*, parser::Parser},
     vm::{artifact::*, fun::UserFun},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
 use matches::matches;
-use std::{
-    collections::HashMap,
-    rc::Rc,
-};
+use std::{collections::HashMap, rc::Rc};
 
 /// Replaces escape sequences in a string with the appropriate escape values.
 fn unescape_string(s: &str) -> std::result::Result<String, char> {
@@ -70,9 +67,7 @@ impl<'t> AstToIr<'t> {
     }
 
     fn translate_body(&mut self, body: &Vec<ast::Stmt>) -> Result<Vec<Stmt>> {
-        body.iter()
-            .map(|stmt| self.translate_stmt(stmt))
-            .collect()
+        body.iter().map(|stmt| self.translate_stmt(stmt)).collect()
     }
 
     fn translate_stmt(&mut self, stmt: &ast::Stmt) -> Result<Stmt> {
@@ -83,7 +78,7 @@ impl<'t> AstToIr<'t> {
             ast::Stmt::FunDef(f) => {
                 self.translate_fun_def(f)?;
                 Stmt::Nop(f.span())
-            },
+            }
             ast::Stmt::Retn(r) => Stmt::Retn(self.translate_retn(r)?),
             ast::Stmt::If(i) => Stmt::Branch(self.translate_if(i)?),
             ast::Stmt::While(w) => Stmt::Loop(self.translate_while(w)?),
@@ -96,10 +91,10 @@ impl<'t> AstToIr<'t> {
 
     fn translate_fun_def(&mut self, fun_def: &ast::FunDef) -> Result<()> {
         self.ctx.bindings_mut().push_default();
-        let params = fun_def.params.iter()
-            .map(|param| {
-                self.ctx.bindings_mut().create_binding(param.to_string())
-            })
+        let params = fun_def
+            .params
+            .iter()
+            .map(|param| self.ctx.bindings_mut().create_binding(param.to_string()))
             .collect::<Vec<_>>();
         let body = Rc::clone(&fun_def.body);
         self.ctx.with_ast(body, |ctx| {
@@ -107,8 +102,14 @@ impl<'t> AstToIr<'t> {
         });
         let body = self.translate_body(&fun_def.body)?;
         let bindings = self.ctx.bindings_mut().pop_expect();
-        let binding = self.ctx.bindings().get_local_binding(&fun_def.name)
-            .expect(&format!("function `{}` does not have a local binding", &fun_def.name));
+        let binding = self
+            .ctx
+            .bindings()
+            .get_local_binding(&fun_def.name)
+            .expect(&format!(
+                "function `{}` does not have a local binding",
+                &fun_def.name
+            ));
 
         let fun_def = FunDef {
             span: fun_def.span(),
@@ -124,7 +125,7 @@ impl<'t> AstToIr<'t> {
 
     fn translate_assign(&mut self, assign: &ast::Assign) -> Result<Assign> {
         let lhs = self.translate_lvalue(&assign.lhs)?;
-        
+
         let op = &assign.op;
         let op = if &op.kind == &[OpKind::Eq] {
             None
@@ -132,14 +133,22 @@ impl<'t> AstToIr<'t> {
             let op_kind = op.binding_name();
             let binding = self.ctx.bindings().get_binding(&op_kind).ok_or_else(|| {
                 let span = op.span();
-                let what = format!("augmented assignment operator `{}`", op.text(self.ctx.text()));
+                let what = format!(
+                    "augmented assignment operator `{}`",
+                    op.text(self.ctx.text())
+                );
                 CompileError::InvalidOp { span, what }
             })?;
             Some(binding)
         };
 
         let rhs = self.translate_expr(&assign.rhs)?;
-        Ok(Assign { span: assign.span(), lhs, op, rhs })
+        Ok(Assign {
+            span: assign.span(),
+            lhs,
+            op,
+            rhs,
+        })
     }
 
     fn translate_lvalue(&mut self, lvalue: &ast::Expr) -> Result<LValue> {
@@ -268,7 +277,10 @@ impl<'t> AstToIr<'t> {
         Ok(Expr::Atom(Atom { span, kind }))
     }
 
-    fn translate_access(&mut self, ast::Access { span, head, tail }: &ast::Access) -> Result<Access> {
+    fn translate_access(
+        &mut self,
+        ast::Access { span, head, tail }: &ast::Access,
+    ) -> Result<Access> {
         let span = *span;
         let head = self.translate_expr(head)?;
         match head {
@@ -302,12 +314,27 @@ impl<'t> AstToIr<'t> {
     fn translate_retn(&mut self, ast::Retn { span, expr }: &ast::Retn) -> Result<Retn> {
         Ok(Retn {
             span: *span,
-            expr: expr.as_ref().map(|expr| self.translate_expr(expr)).transpose()?,
+            expr: expr
+                .as_ref()
+                .map(|expr| self.translate_expr(expr))
+                .transpose()?,
         })
     }
 
-    fn translate_if(&mut self, ast::If { condition_body, elif_bodies, else_body, .. }: &ast::If) -> Result<Branch> {
-        let ast::ConditionBody { span, condition, body, } = condition_body;
+    fn translate_if(
+        &mut self,
+        ast::If {
+            condition_body,
+            elif_bodies,
+            else_body,
+            ..
+        }: &ast::If,
+    ) -> Result<Branch> {
+        let ast::ConditionBody {
+            span,
+            condition,
+            body,
+        } = condition_body;
         let span = *span;
         let if_condition = self.translate_expr(condition)?;
         let if_body = self.translate_body(body)?;
@@ -319,9 +346,15 @@ impl<'t> AstToIr<'t> {
             body_false: Vec::new(),
         };
         let mut branch = &mut if_branch;
-        for ast::ConditionBody { condition, body, span, } in elif_bodies.into_iter() {
+        for ast::ConditionBody {
+            condition,
+            body,
+            span,
+        } in elif_bodies.into_iter()
+        {
             let condition = self.translate_expr(condition)?;
-            let body_true = body.into_iter()
+            let body_true = body
+                .into_iter()
                 .map(|stmt| self.translate_stmt(stmt))
                 .collect::<Result<Vec<_>>>()?;
             let span = *span;
@@ -331,22 +364,31 @@ impl<'t> AstToIr<'t> {
                 body_true,
                 body_false: Vec::new(),
             };
-            branch.body_false = vec![
-                Stmt::Branch(elif_branch)
-            ];
+            branch.body_false = vec![Stmt::Branch(elif_branch)];
             branch = if let Stmt::Branch(branch) = &mut branch.body_false[0] {
                 branch
-            } else { unreachable!() };
+            } else {
+                unreachable!()
+            };
         }
 
-        branch.body_false = else_body.into_iter()
+        branch.body_false = else_body
+            .into_iter()
             .map(|stmt| self.translate_stmt(stmt))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(if_branch)
     }
 
-    fn translate_while(&mut self, ast::While { span, condition_body: ast::ConditionBody { condition, body, .. }, }: &ast::While) -> Result<Loop> {
+    fn translate_while(
+        &mut self,
+        ast::While {
+            span,
+            condition_body: ast::ConditionBody {
+                condition, body, ..
+            },
+        }: &ast::While,
+    ) -> Result<Loop> {
         Ok(Loop {
             span: *span,
             condition: Some(self.translate_expr(condition)?),
@@ -354,7 +396,7 @@ impl<'t> AstToIr<'t> {
         })
     }
 
-    fn translate_loop(&mut self, ast::Loop { span, body, }: &ast::Loop) -> Result<Loop> {
+    fn translate_loop(&mut self, ast::Loop { span, body }: &ast::Loop) -> Result<Loop> {
         Ok(Loop {
             span: *span,
             condition: None,
@@ -363,19 +405,25 @@ impl<'t> AstToIr<'t> {
     }
 
     fn get_bin_op_binding(&self, op: &ast::Op) -> Result<Binding> {
-        self.ctx.bindings().get_bin_op_binding(&op.kind).ok_or_else(|| {
-            let span = op.span();
-            let what = format!("binary operator `{}`", op.text(self.ctx.text()));
-            CompileError::InvalidOp { span, what }
-        })
+        self.ctx
+            .bindings()
+            .get_bin_op_binding(&op.kind)
+            .ok_or_else(|| {
+                let span = op.span();
+                let what = format!("binary operator `{}`", op.text(self.ctx.text()));
+                CompileError::InvalidOp { span, what }
+            })
     }
 
     fn get_un_op_binding(&self, op: &ast::Op) -> Result<Binding> {
-        self.ctx.bindings().get_un_op_binding(&op.kind).ok_or_else(|| {
-            let span = op.span();
-            let what = format!("unary operator `{}`", op.text(self.ctx.text()));
-            CompileError::InvalidOp { span, what }
-        })
+        self.ctx
+            .bindings()
+            .get_un_op_binding(&op.kind)
+            .ok_or_else(|| {
+                let span = op.span();
+                let what = format!("unary operator `{}`", op.text(self.ctx.text()));
+                CompileError::InvalidOp { span, what }
+            })
     }
 }
 
@@ -409,6 +457,5 @@ pub fn ast_to_ir<'t>(text: &'t str) -> Result<IrCtx<'t>> {
 }
 
 pub fn ir_to_inst<'t>(ctx: IrCtx<'t>) -> Result<Artifact> {
-    IrToInst::new(ctx)
-        .translate()
+    IrToInst::new(ctx).translate()
 }

@@ -1,4 +1,4 @@
-use crate::{common::span::*, compile::{context::*}, syn::ast};
+use crate::{common::span::*, compile::context::*, syn::ast};
 
 struct CollectBindings<'t, 'ctx> {
     ctx: &'ctx mut SynCtx<'t>,
@@ -6,7 +6,7 @@ struct CollectBindings<'t, 'ctx> {
 
 impl<'t, 'ctx> CollectBindings<'t, 'ctx> {
     pub fn new(ctx: &'ctx mut SynCtx<'t>) -> Self {
-        CollectBindings { ctx, }
+        CollectBindings { ctx }
     }
 
     pub fn collect_bindings(mut self) {
@@ -35,11 +35,15 @@ impl<'t, 'ctx> CollectBindings<'t, 'ctx> {
     }
 
     fn collect_type_def(&mut self, type_def: &ast::TypeDef) {
-        self.ctx.bindings_mut().get_or_create_local_binding(&type_def.name);
+        self.ctx
+            .bindings_mut()
+            .get_or_create_local_binding(&type_def.name);
     }
 
     fn collect_fun_def(&mut self, fun_def: &ast::FunDef) {
-        self.ctx.bindings_mut().get_or_create_local_binding(&fun_def.name);
+        self.ctx
+            .bindings_mut()
+            .get_or_create_local_binding(&fun_def.name);
     }
 
     fn collect_assign(&mut self, assign: &ast::Assign) {
@@ -82,9 +86,8 @@ impl<'t, 'ctx> CollectBindings<'t, 'ctx> {
 }
 
 pub fn collect_ast<'t, 'ctx>(ctx: &'ctx mut SynCtx<'t>) {
-    CollectBindings::new(ctx)
-        .collect_bindings();
-        //.collect_constants();
+    CollectBindings::new(ctx).collect_bindings();
+    //.collect_constants();
 }
 
 /*
@@ -179,7 +182,7 @@ impl<'t, 'ctx> CollectConstants<'t, 'ctx> {
         }
         self.collect_body(&if_.else_body);
     }
-    
+
     fn collect_while(&mut self, while_: &ast::While) {
         self.collect_condition_body(&while_.condition_body);
     }

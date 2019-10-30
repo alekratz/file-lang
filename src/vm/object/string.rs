@@ -1,5 +1,4 @@
-use crate::vm::{value::*, object::*};
-
+use crate::vm::{object::*, value::*};
 
 use std::{
     any::Any,
@@ -32,4 +31,3 @@ impl Object for StringObject {
         self
     }
 }
-

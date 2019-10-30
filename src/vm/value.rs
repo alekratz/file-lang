@@ -18,4 +18,3 @@ pub enum StackValue {
     Float(f64),
     Empty,
 }
-

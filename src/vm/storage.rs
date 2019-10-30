@@ -1,7 +1,4 @@
-use crate::vm::{
-    value::*,
-    object::*,
-};
+use crate::vm::{object::*, value::*};
 use std::mem;
 
 pub type HeapSlot = Option<ObjectValue>;
@@ -9,7 +6,7 @@ pub type HeapSlot = Option<ObjectValue>;
 /// The initial number of slots for the heap to have.
 ///
 /// This number is pretty arbitrary.
-/// 
+///
 // TODO(gc): It would probably make sense to add this as a configuration parameter for GC tuning
 const HEAP_INITIAL_SIZE: usize = 64;
 
@@ -45,7 +42,9 @@ impl Storage {
     pub fn allocate(&mut self, value: impl Object + 'static) -> HeapRef {
         // TODO : faster allocation method
         // Find next open slot in the heap
-        let first = self.heap.iter()
+        let first = self
+            .heap
+            .iter()
             .enumerate()
             .filter(|(_, v)| v.is_none())
             .map(|(i, _)| i)
@@ -90,9 +89,7 @@ impl Storage {
 
     /// Gets the object behind a HeapRef.
     pub fn deref_heap(&self, heap_ref: HeapRef) -> &dyn Object {
-        let value: &Box<dyn Object> = self.heap[*heap_ref]
-            .as_ref()
-            .expect("heap ref");
+        let value: &Box<dyn Object> = self.heap[*heap_ref].as_ref().expect("heap ref");
         // the deref story here is a little weird but whatever
         &**value
     }
@@ -101,7 +98,7 @@ impl Storage {
     pub fn deref_const(&self, const_ref: ConstRef) -> &dyn Object {
         &*self.constant_pool[*const_ref]
     }
-    
+
     /// Pushes a value to the stack.
     pub fn push_stack(&mut self, value: StackValue) {
         self.stack_mut().push(value);

@@ -5,7 +5,10 @@ use crate::{
 use derivative::Derivative;
 use lazy_static::lazy_static;
 use matches::matches;
-use std::{fmt::{self, Display, Formatter}, rc::Rc};
+use std::{
+    fmt::{self, Display, Formatter},
+    rc::Rc,
+};
 
 pub type Lookaheads = &'static [TokenKind];
 

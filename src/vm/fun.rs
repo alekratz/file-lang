@@ -1,4 +1,4 @@
-use crate::vm::{storage::Storage, value::StackValue, inst::Inst, value::*};
+use crate::vm::{inst::Inst, storage::Storage, value::StackValue, value::*};
 use std::{
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
@@ -26,7 +26,7 @@ pub struct BuiltinFun {
 
 impl BuiltinFun {
     pub fn new(name: String, fun: BuiltinFunPtr) -> Self {
-        BuiltinFun { name, fun, }
+        BuiltinFun { name, fun }
     }
     fn fun_address(&self) -> usize {
         &self.fun as *const _ as usize
@@ -37,15 +37,17 @@ impl Debug for BuiltinFun {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         fmt.debug_struct("BuiltinFun")
             .field("name", &self.name)
-            .field("fun", &format!("builtin function at {:#x}", &self.fun as *const _ as usize))
+            .field(
+                "fun",
+                &format!("builtin function at {:#x}", &self.fun as *const _ as usize),
+            )
             .finish()
     }
 }
 
 impl PartialEq for BuiltinFun {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && (self.fun_address() == other.fun_address())
+        self.name == other.name && (self.fun_address() == other.fun_address())
     }
 }
 
