@@ -1,5 +1,5 @@
 use crate::{common::span::*, syn::prelude::*};
-use std::mem;
+use std::{mem, rc::Rc};
 
 #[derive(Debug)]
 pub struct Parser<'text> {
@@ -105,7 +105,7 @@ impl<'text> Parser<'text> {
         )?;
         self.expect_token_kind(TokenKind::LBrace, "function body start (left brace)")?;
 
-        let body = self.next_body()?;
+        let body = Rc::new(self.next_body()?);
         self.expect_token_kind(TokenKind::RBrace, "function body end (right brace)")?;
         let span = first.span().union(&body.span());
         Ok(FunDef {
@@ -689,7 +689,7 @@ mod test {
                                 atom_expr!(AtomKind::Ident)
                             )
                         }
-                    ],
+                    ].into(),
                 }
             })
         }

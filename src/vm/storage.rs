@@ -1,4 +1,7 @@
-use crate::vm::value::*;
+use crate::vm::{
+    value::*,
+    object::*,
+};
 use std::mem;
 
 pub type HeapSlot = Option<ObjectValue>;
@@ -31,6 +34,14 @@ impl Storage {
         }
     }
 
+    pub fn stack(&self) -> &Vec<StackValue> {
+        &self.stack
+    }
+
+    pub fn stack_mut(&mut self) -> &mut Vec<StackValue> {
+        &mut self.stack
+    }
+
     pub fn allocate(&mut self, value: impl Object + 'static) -> HeapRef {
         // TODO : faster allocation method
         // Find next open slot in the heap
@@ -61,6 +72,14 @@ impl Storage {
         );
     }
 
+    /// Attempts to dereference and downcast a stack value to a more concrete object type.
+    pub fn downcast_stack_value<O: Object + 'static>(&self, stack_value: StackValue) -> Option<&O> {
+        self.deref_stack_value(stack_value)?
+            .as_any()
+            .downcast_ref::<O>()
+    }
+
+    /// Attempts to dereference a stack value ConstRef or HeapRef.
     pub fn deref_stack_value(&self, stack_value: StackValue) -> Option<&dyn Object> {
         match stack_value {
             StackValue::ConstRef(c) => Some(self.deref_const(c)),
@@ -69,6 +88,7 @@ impl Storage {
         }
     }
 
+    /// Gets the object behind a HeapRef.
     pub fn deref_heap(&self, heap_ref: HeapRef) -> &dyn Object {
         let value: &Box<dyn Object> = self.heap[*heap_ref]
             .as_ref()
@@ -77,7 +97,24 @@ impl Storage {
         &**value
     }
 
+    /// Gets the object behind a ConstRef.
     pub fn deref_const(&self, const_ref: ConstRef) -> &dyn Object {
         &*self.constant_pool[*const_ref]
+    }
+    
+    /// Pushes a value to the stack.
+    pub fn push_stack(&mut self, value: StackValue) {
+        self.stack_mut().push(value);
+    }
+
+    /// Attempts to pop a value from the stack.
+    pub fn pop_stack(&mut self) -> Option<StackValue> {
+        self.stack_mut().pop()
+    }
+
+    /// Pops the last N values from the stack.
+    pub fn pop_n(&mut self, n: usize) -> Vec<StackValue> {
+        let split_index = self.stack().len() - n;
+        self.stack_mut().split_off(split_index)
     }
 }

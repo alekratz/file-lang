@@ -1,11 +1,13 @@
 use crate::{
     common::prelude::*,
-    vm::{inst::Inst, storage::Storage},
+    vm::{fun::BuiltinFun, inst::Inst, storage::Storage, object::*},
 };
+use lazy_static::lazy_static;
 use shrinkwraprs::Shrinkwrap;
 use std::{
-    fmt::Debug,
+    any::Any,
     cell::RefCell,
+    fmt::{self, Debug, Display, Formatter},
 };
 
 #[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, Clone, Copy, Default)]
@@ -27,54 +29,3 @@ pub enum StackValue {
     Empty,
 }
 
-/// A boxed, "live" object value.
-pub type ObjectValue = Box<dyn Object>;
-
-pub trait Object: Debug {
-    fn get_attr(&self, name: &str) -> Option<StackValue>;
-    fn set_attr(&self, name: String, value: StackValue);
-}
-
-/// The base object type.
-///
-/// This probably should not be used by the language directly, and instead should be used as a way
-/// of backing object storage.
-#[derive(Debug, Default)]
-struct BaseObject {
-    members: RefCell<Mapping<String, StackValue>>,
-}
-
-impl BaseObject {
-    pub fn new(members: Mapping<String, StackValue>) -> Self {
-        BaseObject {
-            members: members.into(),
-        }
-    }
-}
-
-impl Object for BaseObject {
-    fn get_attr(&self, name: &str) -> Option<StackValue> {
-        let members = self.members.borrow();
-        members.get(name)
-            .copied()
-    }
-
-    fn set_attr(&self, name: String, value: StackValue) {
-        let mut members = self.members.borrow_mut();
-        members.insert(name, value);
-    }
-}
-
-struct TypeObject {
-    type_name: ConstRef,
-    base_object: BaseObject,
-}
-
-impl TypeObject {
-    pub fn new(type_name: ConstRef, storage: &mut Storage) -> Self {
-        TypeObject {
-            type_name,
-            base_object: BaseObject::default(),
-        }
-    }
-}

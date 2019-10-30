@@ -5,7 +5,7 @@ use crate::{
 use derivative::Derivative;
 use lazy_static::lazy_static;
 use matches::matches;
-use std::fmt::{self, Display, Formatter};
+use std::{fmt::{self, Display, Formatter}, rc::Rc};
 
 pub type Lookaheads = &'static [TokenKind];
 
@@ -135,7 +135,14 @@ pub struct FunDef {
     pub span: Span,
     pub name: String,
     pub params: Vec<String>,
-    pub body: Vec<Stmt>,
+    /// The body for this function.
+    ///
+    /// This is a reference-counted pointer because, during compile-time, we need to pass a
+    /// reference-counted pointer of statements for compilation. This, unfortunately, works exactly
+    /// once: when you compile the main body. Every other instance of this Vec<Stmt> will have to
+    /// be borrowed as a reference, which would then require an (unnecessary) clone of this body to
+    /// make it owned and then put it in an Rc pointer.
+    pub body: Rc<Vec<Stmt>>,
 }
 
 /// A return statement, with an optional expression.

@@ -1,12 +1,16 @@
 use crate::{
     common::prelude::*,
-    compile::{collect, context::*, error::*, ir::*},
+    compile::{collect, context::*, error::*, ir::*, },
     syn::{ast, op::*, parser::Parser},
+    vm::{artifact::*, fun::UserFun},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
 use matches::matches;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    rc::Rc,
+};
 
 /// Replaces escape sequences in a string with the appropriate escape values.
 fn unescape_string(s: &str) -> std::result::Result<String, char> {
@@ -44,21 +48,25 @@ fn unescape_string(s: &str) -> std::result::Result<String, char> {
     Ok(built)
 }
 
-struct AstToIr<'ctx> {
-    ctx: SynCtx<'ctx>,
+struct AstToIr<'t> {
+    ctx: SynCtx<'t>,
+    functions: HashMap<Binding, FunDef>,
 }
 
-impl<'ctx> AstToIr<'ctx> {
-    pub fn new(ctx: SynCtx<'ctx>) -> Self {
-        AstToIr { ctx }
+impl<'t> AstToIr<'t> {
+    pub fn new(ctx: SynCtx<'t>) -> Self {
+        AstToIr {
+            ctx,
+            functions: Default::default(),
+        }
     }
 
-    fn translate(mut self) -> Result<IrCtx<'ctx>> {
+    fn translate(mut self) -> Result<IrCtx<'t>> {
         let ir = self.translate_body(&self.ctx.ast())?;
-        // TODO : collect constants
-        let constants = Vec::new();
 
-        Ok(IrCtx::new(self.ctx, constants, ir))
+        println!("Functions:");
+        println!("{:#?}", self.functions);
+        Ok(IrCtx::new(self.ctx, self.functions, ir))
     }
 
     fn translate_body(&mut self, body: &Vec<ast::Stmt>) -> Result<Vec<Stmt>> {
@@ -69,16 +77,13 @@ impl<'ctx> AstToIr<'ctx> {
 
     fn translate_stmt(&mut self, stmt: &ast::Stmt) -> Result<Stmt> {
         let stmt = match stmt {
-            ast::Stmt::TypeDef(t) => {
-                self.translate_type_def(t)?;
-                Stmt::Nop(t.span())
-            },
+            ast::Stmt::TypeDef(t) => Stmt::Nop(t.span()),
             ast::Stmt::Assign(a) => Stmt::Assign(self.translate_assign(a)?),
             ast::Stmt::Expr(e) => Stmt::Expr(self.translate_expr(e)?),
             ast::Stmt::FunDef(f) => {
                 self.translate_fun_def(f)?;
                 Stmt::Nop(f.span())
-            }
+            },
             ast::Stmt::Retn(r) => Stmt::Retn(self.translate_retn(r)?),
             ast::Stmt::If(i) => Stmt::Branch(self.translate_if(i)?),
             ast::Stmt::While(w) => Stmt::Loop(self.translate_while(w)?),
@@ -89,9 +94,32 @@ impl<'ctx> AstToIr<'ctx> {
         Ok(stmt)
     }
 
-    fn translate_type_def(&mut self, _: &ast::TypeDef) -> Result<()> {
-        // TODO : visit type functions
-        unimplemented!()
+    fn translate_fun_def(&mut self, fun_def: &ast::FunDef) -> Result<()> {
+        self.ctx.bindings_mut().push_default();
+        let params = fun_def.params.iter()
+            .map(|param| {
+                self.ctx.bindings_mut().create_binding(param.to_string())
+            })
+            .collect::<Vec<_>>();
+        let body = Rc::clone(&fun_def.body);
+        self.ctx.with_ast(body, |ctx| {
+            collect::collect_ast(ctx);
+        });
+        let body = self.translate_body(&fun_def.body)?;
+        let bindings = self.ctx.bindings_mut().pop_expect();
+        let binding = self.ctx.bindings().get_local_binding(&fun_def.name)
+            .expect(&format!("function `{}` does not have a local binding", &fun_def.name));
+
+        let fun_def = FunDef {
+            span: fun_def.span(),
+            params,
+            binding,
+            bindings,
+            body,
+        };
+        self.functions.insert(binding, fun_def);
+
+        Ok(())
     }
 
     fn translate_assign(&mut self, assign: &ast::Assign) -> Result<Assign> {
@@ -271,11 +299,6 @@ impl<'ctx> AstToIr<'ctx> {
         Ok(Access { span, head, tail })
     }
 
-    fn translate_fun_def(&mut self, _: &ast::FunDef) -> Result<()> {
-        // TODO : visit function
-        unimplemented!()
-    }
-
     fn translate_retn(&mut self, ast::Retn { span, expr }: &ast::Retn) -> Result<Retn> {
         Ok(Retn {
             span: *span,
@@ -356,8 +379,36 @@ impl<'ctx> AstToIr<'ctx> {
     }
 }
 
-pub fn ast_to_ir<'ctx>(text: &'ctx str) -> Result<IrCtx<'ctx>> {
+struct IrToInst<'t> {
+    ctx: IrCtx<'t>,
+}
+
+impl<'t> IrToInst<'t> {
+    fn new(ctx: IrCtx<'t>) -> Self {
+        IrToInst { ctx }
+    }
+
+    fn translate(mut self) -> Result<Artifact> {
+        // Translate base IR, then translate functions.
+        unimplemented!()
+    }
+
+    fn translate_function(&mut self, fun_def: FunDef) -> UserFun {
+        unimplemented!()
+    }
+}
+
+pub fn ast_to_ir<'t>(text: &'t str) -> Result<IrCtx<'t>> {
     let ast = Parser::new(text)?.next_body()?;
-    let ctx = collect::collect(text, ast);
+    let ctx = {
+        let mut ctx = SynCtx::new(text, ast);
+        collect::collect_ast(&mut ctx);
+        ctx
+    };
     AstToIr::new(ctx).translate()
+}
+
+pub fn ir_to_inst<'t>(ctx: IrCtx<'t>) -> Result<Artifact> {
+    IrToInst::new(ctx)
+        .translate()
 }
