@@ -3,6 +3,8 @@ mod collect;
 mod context;
 pub mod error;
 mod ir;
+mod object;
+mod thunk;
 mod translate;
 
 use crate::compile::error::*;

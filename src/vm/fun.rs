@@ -16,8 +16,7 @@ impl UserFun {
     }
 }
 
-//pub type BuiltinFunPtr = fn(&mut Storage, args: Vec<StackValue>);
-pub type BuiltinFunPtr = Box<dyn 'static + Fn(&mut Storage, Vec<StackValue>) + Sync>;
+pub type BuiltinFunPtr = Box<fn(&mut Storage, Vec<StackValue>)>;
 
 pub struct BuiltinFun {
     name: String,
@@ -28,8 +27,22 @@ impl BuiltinFun {
     pub fn new(name: String, fun: BuiltinFunPtr) -> Self {
         BuiltinFun { name, fun }
     }
+
     fn fun_address(&self) -> usize {
         &self.fun as *const _ as usize
+    }
+
+    pub fn call(&self, storage: &mut Storage, args: Vec<StackValue>) {
+        (self.fun)(storage, args)
+    }
+}
+
+impl Clone for BuiltinFun {
+    fn clone(&self) -> Self {
+        BuiltinFun {
+            name: self.name.clone(),
+            fun: Box::new(*self.fun.as_ref()),
+        }
     }
 }
 

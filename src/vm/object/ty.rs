@@ -6,10 +6,10 @@ pub struct TypeObject {
 }
 
 impl TypeObject {
-    pub fn new(type_name: ConstRef, _storage: &mut Storage) -> Self {
+    pub fn new(type_name: ConstRef, base_object: BaseObject) -> Self {
         TypeObject {
             type_name,
-            base_object: BaseObject::default(),
+            base_object,
         }
     }
 }
