@@ -1,6 +1,6 @@
 use crate::{
-    compile::{context::*, error::*, ir::*, object, thunk::*},
-    vm::{artifact::*, fun::UserFun, value::*},
+    compile::{context::*, error::*, ir::*, thunk::*},
+    vm::{artifact::*, fun::UserFun, value::*, inst::Inst},
 };
 use std::{collections::HashMap};
 
@@ -31,7 +31,6 @@ impl<'t> IrToInst<'t> {
     }
 
     fn translate_fun(&mut self, _fun_def: &FunDef) -> Result<UserFun> {
-        // use self.ctx.register_constant to register constants
         unimplemented!()
     }
 
@@ -66,20 +65,19 @@ impl<'t> IrToInst<'t> {
         unimplemented!()
     }
 
-    fn translate_atom(&mut self, Atom { kind: _, .. }: &Atom, _ctx: ExprCtx) -> Result<Thunk> {
-        /*
+    fn translate_atom(&mut self, Atom { kind, .. }: &Atom, ctx: ExprCtx) -> Result<Thunk> {
         let mut body = Thunk::default();
         match kind {
             AtomKind::Ident(binding) => body.push(Inst::Load(*binding)),
             AtomKind::String(s) => {
                 let ref_id = {
-                    *self.const_strings.get(&s).unwrap()
+                    self.get_or_register_string_constant(s)
                 };
                 body.push(Inst::PushValue(StackValue::ConstRef(ref_id)));
             }
             AtomKind::TaggedString { .. } => unimplemented!("TODO(string) Tagged string behavior"),
-            AtomKind::Int(i) => body.push(Inst::PushValue(StackValue::Int(i as i64))),
-            AtomKind::Real(f) => body.push(Inst::PushValue(StackValue::Real(f))),
+            AtomKind::Int(i) => body.push(Inst::PushValue(StackValue::Int(*i as i64))),
+            AtomKind::Real(f) => body.push(Inst::PushValue(StackValue::Float(*f))),
         }
         match ctx {
             ExprCtx::Push => { /* no-op - expression should remain on the stack */ }
@@ -88,12 +86,10 @@ impl<'t> IrToInst<'t> {
             }
             ExprCtx::Return => body.push(Inst::StoreReturn),
         }
-        body
-            */
-        unimplemented!()
+        Ok(body)
     }
 
-    fn get_or_register_string_constant(&mut self, _s: String) -> ConstRef {
+    fn get_or_register_string_constant(&mut self, s: &str) -> ConstRef {
         /*
         *self.string_index.entry(s.clone())
             .or_else_insert(|| {
@@ -110,7 +106,5 @@ impl<'t> IrToInst<'t> {
 }
 
 pub fn ir_to_inst<'t>(mut ctx: IrCtx<'t>) -> Result<Artifact> {
-    object::make_types(&mut ctx);
-    //IrToInst::new(ctx).translate()
-    unimplemented!()
+    IrToInst::new(ctx).translate()
 }

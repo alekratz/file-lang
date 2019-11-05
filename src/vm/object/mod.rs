@@ -4,6 +4,7 @@ mod string;
 mod ty;
 
 pub use self::base::*;
+pub use self::fun::*;
 pub use self::string::*;
 pub use self::ty::*;
 

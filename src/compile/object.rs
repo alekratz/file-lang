@@ -5,7 +5,6 @@ use crate::{
 };
 use maplit::hashmap;
 
-
 macro_rules! make_members {
     (@TAIL $ctx:expr, $type_map:expr; $name:expr => fn $fun:expr , $($tail:tt)*) => {{
         let mut base = hashmap!($name.to_string() =>
@@ -50,17 +49,17 @@ macro_rules! make_members_impl {
     };
 }
 
-pub fn make_types<'ctx, 't>(ctx: &'ctx mut IrCtx<'t>) {
+pub fn make_types<'t, 'ctx>(ctx: &'ctx mut IrCtx<'t>) {
     MakeTypes::new(ctx)
         .make_types();
 }
 
-pub struct MakeTypes<'ctx, 't> {
+pub struct MakeTypes<'t, 'ctx> {
     ctx: &'ctx mut IrCtx<'t>,
     type_map: TypeMap<ConstRef>,
 }
 
-impl<'ctx, 't> MakeTypes<'ctx, 't> {
+impl<'t, 'ctx> MakeTypes<'t, 'ctx> {
     pub fn new(ctx: &'ctx mut IrCtx<'t>) -> Self {
         MakeTypes {
             ctx,

@@ -1,7 +1,7 @@
 use crate::{
-    compile::{binding::*, ir},
+    compile::{binding::*, builtins::*, ir},
     syn::ast,
-    vm::{fun::*, object::*, value::*},
+    vm::{object::*, value::*},
 };
 use std::{collections::HashMap, mem, rc::Rc};
 
@@ -9,6 +9,7 @@ use std::{collections::HashMap, mem, rc::Rc};
 pub struct SynCtx<'t> {
     text: &'t str,
     bindings: BindingStack,
+    builtins: Builtins,
     ast: Rc<Vec<ast::Stmt>>,
 }
 
@@ -17,6 +18,7 @@ impl<'t> SynCtx<'t> {
         SynCtx {
             text,
             bindings: Default::default(),
+            builtins: Default::default(),
             ast: Rc::new(ast),
         }
     }
@@ -43,6 +45,14 @@ impl<'t> SynCtx<'t> {
         &mut self.bindings
     }
 
+    pub fn builtins(&self) -> &Builtins {
+        &self.builtins
+    }
+
+    pub fn builtins_mut(&mut self) -> &mut Builtins {
+        &mut self.builtins
+    }
+    
     pub fn text(&self) -> &'t str {
         self.text
     }
@@ -55,13 +65,15 @@ pub struct IrCtx<'t> {
     bindings: BindingStack,
     functions: Rc<HashMap<Binding, ir::FunDef>>,
     types: Rc<HashMap<Binding, ir::TypeDef>>,
+    builtins: Builtins,
     ir: Rc<Vec<ir::Stmt>>,
 }
 
 impl<'t> IrCtx<'t> {
     pub fn new(
-        SynCtx { text, bindings, .. }: SynCtx<'t>,
+        SynCtx { text, bindings, builtins, .. }: SynCtx<'t>,
         functions: HashMap<Binding, ir::FunDef>,
+        types: HashMap<Binding, ir::TypeDef>,
         ir: Vec<ir::Stmt>,
     ) -> Self {
         IrCtx {
@@ -69,7 +81,8 @@ impl<'t> IrCtx<'t> {
             constants: Default::default(),
             bindings,
             functions: functions.into(),
-            types: Default::default(),
+            types: types.into(),
+            builtins,
             ir: ir.into(),
         }
     }
@@ -95,7 +108,8 @@ impl<'t> IrCtx<'t> {
     }
 
     pub fn register_constant_with<F>(&mut self, fun: F) -> ConstRef
-        where F: FnOnce(&mut IrCtx, ConstRef) -> ObjectValue
+    where
+        F: FnOnce(&mut IrCtx, ConstRef) -> ObjectValue,
     {
         let ref_id = self.constants.len();
         let value = (fun)(self, ConstRef(ref_id));
@@ -107,12 +121,6 @@ impl<'t> IrCtx<'t> {
         self.register_constant_with(|_, const_ref| {
             assert_eq!(ValueRef::Const(const_ref), value.value_ref());
             value
-        })
-    }
-
-    pub fn register_builtin_fun(&mut self, _fun: BuiltinFunPtr) -> ConstRef {
-        self.register_constant_with(|_, _const_ref| {
-            unimplemented!()
         })
     }
 

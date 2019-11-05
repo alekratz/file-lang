@@ -32,8 +32,8 @@ impl BuiltinFun {
         &self.fun as *const _ as usize
     }
 
-    pub fn call(&self, state: &mut State, args: Vec<StackValue>) {
-        (self.fun)(state, args)
+    pub fn fun(&self) -> &BuiltinFunPtr {
+        &self.fun
     }
 }
 

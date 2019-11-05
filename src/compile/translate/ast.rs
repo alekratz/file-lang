@@ -8,6 +8,17 @@ use maplit::hashmap;
 use matches::matches;
 use std::{collections::HashMap, rc::Rc};
 
+pub fn ast_to_ir<'t>(text: &'t str) -> Result<IrCtx<'t>> {
+    let ast = Parser::new(text)?.next_body()?;
+    let ctx = {
+        let mut ctx = SynCtx::new(text, ast);
+        collect::collect_builtins(&mut ctx);
+        collect::collect_ast(&mut ctx);
+        ctx
+    };
+    AstToIr::new(ctx).translate()
+}
+
 /// Replaces escape sequences in a string with the appropriate escape values.
 fn unescape_string(s: &str) -> std::result::Result<String, char> {
     lazy_static! {
@@ -48,6 +59,7 @@ fn unescape_string(s: &str) -> std::result::Result<String, char> {
 struct AstToIr<'t> {
     ctx: SynCtx<'t>,
     functions: HashMap<Binding, FunDef>,
+    types: HashMap<Binding, TypeDef>,
 }
 
 impl<'t> AstToIr<'t> {
@@ -55,15 +67,13 @@ impl<'t> AstToIr<'t> {
         AstToIr {
             ctx,
             functions: Default::default(),
+            types: Default::default(),
         }
     }
 
     fn translate(mut self) -> Result<IrCtx<'t>> {
         let ir = self.translate_body(&self.ctx.ast())?;
-
-        println!("Functions:");
-        println!("{:#?}", self.functions);
-        Ok(IrCtx::new(self.ctx, self.functions, ir))
+        Ok(IrCtx::new(self.ctx, self.functions, self.types, ir))
     }
 
     fn translate_body(&mut self, body: &Vec<ast::Stmt>) -> Result<Vec<Stmt>> {
@@ -426,14 +436,3 @@ impl<'t> AstToIr<'t> {
             })
     }
 }
-
-pub fn ast_to_ir<'t>(text: &'t str) -> Result<IrCtx<'t>> {
-    let ast = Parser::new(text)?.next_body()?;
-    let ctx = {
-        let mut ctx = SynCtx::new(text, ast);
-        collect::collect_ast(&mut ctx);
-        ctx
-    };
-    AstToIr::new(ctx).translate()
-}
-
