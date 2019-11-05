@@ -110,8 +110,8 @@ impl<'t> IrCtx<'t> {
         })
     }
 
-    pub fn register_builtin_fun(&mut self, fun: BuiltinFunPtr) -> ConstRef {
-        self.register_constant_with(|_, const_ref| {
+    pub fn register_builtin_fun(&mut self, _fun: BuiltinFunPtr) -> ConstRef {
+        self.register_constant_with(|_, _const_ref| {
             unimplemented!()
         })
     }

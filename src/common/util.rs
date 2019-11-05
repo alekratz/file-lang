@@ -1,4 +1,4 @@
-use std::{any::{Any, TypeId}, collections::HashMap, hash::Hash};
+use std::{any::{TypeId}, collections::HashMap, hash::Hash};
 
 pub struct TypeMap<V: Hash> {
     mapping: HashMap<TypeId, V>

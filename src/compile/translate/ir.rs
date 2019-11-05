@@ -1,13 +1,8 @@
 use crate::{
-    common::prelude::*,
-    compile::{collect, context::*, error::*, ir::*, object, thunk::*},
-    syn::{ast, op::*, parser::Parser},
-    vm::{artifact::*, fun::UserFun, inst::Inst, value::*},
+    compile::{context::*, error::*, ir::*, object, thunk::*},
+    vm::{artifact::*, fun::UserFun, value::*},
 };
-use lazy_static::lazy_static;
-use maplit::hashmap;
-use matches::matches;
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap};
 
 /// A context for an expression to be used in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,7 +25,7 @@ impl<'t> IrToInst<'t> {
     fn translate(mut self) -> Result<Artifact> {
         // Translate functions and base IR
         for (_, fun) in self.ctx.functions().iter() {
-            let user_fun = self.translate_fun(fun)?;
+            let _user_fun = self.translate_fun(fun)?;
         }
         unimplemented!()
     }
@@ -71,7 +66,7 @@ impl<'t> IrToInst<'t> {
         unimplemented!()
     }
 
-    fn translate_atom(&mut self, Atom { kind, .. }: &Atom, ctx: ExprCtx) -> Result<Thunk> {
+    fn translate_atom(&mut self, Atom { kind: _, .. }: &Atom, _ctx: ExprCtx) -> Result<Thunk> {
         /*
         let mut body = Thunk::default();
         match kind {
@@ -98,7 +93,7 @@ impl<'t> IrToInst<'t> {
         unimplemented!()
     }
 
-    fn get_or_register_string_constant(&mut self, s: String) -> ConstRef {
+    fn get_or_register_string_constant(&mut self, _s: String) -> ConstRef {
         /*
         *self.string_index.entry(s.clone())
             .or_else_insert(|| {

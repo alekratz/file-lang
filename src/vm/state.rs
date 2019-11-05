@@ -8,7 +8,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn call(&mut self, fun_ref: ValueRef, args: Vec<StackValue>) {
+    pub fn call(&mut self, _fun_ref: ValueRef, _args: Vec<StackValue>) {
         unimplemented!()
     }
 

@@ -1,8 +1,7 @@
 use crate::{
     common::prelude::*,
-    compile::{collect, context::*, error::*, ir::*, object, thunk::*},
+    compile::{collect, context::*, error::*, ir::*},
     syn::{ast, op::*, parser::Parser},
-    vm::{artifact::*, fun::UserFun, inst::Inst, value::*},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;

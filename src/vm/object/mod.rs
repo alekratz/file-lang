@@ -9,10 +9,10 @@ pub use self::ty::*;
 
 use crate::{
     common::types::Mapping,
-    vm::{fun::BuiltinFun, storage::Storage, value::*},
+    vm::{value::*},
 };
 
-use std::{any::Any, collections::HashMap, fmt::Debug};
+use std::{any::Any, fmt::Debug};
 
 pub trait Object: Debug {
     fn get_attr(&self, name: &str) -> Option<StackValue>;

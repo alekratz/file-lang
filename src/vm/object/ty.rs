@@ -1,4 +1,4 @@
-use crate::vm::{object::*, storage::Storage, value::*};
+use crate::vm::{object::*, value::*};
 
 pub struct TypeObject {
     type_name: ConstRef,

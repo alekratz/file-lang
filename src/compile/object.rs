@@ -1,10 +1,10 @@
 use crate::{
     common::prelude::*,
     compile::context::IrCtx,
-    vm::{fun::*, object::*, storage::*, value::*},
+    vm::{object::*, value::*},
 };
 use maplit::hashmap;
-use std::collections::HashMap;
+
 
 macro_rules! make_members {
     (@TAIL $ctx:expr, $type_map:expr; $name:expr => fn $fun:expr , $($tail:tt)*) => {{
@@ -34,7 +34,7 @@ macro_rules! make_members {
         $($tail:tt)*
     ) => {{
         let ctx = $ctx;
-        let type_map = $type_map;
+        let _type_map = $type_map;
         make_members!(@TAIL ctx, type_map; $($tail)*)
     }};
 }
@@ -75,7 +75,7 @@ impl<'ctx, 't> MakeTypes<'ctx, 't> {
     }
 
     fn make_type<T: 'static + MakeType>(&mut self) {
-        let (binding, const_ref) = T::make_type(self.ctx, &mut self.type_map);
+        let (_binding, const_ref) = T::make_type(self.ctx, &mut self.type_map);
         self.type_map.insert::<T>(const_ref);
     }
 }
@@ -133,7 +133,7 @@ impl MakeType for TypeObject {
 
     fn make_members(ctx: &mut IrCtx, type_map: &mut TypeMap<ConstRef>) -> ObjectMembers {
         let base_object = type_map.get::<TypeObject>().copied().unwrap();
-        let mut base: &BaseObject = ctx.constants()[*base_object]
+        let base: &BaseObject = ctx.constants()[*base_object]
             .as_any()
             .downcast_ref::<BaseObject>()
             .unwrap();
@@ -163,7 +163,7 @@ impl MakeType for StringObject {
 
     fn make_members(ctx: &mut IrCtx, type_map: &mut TypeMap<ConstRef>) -> ObjectMembers {
         let type_object = type_map.get::<TypeObject>().copied().unwrap();
-        let mut base: &BaseObject = ctx.constants()[*type_object]
+        let base: &BaseObject = ctx.constants()[*type_object]
             .as_any()
             .downcast_ref::<BaseObject>()
             .unwrap();
