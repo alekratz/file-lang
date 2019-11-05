@@ -1,9 +1,11 @@
 mod base;
 mod fun;
 mod string;
+mod ty;
 
 pub use self::base::*;
 pub use self::string::*;
+pub use self::ty::*;
 
 use crate::{
     common::types::Mapping,

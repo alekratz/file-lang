@@ -1,4 +1,4 @@
-use crate::vm::{inst::Inst, storage::Storage, value::StackValue, value::*};
+use crate::vm::{inst::Inst, state::State, value::StackValue, value::*};
 use std::{
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
@@ -16,7 +16,7 @@ impl UserFun {
     }
 }
 
-pub type BuiltinFunPtr = Box<fn(&mut Storage, Vec<StackValue>)>;
+pub type BuiltinFunPtr = Box<fn(&mut State, Vec<StackValue>)>;
 
 pub struct BuiltinFun {
     name: String,
@@ -32,8 +32,8 @@ impl BuiltinFun {
         &self.fun as *const _ as usize
     }
 
-    pub fn call(&self, storage: &mut Storage, args: Vec<StackValue>) {
-        (self.fun)(storage, args)
+    pub fn call(&self, state: &mut State, args: Vec<StackValue>) {
+        (self.fun)(state, args)
     }
 }
 

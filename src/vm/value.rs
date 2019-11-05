@@ -37,6 +37,16 @@ pub enum StackValue {
     Empty,
 }
 
+impl StackValue {
+    pub fn to_value_ref(&self) -> Option<ValueRef> {
+        match self {
+            StackValue::ConstRef(c) => Some((*c).into()),
+            StackValue::HeapRef(h) => Some((*h).into()),
+            _ => None,
+        }
+    }
+}
+
 impl From<ConstRef> for StackValue {
     fn from(other: ConstRef) -> Self {
         StackValue::ConstRef(other)

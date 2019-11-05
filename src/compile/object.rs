@@ -50,6 +50,11 @@ macro_rules! make_members_impl {
     };
 }
 
+pub fn make_types<'ctx, 't>(ctx: &'ctx mut IrCtx<'t>) {
+    MakeTypes::new(ctx)
+        .make_types();
+}
+
 pub struct MakeTypes<'ctx, 't> {
     ctx: &'ctx mut IrCtx<'t>,
     type_map: TypeMap<ConstRef>,
@@ -65,6 +70,7 @@ impl<'ctx, 't> MakeTypes<'ctx, 't> {
 
     pub fn make_types(mut self) {
         self.make_type::<BaseObject>();
+        self.make_type::<TypeObject>();
         self.make_type::<StringObject>();
     }
 
@@ -75,11 +81,11 @@ impl<'ctx, 't> MakeTypes<'ctx, 't> {
 }
 
 impl MakeType for BaseObject {
-    const TYPE_NAME: &'static str = "Type";
+    const TYPE_NAME: &'static str = "BaseObject";
 
     make_members_impl! {
         ctx, _type_map;
-        "__setattr__" => fn |storage, mut args| {
+        "__setattr__" => fn |state, mut args| {
             if args.len() != 3 {
                 // TODO(exception)
                 // Turn all of these panics and expects into exceptions
@@ -93,14 +99,15 @@ impl MakeType for BaseObject {
             let object_value = args.pop().unwrap();
 
             let name = if let Some(name) =
-                storage.downcast_stack_value::<StringObject>(name_value)
+                state.storage().downcast_stack_value::<StringObject>(name_value)
                 {
                     name.to_string()
                 } else {
                     panic!("__setattr__: name must be a string");
                 };
 
-            let object = storage
+            let object = state
+                .storage()
                 .deref_stack_value(object_value)
                 .expect("tried to call __setattr__ on a non-object value");
 
@@ -118,13 +125,36 @@ impl MakeType for BaseObject {
             }
             unimplemented!("__getattr__")
         },
-        // TODO : move these two to a new TypeObject type
-        "__call__" => fn |_storage, mut args| {
-            // TODO call __make__
-        },
-        "__make__" => fn |_storage, _args| {
-            // TODO create object, call __init__
-        },
+    }
+}
+
+impl MakeType for TypeObject {
+    const TYPE_NAME: &'static str = "Type";
+
+    fn make_members(ctx: &mut IrCtx, type_map: &mut TypeMap<ConstRef>) -> ObjectMembers {
+        let base_object = type_map.get::<TypeObject>().copied().unwrap();
+        let mut base: &BaseObject = ctx.constants()[*base_object]
+            .as_any()
+            .downcast_ref::<BaseObject>()
+            .unwrap();
+        let mut members = base.with_members(Clone::clone);
+        members.extend(make_members! {
+            ctx, type_map;
+            "__call__" => fn |state, mut args| {
+                let this_ref = args.remove(0);
+                let this_value = state.storage()
+                    .deref_stack_value(this_ref)
+                    .unwrap();
+                let make_ref = this_value.get_attr("__make__")
+                    .and_then(|v| v.to_value_ref())
+                    .unwrap();
+                state.call(make_ref, args);
+            },
+            "__make__" => fn |_storage, _args| {
+                // TODO create object, call __init__
+            },
+        });
+        members
     }
 }
 
@@ -132,15 +162,15 @@ impl MakeType for StringObject {
     const TYPE_NAME: &'static str = "Str";
 
     fn make_members(ctx: &mut IrCtx, type_map: &mut TypeMap<ConstRef>) -> ObjectMembers {
-        let base_object_type = type_map.get::<BaseObject>().copied().unwrap();
-        let mut base: &BaseObject = ctx.constants()[*base_object_type]
+        let type_object = type_map.get::<TypeObject>().copied().unwrap();
+        let mut base: &BaseObject = ctx.constants()[*type_object]
             .as_any()
             .downcast_ref::<BaseObject>()
             .unwrap();
         let mut members = base.with_members(Clone::clone);
         members.extend(make_members! {
             ctx, type_map;
-            "__type__" => StackValue::ConstRef(base_object_type),
+            "__type__" => StackValue::ConstRef(type_object),
             "__make__" => fn |_storage, _args| {
             },
         });
@@ -153,7 +183,7 @@ trait MakeType {
 
     fn make_type(ctx: &mut IrCtx, type_map: &mut TypeMap<ConstRef>) -> (Binding, ConstRef) {
         let name = Self::TYPE_NAME.to_string();
-        let binding = ctx.bindings_mut().create_binding(name);
+        let binding = ctx.bindings_mut().get_or_create_binding(name);
         let members = Self::make_members(ctx, type_map);
         let const_ref = ctx.register_constant_with(|ctx, const_ref| {
             let base_object = BaseObject::new(const_ref.into(), members);

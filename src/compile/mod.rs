@@ -10,6 +10,7 @@ mod translate;
 use crate::compile::error::*;
 
 pub fn compile(text: &str) -> Result<()> {
-    let _ir_ctx = translate::ast_to_ir(text)?;
+    let ir_ctx = translate::ast_to_ir(text)?;
+    let artifact = translate::ir_to_inst(ir_ctx)?;
     Ok(())
 }

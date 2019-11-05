@@ -1,6 +1,6 @@
 use crate::{
     common::prelude::*,
-    compile::{collect, context::*, error::*, ir::*, thunk::*},
+    compile::{collect, context::*, error::*, ir::*, object, thunk::*},
     syn::{ast, op::*, parser::Parser},
     vm::{artifact::*, fun::UserFun, inst::Inst, value::*},
 };
@@ -517,7 +517,6 @@ impl<'t> IrToInst<'t> {
     }
 
     fn get_or_register_string_constant(&mut self, s: String) -> ConstRef {
- 
         /*
         *self.string_index.entry(s.clone())
             .or_else_insert(|| {
@@ -543,6 +542,8 @@ pub fn ast_to_ir<'t>(text: &'t str) -> Result<IrCtx<'t>> {
     AstToIr::new(ctx).translate()
 }
 
-pub fn ir_to_inst<'t>(ctx: IrCtx<'t>) -> Result<Artifact> {
-    IrToInst::new(ctx).translate()
+pub fn ir_to_inst<'t>(mut ctx: IrCtx<'t>) -> Result<Artifact> {
+    object::make_types(&mut ctx);
+    //IrToInst::new(ctx).translate()
+    unimplemented!()
 }
