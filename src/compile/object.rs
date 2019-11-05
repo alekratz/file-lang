@@ -182,8 +182,7 @@ trait MakeType {
     const TYPE_NAME: &'static str;
 
     fn make_type(ctx: &mut IrCtx, type_map: &mut TypeMap<ConstRef>) -> (Binding, ConstRef) {
-        let name = Self::TYPE_NAME.to_string();
-        let binding = ctx.bindings_mut().get_or_create_binding(name);
+        let binding = ctx.bindings_mut().get_or_create_binding(Self::TYPE_NAME);
         let members = Self::make_members(ctx, type_map);
         let const_ref = ctx.register_constant_with(|ctx, const_ref| {
             let base_object = BaseObject::new(const_ref.into(), members);
