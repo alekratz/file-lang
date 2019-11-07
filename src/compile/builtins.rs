@@ -1,4 +1,4 @@
-pub use crate::vm::fun::BuiltinFun;
+pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
 
 use crate::compile::binding::*;
 use std::collections::HashMap;
@@ -27,18 +27,18 @@ impl Builtins {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BuiltinType {
     binding: Binding,
-    members: HashMap<String, BuiltinFun>,
+    members: HashMap<String, BuiltinFunPtr>,
 }
 
 impl BuiltinType {
-    pub fn new(binding: Binding, members: HashMap<String, BuiltinFun>) -> Self {
+    pub fn new(binding: Binding, members: HashMap<String, BuiltinFunPtr>) -> Self {
         BuiltinType { binding, members, }
     }
 
-    pub fn members(&self) -> &HashMap<String, BuiltinFun> {
+    pub fn members(&self) -> &HashMap<String, BuiltinFunPtr> {
         &self.members
     }
 }

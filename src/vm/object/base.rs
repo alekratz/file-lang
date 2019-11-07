@@ -15,7 +15,7 @@ pub struct BaseObject {
 }
 
 impl BaseObject {
-    pub fn new(value_ref: ValueRef, members: Mapping<String, StackValue>) -> Self {
+    pub fn new(value_ref: ValueRef, members: ObjectMembers) -> Self {
         BaseObject {
             value_ref,
             members: members.into(),
@@ -38,19 +38,19 @@ impl BaseObject {
 }
 
 impl Object for BaseObject {
-    fn get_attr(&self, name: &str) -> Option<StackValue> {
+    fn get_attr(&self, name: ValueRef) -> Option<StackValue> {
         let members = self.members.borrow();
-        members.get(name).copied()
+        members.get(&name).copied()
     }
 
-    fn set_attr(&self, name: String, value: StackValue) {
+    fn set_attr(&self, name: ValueRef, value: StackValue) {
         let mut members = self.members.borrow_mut();
         members.insert(name, value);
     }
     
-    fn attrs(&self) -> Vec<String> {
+    fn attrs(&self) -> Vec<ValueRef> {
         let members = self.members.borrow();
-        members.keys().cloned().collect()
+        members.keys().copied().collect()
     }
 
     fn value_ref(&self) -> ValueRef {

@@ -1,10 +1,8 @@
-use crate::common::{binding::*, span::*};
-
-#[derive(Debug, Clone)]
-pub enum BoundFun {
-    User(FunDef),
-    Builtin,
-}
+use crate::{
+    common::prelude::*,
+    vm::fun::BuiltinFun,
+};
+use std::fmt::{self, Debug, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct TypeDef {
@@ -121,18 +119,6 @@ pub struct Loop {
     pub span: Span,
     pub condition: Option<Expr>,
     pub body: Vec<Stmt>,
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Base impl
-////////////////////////////////////////////////////////////////////////////////
-impl BoundFun {
-    pub fn binding(&self) -> Binding {
-        match self {
-            BoundFun::User(fun) => fun.binding,
-            BoundFun::Builtin => unimplemented!(),
-        }
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

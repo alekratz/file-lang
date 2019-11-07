@@ -1,74 +1,91 @@
-use crate::vm::{inst::Inst, state::State, value::StackValue, value::*};
+use crate::{
+    common::binding::Binding,
+    vm::{inst::Inst, state::State, value::StackValue, value::*},
+};
+use shrinkwraprs::Shrinkwrap;
 use std::{
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
 };
 
 pub struct UserFun {
-    name: ConstRef,
+    name_binding: Binding,
     code: Vec<Inst>,
     arity: usize,
 }
 
 impl UserFun {
-    pub fn new(name: ConstRef, code: Vec<Inst>, arity: usize) -> Self {
-        UserFun { name, code, arity }
+    pub fn new(name_binding: Binding, code: Vec<Inst>, arity: usize) -> Self {
+        UserFun {
+            name_binding,
+            code,
+            arity,
+        }
+    }
+
+    pub fn name_binding(&self) -> Binding {
+        self.name_binding
     }
 }
 
-pub type BuiltinFunPtr = Box<fn(&mut State, Vec<StackValue>)>;
+#[derive(Shrinkwrap)]
+pub struct BuiltinFunPtr(pub Box<fn(&mut State, Vec<StackValue>)>);
 
+impl BuiltinFunPtr {
+    pub fn new(ptr: fn(&mut State, Vec<StackValue>)) -> Self {
+        BuiltinFunPtr(Box::new(ptr))
+    }
+
+    fn fun_address(&self) -> usize {
+        &self.0 as *const _ as usize
+    }
+}
+
+impl Debug for BuiltinFunPtr {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.debug_tuple("BuiltinFunPtr")
+            .field(&format!("builtin function at {:#x}", &self.fun_address()))
+            .finish()
+    }
+}
+
+impl Clone for BuiltinFunPtr {
+    fn clone(&self) -> Self {
+        BuiltinFunPtr(Box::new(*self.0.as_ref()))
+    }
+}
+
+impl Hash for BuiltinFunPtr {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.fun_address().hash(hasher);
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct BuiltinFun {
-    name: String,
+    name_binding: Binding,
     fun: BuiltinFunPtr,
 }
 
 impl BuiltinFun {
-    pub fn new(name: String, fun: BuiltinFunPtr) -> Self {
-        BuiltinFun { name, fun }
-    }
-
-    fn fun_address(&self) -> usize {
-        &self.fun as *const _ as usize
+    pub fn new(name_binding: Binding, fun: BuiltinFunPtr) -> Self {
+        BuiltinFun { name_binding, fun }
     }
 
     pub fn fun(&self) -> &BuiltinFunPtr {
         &self.fun
     }
-}
 
-impl Clone for BuiltinFun {
-    fn clone(&self) -> Self {
-        BuiltinFun {
-            name: self.name.clone(),
-            fun: Box::new(*self.fun.as_ref()),
-        }
-    }
-}
-
-impl Debug for BuiltinFun {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        fmt.debug_struct("BuiltinFun")
-            .field("name", &self.name)
-            .field(
-                "fun",
-                &format!("builtin function at {:#x}", &self.fun as *const _ as usize),
-            )
-            .finish()
+    pub fn name_binding(&self) -> Binding {
+        self.name_binding
     }
 }
 
 impl PartialEq for BuiltinFun {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && (self.fun_address() == other.fun_address())
+        self.name_binding == other.name_binding
+            && (self.fun.fun_address() == other.fun.fun_address())
     }
 }
 
 impl Eq for BuiltinFun {}
-
-impl Hash for BuiltinFun {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.name.hash(hasher);
-        self.fun_address().hash(hasher);
-    }
-}

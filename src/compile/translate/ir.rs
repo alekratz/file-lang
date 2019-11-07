@@ -90,17 +90,6 @@ impl<'t> IrToInst<'t> {
     }
 
     fn get_or_register_string_constant(&mut self, s: &str) -> ConstRef {
-        /*
-        *self.string_index.entry(s.clone())
-            .or_else_insert(|| {
-                let ref_id = self.ctx.constants().len();
-                let value = StringObjectBuilder::default()
-                    .string(s)
-                    .value_ref(ConstRef(ref_id).into())
-                    .finish();
-                self.ctx.register_constant(value)
-            })
-            */
         unimplemented!()
     }
 }

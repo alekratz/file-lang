@@ -1,7 +1,7 @@
 use crate::{
     compile::{binding::*, builtins::*, context::SynCtx},
     vm::{
-        fun::BuiltinFunPtr,
+        fun::{BuiltinFunPtr, BuiltinFun},
         object::*,
     },
 };
@@ -32,10 +32,7 @@ macro_rules! collect_types {
     ) => {{
         $({
             let _funs = hashmap! {$(
-                    $fun_name.to_string() => BuiltinFun::new(
-                        $fun_name.to_string(),
-                        BuiltinFunPtr::new($fun)
-                    )
+                    $fun_name.to_string() => BuiltinFunPtr::new($fun)
             ),*};
             $self.register_builtin_type($name.to_string(), _funs);
         })*
@@ -64,10 +61,7 @@ macro_rules! collect_types {
                 .members()
                 .clone();
             let _funs = hashmap! {$(
-                    $fun_name.to_string() => BuiltinFun::new(
-                        $fun_name.to_string(),
-                        BuiltinFunPtr::new($fun)
-                    )
+                    $fun_name.to_string() => BuiltinFunPtr::new($fun)
             ),*};
             _base_funs.extend(_funs);
             $self.register_builtin_type($name.to_string(), _base_funs);
@@ -147,7 +141,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
 
     fn register_builtin_fun(&mut self, name: String, fun: BuiltinFunPtr) -> Binding {
         let binding = self.ctx.bindings_mut().create_binding(name.clone());
-        let builtin_fun = BuiltinFun::new(name, fun);
+        let builtin_fun = BuiltinFun::new(binding, fun);
         self.ctx
             .builtins_mut()
             .functions_mut()
@@ -158,7 +152,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
     fn register_builtin_type(
         &mut self,
         name: String,
-        members: HashMap<String, BuiltinFun>,
+        members: HashMap<String, BuiltinFunPtr>,
     ) -> Binding {
         let binding = self.ctx.bindings_mut().create_binding(name.clone());
         let builtin_type = BuiltinType::new(binding, members);

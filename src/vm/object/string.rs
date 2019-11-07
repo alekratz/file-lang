@@ -35,15 +35,15 @@ impl Display for StringObject {
 }
 
 impl Object for StringObject {
-    fn get_attr(&self, name: &str) -> Option<StackValue> {
+    fn get_attr(&self, name: ValueRef) -> Option<StackValue> {
         self.base_object.get_attr(name)
     }
 
-    fn set_attr(&self, name: String, value: StackValue) {
+    fn set_attr(&self, name: ValueRef, value: StackValue) {
         self.base_object.set_attr(name, value)
     }
 
-    fn attrs(&self) -> Vec<String> {
+    fn attrs(&self) -> Vec<ValueRef> {
         self.base_object.attrs()
     }
 

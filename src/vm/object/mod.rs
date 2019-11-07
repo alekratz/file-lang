@@ -16,13 +16,13 @@ use crate::{
 use std::{any::Any, fmt::Debug};
 
 pub trait Object: Debug {
-    fn get_attr(&self, name: &str) -> Option<StackValue>;
-    fn set_attr(&self, name: String, value: StackValue);
-    fn attrs(&self) -> Vec<String>;
+    fn get_attr(&self, name: ValueRef) -> Option<StackValue>;
+    fn set_attr(&self, name: ValueRef, value: StackValue);
+    fn attrs(&self) -> Vec<ValueRef>;
     fn value_ref(&self) -> ValueRef;
     fn as_any(&self) -> &dyn Any;
 }
 
 /// A boxed, "live" object value.
 pub type ObjectValue = Box<dyn Object>;
-pub type ObjectMembers = Mapping<String, StackValue>;
+pub type ObjectMembers = Mapping<ValueRef, StackValue>;
