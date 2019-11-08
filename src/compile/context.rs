@@ -1,5 +1,5 @@
 use crate::{
-    compile::{binding::*, builtins::*, ir},
+    compile::{binding::*, builtins::*, constant::*, ir},
     syn::ast,
     vm::{object::*, value::*},
 };
@@ -61,7 +61,7 @@ impl<'t> SynCtx<'t> {
 #[derive(Debug)]
 pub struct IrCtx<'t> {
     text: &'t str,
-    constants: Vec<ObjectValue>,
+    constants: Vec<ConstValue>,
     bindings: BindingStack,
     functions: Rc<HashMap<Binding, ir::FunDef>>,
     types: Rc<HashMap<Binding, ir::TypeDef>>,
@@ -99,17 +99,17 @@ impl<'t> IrCtx<'t> {
         &mut self.bindings
     }
 
-    pub fn constants(&self) -> &Vec<ObjectValue> {
+    pub fn constants(&self) -> &Vec<ConstValue> {
         &self.constants
     }
 
-    pub fn constants_mut(&mut self) -> &mut Vec<ObjectValue> {
+    pub fn constants_mut(&mut self) -> &mut Vec<ConstValue> {
         &mut self.constants
     }
 
     pub fn register_constant_with<F>(&mut self, fun: F) -> ConstRef
     where
-        F: FnOnce(&mut IrCtx, ConstRef) -> ObjectValue,
+        F: FnOnce(&mut IrCtx, ConstRef) -> ConstValue,
     {
         let ref_id = self.constants.len();
         let value = (fun)(self, ConstRef(ref_id));
@@ -117,9 +117,8 @@ impl<'t> IrCtx<'t> {
         ConstRef(ref_id)
     }
 
-    pub fn register_constant(&mut self, value: ObjectValue) -> ConstRef {
-        self.register_constant_with(|_, const_ref| {
-            assert_eq!(ValueRef::Const(const_ref), value.value_ref());
+    pub fn register_constant(&mut self, value: ConstValue) -> ConstRef {
+        self.register_constant_with(|_, _| {
             value
         })
     }

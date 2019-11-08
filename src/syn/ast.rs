@@ -288,7 +288,7 @@ pub enum AtomKind {
 #[derivative(Debug, Clone, PartialEq, Hash)]
 pub struct Op {
     pub span: Span,
-    pub kind: Vec<OpKind>,
+    pub kind: OpList,
 }
 
 /// An operator used for assignment statements.
@@ -296,7 +296,7 @@ pub struct Op {
 #[derivative(Debug, Clone, PartialEq, Hash)]
 pub struct AssignOp {
     pub span: Span,
-    pub kind: Vec<OpKind>,
+    pub kind: OpList,
 }
 
 ////////////////////////////////////////////////////////////////////////////////

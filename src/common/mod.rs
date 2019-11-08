@@ -15,3 +15,8 @@ pub mod prelude {
     pub use super::types::*;
     pub use super::util::*;
 }
+
+#[macro_export]
+macro_rules! todo {
+    ($($tt:tt)*) => {{ unimplemented!($($tt)*) }};
+}

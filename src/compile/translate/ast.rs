@@ -137,7 +137,7 @@ impl<'t> AstToIr<'t> {
         let lhs = self.translate_lvalue(&assign.lhs)?;
 
         let op = &assign.op;
-        let op = if &op.kind == &[OpKind::Eq] {
+        let op = if &op.kind.as_slice() == &[OpKind::Eq] {
             None
         } else {
             let op_kind = op.binding_name();

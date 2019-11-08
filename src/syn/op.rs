@@ -1,3 +1,4 @@
+use shrinkwraprs::Shrinkwrap;
 use std::fmt::{self, Display, Formatter};
 
 macro_rules! ops {
@@ -41,6 +42,28 @@ macro_rules! ops {
 impl Display for OpKind {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         write!(fmt, "{}", self.to_char())
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Shrinkwrap)]
+pub struct OpList(Vec<OpKind>);
+
+impl OpList {
+    pub fn new(ops: Vec<OpKind>) -> Self {
+        OpList(ops)
+    }
+}
+
+impl From<Vec<OpKind>> for OpList {
+    fn from(other: Vec<OpKind>) -> Self {
+        OpList::new(other)
+    }
+}
+
+impl Display for OpList {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        //write!(fmt, "{}", self.to_char())
+        unimplemented!()
     }
 }
 

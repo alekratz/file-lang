@@ -1,6 +1,6 @@
 use crate::{
     common::binding::Binding,
-    vm::{inst::Inst, state::State, value::StackValue, value::*},
+    vm::{inst::Inst, state::State, value::StackValue},
 };
 use shrinkwraprs::Shrinkwrap;
 use std::{
@@ -8,6 +8,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+#[derive(Debug)]
 pub struct UserFun {
     name_binding: Binding,
     code: Vec<Inst>,

@@ -1,8 +1,4 @@
-use crate::{
-    common::prelude::*,
-    vm::fun::BuiltinFun,
-};
-use std::fmt::{self, Debug, Formatter};
+use crate::common::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct TypeDef {

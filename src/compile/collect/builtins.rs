@@ -23,7 +23,7 @@ macro_rules! collect_types {
     (
         $self:expr;
         $(
-            $name:expr => {
+            $name:expr => for $ty:ty {
                 $(
                     $fun_name:expr => $fun:expr
                 ),*
@@ -34,14 +34,14 @@ macro_rules! collect_types {
             let _funs = hashmap! {$(
                     $fun_name.to_string() => BuiltinFunPtr::new($fun)
             ),*};
-            $self.register_builtin_type($name.to_string(), _funs);
+            $self.register_builtin_type::<$ty>($name.to_string(), _funs);
         })*
     }};
 
     (
         $self:expr;
         $(
-            $name:expr => {
+            $name:expr => for $ty:ty {
                 extends $base:expr ;
                 $(
                     $fun_name:expr => $fun:expr
@@ -64,7 +64,7 @@ macro_rules! collect_types {
                     $fun_name.to_string() => BuiltinFunPtr::new($fun)
             ),*};
             _base_funs.extend(_funs);
-            $self.register_builtin_type($name.to_string(), _base_funs);
+            $self.register_builtin_type::<$ty>($name.to_string(), _base_funs);
         })*
     }};
 }
@@ -94,7 +94,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
     fn collect_types(&mut self) {
         collect_types! {
             self;
-            "#*BaseObject*#" => {
+            "#*BaseObject*#" => for BaseObject {
                 "__setattr__" => |_, _| {
                 },
                 "__getattr__" => |_, _| {
@@ -104,7 +104,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
 
         collect_types! {
             self;
-            "BuiltinFun" => {
+            "BuiltinFun" => for BuiltinFunObject {
                 extends "#*BaseObject*#";
 
                 "__call__" => |state, mut args| {
@@ -119,14 +119,14 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
                 }
             }
 
-            "Type" => {
+            "Type" => for TypeObject {
                 extends "BuiltinFun";
 
                 "__init__" => |_, _| {
                 }
             }
 
-            "Str" => {
+            "Str" => for StringObject {
                 extends "Type";
 
                 "__init__" => |_, _| {
@@ -144,12 +144,11 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
         let builtin_fun = BuiltinFun::new(binding, fun);
         self.ctx
             .builtins_mut()
-            .functions_mut()
-            .insert(binding, builtin_fun);
+            .insert_function(binding, builtin_fun);
         binding
     }
 
-    fn register_builtin_type(
+    fn register_builtin_type<O: 'static + Object>(
         &mut self,
         name: String,
         members: HashMap<String, BuiltinFunPtr>,
@@ -158,8 +157,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
         let builtin_type = BuiltinType::new(binding, members);
         self.ctx
             .builtins_mut()
-            .types_mut()
-            .insert(binding, builtin_type);
+            .insert_type::<O>(binding, builtin_type);
         binding
     }
 }

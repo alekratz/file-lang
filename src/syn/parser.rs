@@ -360,7 +360,7 @@ impl<'text> Parser<'text> {
             .collect();
         Ok(Op {
             span: token.span(),
-            kind,
+            kind: kind.into(),
         })
     }
 
@@ -373,7 +373,7 @@ impl<'text> Parser<'text> {
             .collect();
         Ok(AssignOp {
             span: token.span(),
-            kind,
+            kind: kind.into(),
         })
     }
 

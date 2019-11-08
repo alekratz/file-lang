@@ -1,7 +1,4 @@
-use crate::{
-    common::prelude::*,
-    vm::{object::*, value::*},
-};
+use crate::vm::{object::*, value::*};
 use std::{any::Any, cell::RefCell, fmt::Debug};
 
 /// The base object type.
@@ -30,11 +27,11 @@ impl BaseObject {
     }
 
     pub fn with_members<B, F>(&self, fun: F) -> B
-        where F: Fn(&ObjectMembers) -> B
+    where
+        F: Fn(&ObjectMembers) -> B,
     {
         (fun)(&self.members.borrow())
     }
-
 }
 
 impl Object for BaseObject {
@@ -47,7 +44,7 @@ impl Object for BaseObject {
         let mut members = self.members.borrow_mut();
         members.insert(name, value);
     }
-    
+
     fn attrs(&self) -> Vec<ValueRef> {
         let members = self.members.borrow();
         members.keys().copied().collect()

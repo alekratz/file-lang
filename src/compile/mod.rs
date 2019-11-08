@@ -1,6 +1,7 @@
 mod binding;
 mod builtins;
 mod collect;
+mod constant;
 mod context;
 pub mod error;
 mod ir;

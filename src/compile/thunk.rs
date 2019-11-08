@@ -16,6 +16,7 @@ pub enum Thunk {
     },
     Continue,
     Break,
+    Nop,
 }
 
 impl Default for Thunk {
@@ -90,6 +91,7 @@ impl Thunk {
                 + thunk.len(),
             Thunk::Continue => 1,
             Thunk::Break => 1,
+            Thunk::Nop => 0,
         }
     }
 }
@@ -190,6 +192,7 @@ impl FlattenThunk {
                 self.address += 1;
                 vec![Inst::Jump(self.break_address)]
             },
+            Thunk::Nop => vec![],
         }
     }
 }
