@@ -31,7 +31,7 @@ impl Thunk {
             .flatten(self)
     }
 
-    pub fn extend(&mut self, other: Thunk) {
+    pub fn extend(&mut self, other: impl Into<Thunk>) {
         // put an empty value in the "self" pointer; this is because we can't borrow `this` (as
         // ref) and `other`(as value) and still have a nice match.
         //
@@ -39,6 +39,7 @@ impl Thunk {
         // allocate until elements are pushed onto it". [1] So this should not affect performance.
         //
         // [1] https://doc.rust-lang.org/std/vec/struct.Vec.html#method.new
+        let other = other.into();
         let this = mem::replace(self, Thunk::default());
         *self = match (this, other) {
             (Thunk::Block(mut head), Thunk::Block(tail)) => {
@@ -66,7 +67,7 @@ impl Thunk {
     }
 
     pub fn push(&mut self, inst: Inst) {
-        self.extend(vec![inst].into())
+        self.extend(vec![inst])
     }
 
     pub fn len(&self) -> usize {

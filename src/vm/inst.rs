@@ -15,15 +15,17 @@ pub enum Inst {
     Load(Binding),
 
     /// Loads a named attribute from the top value of the stack.
+    ///
+    /// This does not pop the top value off of the stack.
     GetAttr(ConstRef),
-
-    /// Sets a named attribute from the top value of the stack.
-    SetAttr(ConstRef),
 
     /// Pop the top value off of the stack and store it in a variable binding.
     Store(Binding),
 
-    /// Pop a storage target followed by a value off of the stack, and store the value in the
+    /// Duplicates the top value of the stack.
+    Dupe,
+
+    /// Pop a value followed by a storage target off of the stack, and store the value in the
     /// target.
     PopStore,
 

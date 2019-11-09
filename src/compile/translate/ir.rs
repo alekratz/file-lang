@@ -1,5 +1,5 @@
 use crate::{
-    compile::{constant::*, context::*, error::*, ir::*, thunk::*},
+    compile::{builtins::*, constant::*, context::*, error::*, ir::*, thunk::*},
     vm::{artifact::*, fun::UserFun, inst::Inst, value::*},
 };
 use std::collections::HashMap;
@@ -47,7 +47,7 @@ impl<'t> IrToInst<'t> {
 
     fn translate_stmt(&mut self, stmt: &Stmt) -> Result<Thunk> {
         match stmt {
-            Stmt::Assign(_) => todo!(),
+            Stmt::Assign(a) => self.translate_assign(a),
             Stmt::Expr(e) => self.translate_expr(e, ExprCtx::Stmt),
             Stmt::Retn(r) => self.translate_retn(r),
             Stmt::Branch(_) => todo!(),
@@ -56,6 +56,56 @@ impl<'t> IrToInst<'t> {
             Stmt::Brk(_) => Ok(Thunk::Break),
             Stmt::Nop(_) => Ok(Thunk::Nop),
         }
+    }
+
+    fn translate_assign(&mut self, Assign { lhs, op, rhs, .. }: &Assign) -> Result<Thunk> {
+        let mut thunk = Thunk::default();
+        if let Some(op) = op {
+            match lhs {
+                LValue::Ident(_, binding) => thunk.push(Inst::Load(*binding)),
+                LValue::Access(access) => {
+                    thunk.extend(self.translate_access(access, ExprCtx::Push)?);
+                }
+                LValue::Complex(expr) => {
+                    thunk.extend(self.translate_expr(expr, ExprCtx::Push)?);
+                }
+            }
+            thunk.extend(self.translate_expr(rhs, ExprCtx::Push)?);
+            thunk.extend(vec![Inst::Load(*op), Inst::PopCall(2)]);
+        } else {
+            match lhs {
+                LValue::Ident(_, binding) => {
+                    thunk.extend(self.translate_expr(rhs, ExprCtx::Push)?);
+                    thunk.push(Inst::Store(*binding));
+                }
+                LValue::Access(access) => {
+                    // TODO : Keep track of anonymous variables so that they may be reclaimed
+                    let setattr_binding = self.ctx
+                        .bindings_mut()
+                        .create_anonymous_binding();
+                    let setattr_ref = self.get_or_register_string_constant(SETATTR);
+                    let attr_ref = self.get_or_register_string_constant(&access.tail);
+                    thunk.extend(self.translate_expr(&access.head, ExprCtx::Push)?);
+                    thunk.extend(vec![
+                                 Inst::GetAttr(setattr_ref),
+                                 Inst::Store(setattr_binding),
+                                 Inst::PushValue(attr_ref.into()),
+                    ]);
+                    // RHS
+                    thunk.extend(self.translate_expr(rhs, ExprCtx::Push)?);
+                    thunk.extend(vec![
+                                 Inst::Load(setattr_binding),
+                                 Inst::PopCall(3),
+                    ]);
+                }
+                LValue::Complex(expr) => {
+                    thunk.extend(self.translate_expr(expr, ExprCtx::Push)?);
+                    thunk.extend(self.translate_expr(rhs, ExprCtx::Push)?);
+                    thunk.push(Inst::PopStore);
+                }
+            }
+        }
+        Ok(thunk)
     }
 
     fn translate_expr(&mut self, expr: &Expr, ctx: ExprCtx) -> Result<Thunk> {
@@ -68,20 +118,60 @@ impl<'t> IrToInst<'t> {
         }
     }
 
-    fn translate_retn(&mut self, _retn: &Retn) -> Result<Thunk> {
-        todo!()
+    fn translate_bin_expr(
+        &mut self,
+        BinExpr { lhs, op, rhs, .. }: &BinExpr,
+        ctx: ExprCtx,
+    ) -> Result<Thunk> {
+        let mut thunk = self.translate_expr(lhs, ExprCtx::Push)?;
+        thunk.extend(self.translate_expr(rhs, ExprCtx::Push)?);
+        thunk.extend(vec![Inst::Load(*op), Inst::PopCall(2)]);
+
+        match ctx {
+            ExprCtx::Push => thunk.push(Inst::PushReturn),
+            ExprCtx::Stmt => thunk.push(Inst::DiscardReturn),
+            ExprCtx::Return => { /* no-op - return value is already in the return register */ }
+        }
+        Ok(thunk)
     }
 
-    fn translate_bin_expr(&mut self, _bin_expr: &BinExpr, _ctx: ExprCtx) -> Result<Thunk> {
-        todo!()
+    fn translate_un_expr(
+        &mut self,
+        UnExpr { op, expr, .. }: &UnExpr,
+        ctx: ExprCtx,
+    ) -> Result<Thunk> {
+        // TODO : consider translating this to a function call in the IR, instead of here
+        let mut thunk = self.translate_expr(expr, ExprCtx::Push)?;
+        thunk.extend(vec![Inst::Load(*op), Inst::PopCall(1)]);
+
+        match ctx {
+            ExprCtx::Push => thunk.push(Inst::PushReturn),
+            ExprCtx::Stmt => thunk.push(Inst::DiscardReturn),
+            ExprCtx::Return => { /* no-op - return value is already in the return register */ }
+        }
+        Ok(thunk)
     }
 
-    fn translate_un_expr(&mut self, _un_expr: &UnExpr, _ctx: ExprCtx) -> Result<Thunk> {
-        todo!()
-    }
-
-    fn translate_access(&mut self, _access: &Access, _ctx: ExprCtx) -> Result<Thunk> {
-        todo!()
+    fn translate_access(
+        &mut self,
+        Access { head, tail, .. }: &Access,
+        ctx: ExprCtx,
+    ) -> Result<Thunk> {
+        // TODO : consider translating this to a function call in the IR, instead of here
+        let mut thunk = self.translate_expr(head, ExprCtx::Push)?;
+        let name_ref = self.get_or_register_string_constant(tail);
+        let getattr_ref = self.get_or_register_string_constant(GETATTR);
+        thunk.extend(vec![
+            Inst::PushValue(StackValue::ConstRef(name_ref)),
+            Inst::GetAttr(getattr_ref),
+            Inst::PopCall(2),
+        ]);
+        match ctx {
+            ExprCtx::Push => thunk.push(Inst::PushReturn),
+            ExprCtx::Stmt => thunk.push(Inst::DiscardReturn),
+            ExprCtx::Return => { /* no-op - return value is already in the return register */ }
+        }
+        Ok(thunk)
     }
 
     fn translate_fun_call(
@@ -125,6 +215,16 @@ impl<'t> IrToInst<'t> {
             ExprCtx::Return => body.push(Inst::StoreReturn),
         }
         Ok(body)
+    }
+
+    fn translate_retn(&mut self, Retn { expr, .. }: &Retn) -> Result<Thunk> {
+        let mut thunk = if let Some(expr) = expr {
+            self.translate_expr(expr, ExprCtx::Return)?
+        } else {
+            Thunk::Block(vec![])
+        };
+        thunk.push(Inst::Return);
+        Ok(thunk)
     }
 
     fn get_or_register_string_constant(&mut self, s: &str) -> ConstRef {

@@ -63,6 +63,11 @@ impl BindingStack {
         self.stack.last_mut()
     }
 
+    pub fn create_anonymous_binding(&mut self) -> Binding {
+        let name = format!("#*anonymous variable {}*#", self.all.len());
+        self.create_binding(name)
+    }
+
     pub fn create_binding(&mut self, name: String) -> Binding {
         let binding = Binding(self.all.len());
         self.all.push(name.clone());

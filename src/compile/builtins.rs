@@ -8,13 +8,28 @@ use std::{
 
 #[derive(Debug, Default)]
 pub struct Builtins {
+    un_ops: HashMap<OpList, Binding>,
     bin_ops: HashMap<OpList, Binding>,
+    assign_ops: HashMap<OpList, Binding>,
     functions: HashMap<Binding, BuiltinFun>,
     types: HashMap<Binding, BuiltinType>,
     type_bindings: HashMap<TypeId, Binding>,
 }
 
 impl Builtins {
+    pub fn un_ops(&self) -> &HashMap<OpList, Binding> {
+        &self.un_ops
+    }
+
+    pub fn insert_un_op(&mut self, op: OpList, binding: Binding) {
+        let previous = self.un_ops.insert(op.clone(), binding);
+        assert!(
+            previous.is_none(),
+            "un op {} already registered",
+            op
+        );
+    }
+
     pub fn bin_ops(&self) -> &HashMap<OpList, Binding> {
         &self.bin_ops
     }
@@ -74,3 +89,10 @@ impl BuiltinType {
         &self.members
     }
 }
+
+pub const GETATTR: &str = "__getattr__";
+pub const SETATTR: &str = "__setattr__";
+pub const INIT: &str = "__init__";
+pub const REPR: &str = "__repr__";
+pub const STR: &str = "__str__";
+pub const CALL: &str = "__call__";

@@ -19,13 +19,6 @@ impl BaseObject {
         }
     }
 
-    pub fn overlay_members(&mut self, other: ObjectMembers) {
-        let mut members = self.members.borrow_mut();
-        for (key, value) in other.into_iter() {
-            members.insert(key, value);
-        }
-    }
-
     pub fn with_members<B, F>(&self, fun: F) -> B
     where
         F: Fn(&ObjectMembers) -> B,
@@ -35,19 +28,19 @@ impl BaseObject {
 }
 
 impl Object for BaseObject {
-    fn get_attr(&self, name: ValueRef) -> Option<StackValue> {
+    fn get_attr(&self, name: &StringObject) -> Option<StackValue> {
         let members = self.members.borrow();
         members.get(&name).copied()
     }
 
-    fn set_attr(&self, name: ValueRef, value: StackValue) {
+    fn set_attr(&self, name: StringObject, value: StackValue) {
         let mut members = self.members.borrow_mut();
         members.insert(name, value);
     }
 
-    fn attrs(&self) -> Vec<ValueRef> {
+    fn attrs(&self) -> Vec<StringObject> {
         let members = self.members.borrow();
-        members.keys().copied().collect()
+        members.keys().cloned().collect()
     }
 
     fn value_ref(&self) -> ValueRef {

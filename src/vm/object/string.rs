@@ -1,15 +1,22 @@
 use crate::vm::{object::*, value::*};
+use derivative::Derivative;
 
 use std::{
     any::Any,
     fmt::{self, Debug, Display, Formatter},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Derivative)]
+#[derivative(Hash)]
+#[derivative(PartialEq)]
 pub struct StringObject {
+    #[derivative(Hash="ignore")]
+    #[derivative(PartialEq="ignore")]
     base_object: BaseObject,
     string: String,
 }
+
+impl Eq for StringObject {}
 
 impl StringObject {
     pub fn new(base_object: BaseObject, string: String) -> Self {
@@ -35,15 +42,15 @@ impl Display for StringObject {
 }
 
 impl Object for StringObject {
-    fn get_attr(&self, name: ValueRef) -> Option<StackValue> {
+    fn get_attr(&self, name: &StringObject) -> Option<StackValue> {
         self.base_object.get_attr(name)
     }
 
-    fn set_attr(&self, name: ValueRef, value: StackValue) {
+    fn set_attr(&self, name: StringObject, value: StackValue) {
         self.base_object.set_attr(name, value)
     }
 
-    fn attrs(&self) -> Vec<ValueRef> {
+    fn attrs(&self) -> Vec<StringObject> {
         self.base_object.attrs()
     }
 
@@ -55,4 +62,3 @@ impl Object for StringObject {
         self
     }
 }
-

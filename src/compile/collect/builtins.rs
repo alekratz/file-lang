@@ -95,9 +95,9 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
         collect_types! {
             self;
             "#*BaseObject*#" => for BaseObject {
-                "__setattr__" => |_, _| {
+                SETATTR => |_, _| {
                 },
-                "__getattr__" => |_, _| {
+                GETATTR => |_, _| {
                 }
             }
         }
@@ -107,7 +107,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
             "BuiltinFun" => for BuiltinFunObject {
                 extends "#*BaseObject*#";
 
-                "__call__" => |state, mut args| {
+                CALL => |state, mut args| {
                     let this_ref = args.remove(0);
                     let this = state.storage()
                         .downcast_stack_value::<BuiltinFunObject>(this_ref)
@@ -122,18 +122,18 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
             "Type" => for TypeObject {
                 extends "BuiltinFun";
 
-                "__init__" => |_, _| {
+                INIT => |_, _| {
                 }
             }
 
             "Str" => for StringObject {
                 extends "Type";
 
-                "__init__" => |_, _| {
+                INIT => |_, _| {
                 },
-                "__repr__" => |_, _| {
+                REPR => |_, _| {
                 },
-                "__str__" => |_, _| {
+                STR => |_, _| {
                 }
             }
         }
