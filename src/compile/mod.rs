@@ -12,6 +12,6 @@ use crate::compile::error::*;
 
 pub fn compile(text: &str) -> Result<()> {
     let ir_ctx = translate::ast_to_ir(text)?;
-    let _artifact = translate::ir_to_inst(ir_ctx)?;
+    let _artifact = translate::ir_to_inst(ir_ctx);
     Ok(())
 }

@@ -109,6 +109,12 @@ impl From<Thunk> for Vec<Inst> {
     }
 }
 
+impl From<Vec<Thunk>> for Thunk {
+    fn from(other: Vec<Thunk>) -> Self {
+        Thunk::Chain(other)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 struct FlattenThunk {
     address: usize,
