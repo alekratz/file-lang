@@ -11,7 +11,7 @@ mod translate;
 use crate::compile::error::*;
 
 pub fn compile(text: &str) -> Result<()> {
-    let ir_ctx = translate::ast_to_ir(text)?;
-    let _artifact = translate::ir_to_inst(ir_ctx);
+    let mut ir_ctx = translate::ast_to_ir(text)?;
+    let _artifact = translate::ir_to_inst(&mut ir_ctx);
     Ok(())
 }

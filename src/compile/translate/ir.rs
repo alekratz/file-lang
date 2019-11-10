@@ -4,7 +4,7 @@ use crate::{
 };
 use std::collections::HashMap;
 
-pub fn ir_to_inst<'t>(mut ctx: IrCtx<'t>) -> Artifact {
+pub fn ir_to_inst<'t, 'ctx>(ctx: &'ctx mut IrCtx<'t>) -> Artifact {
     IrToInst::new(ctx).translate()
 }
 
@@ -16,13 +16,13 @@ enum ExprCtx {
     Return,
 }
 
-struct IrToInst<'t> {
-    ctx: IrCtx<'t>,
+struct IrToInst<'t, 'ctx> {
+    ctx: &'ctx mut IrCtx<'t>,
     string_index: HashMap<String, ConstRef>,
 }
 
-impl<'t> IrToInst<'t> {
-    fn new(ctx: IrCtx<'t>) -> Self {
+impl<'t, 'ctx> IrToInst<'t, 'ctx> {
+    fn new(ctx: &'ctx mut IrCtx<'t>) -> Self {
         IrToInst {
             ctx,
             string_index: Default::default(),
