@@ -10,22 +10,22 @@ use std::{
 
 #[derive(Debug)]
 pub struct UserFun {
-    name_binding: Binding,
+    binding: Binding,
     code: Vec<Inst>,
     arity: usize,
 }
 
 impl UserFun {
-    pub fn new(name_binding: Binding, code: Vec<Inst>, arity: usize) -> Self {
+    pub fn new(binding: Binding, code: Vec<Inst>, arity: usize) -> Self {
         UserFun {
-            name_binding,
+            binding,
             code,
             arity,
         }
     }
 
-    pub fn name_binding(&self) -> Binding {
-        self.name_binding
+    pub fn binding(&self) -> Binding {
+        self.binding
     }
 }
 
@@ -64,27 +64,27 @@ impl Hash for BuiltinFunPtr {
 
 #[derive(Debug, Clone)]
 pub struct BuiltinFun {
-    name_binding: Binding,
+    binding: Binding,
     fun: BuiltinFunPtr,
 }
 
 impl BuiltinFun {
-    pub fn new(name_binding: Binding, fun: BuiltinFunPtr) -> Self {
-        BuiltinFun { name_binding, fun }
+    pub fn new(binding: Binding, fun: BuiltinFunPtr) -> Self {
+        BuiltinFun { binding, fun }
     }
 
     pub fn fun(&self) -> &BuiltinFunPtr {
         &self.fun
     }
 
-    pub fn name_binding(&self) -> Binding {
-        self.name_binding
+    pub fn binding(&self) -> Binding {
+        self.binding
     }
 }
 
 impl PartialEq for BuiltinFun {
     fn eq(&self, other: &Self) -> bool {
-        self.name_binding == other.name_binding
+        self.binding == other.binding
             && (self.fun.fun_address() == other.fun.fun_address())
     }
 }
