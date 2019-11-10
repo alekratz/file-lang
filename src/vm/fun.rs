@@ -4,6 +4,7 @@ use crate::{
 };
 use shrinkwraprs::Shrinkwrap;
 use std::{
+    collections::BTreeMap,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
 };
@@ -11,14 +12,18 @@ use std::{
 #[derive(Debug)]
 pub struct UserFun {
     binding: Binding,
+    bindings: BTreeMap<Binding, StackValue>,
     code: Vec<Inst>,
     arity: usize,
 }
 
 impl UserFun {
-    pub fn new(binding: Binding, code: Vec<Inst>, arity: usize) -> Self {
+    pub fn new(binding: Binding, bindings: Vec<Binding>, code: Vec<Inst>, arity: usize) -> Self {
         UserFun {
             binding,
+            bindings: bindings.into_iter()
+                .map(|b| (b, StackValue::Empty))
+                .collect(),
             code,
             arity,
         }

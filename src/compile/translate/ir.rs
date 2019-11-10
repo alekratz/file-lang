@@ -31,21 +31,41 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
 
     fn translate(mut self) -> Artifact {
         // Translate functions
+        // TODO : register builtin functions as constants
+        // TODO : register builtin types as constants
         // TODO : delve into user functions, register them
-        // TODO : user-defined operators
-        // TODO : imports and modules
-        // TODO : delve into user types, register them
         for (_, fun) in self.ctx.functions().iter() {
             let _user_fun = self.translate_fun(fun);
         }
+        // TODO : delve into user types, register them
+        for (_, ty) in self.ctx.types().iter() {
+            self.translate_type(ty);
+        }
         let main_thunk = self.translate_body(&self.ctx.ir());
         let main_binding = self.ctx.bindings_mut().create_binding("__main__".to_string());
-        let main_fun = UserFun::new(main_binding, main_thunk.into(), 0);
+        let main_bindings: Vec<_> = self.ctx.bindings()
+            .last_layer()
+            .unwrap()
+            .iter()
+            .map(|(_, binding)| *binding)
+            .collect();
+        let main_fun = UserFun::new(main_binding, main_bindings, main_thunk.into(), 0);
+        let _main_fun_ref = self.ctx.register_constant(ConstValue::UserFun(main_fun));
+        todo!("TODO : convert constant values into live object values")
+    }
+
+    fn translate_type(&mut self, _type_def: &TypeDef) {
+        // TODO this should be in its own pass, probably in compile::collect somewhere
         todo!()
     }
 
-    fn translate_fun(&mut self, _fun_def: &FunDef) -> UserFun {
+    fn translate_fun(&mut self, fun_def: &FunDef) -> UserFun {
+        let body = {
+            let mut translator = IrToInst::new(self.ctx);
+            translator.translate_body(&fun_def.body)
+        };
         todo!()
+        //UserFun::new(fun_def.binding, 
     }
 
     fn translate_body(&mut self, body: &Vec<Stmt>) -> Thunk {

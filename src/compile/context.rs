@@ -127,6 +127,10 @@ impl<'t> IrCtx<'t> {
         Rc::clone(&self.functions)
     }
 
+    pub fn types(&self) -> Rc<HashMap<Binding, ir::TypeDef>> {
+        Rc::clone(&self.types)
+    }
+
     pub fn text(&self) -> &'t str {
         self.text
     }

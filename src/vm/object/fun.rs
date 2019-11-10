@@ -41,4 +41,3 @@ impl Object for BuiltinFunObject {
         self
     }
 }
-
