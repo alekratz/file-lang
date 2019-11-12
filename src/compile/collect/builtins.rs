@@ -51,7 +51,7 @@ macro_rules! collect_types {
     ) => {{
         $({
             let _base_binding = $self.ctx.bindings()
-                .get_local_binding($base.as_ref())
+                .get_binding($base.as_ref())
                 .unwrap();
             let mut _base_funs = $self.ctx
                 .builtins()
@@ -104,25 +104,29 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
 
         collect_types! {
             self;
-            "BuiltinFun" => for BuiltinFunObject {
+            "Callable" => for CallableObject {
                 extends "#*BaseObject*#";
 
                 CALL => |state, mut args| {
                     let this_ref = args.remove(0);
-                    let this = state.storage()
-                        .downcast_stack_value::<BuiltinFunObject>(this_ref)
+                    let _this = state.storage()
+                        .downcast_stack_value::<CallableObject>(this_ref)
                         .unwrap();
-                    let fun = this.builtin_fun()
-                        .fun()
-                        .clone();
-                    (fun)(state, args)
+                    todo!("TODO: call function");
+                    // TODO: call function
+                    // Borrowing "this" and "state" simultaneously is an issue so we'll have to
+                    // come up with a clever (unsafe?) way to do this
                 }
             }
 
             "Type" => for TypeObject {
-                extends "BuiltinFun";
+                extends "Callable";
 
                 INIT => |_, _| {
+                },
+
+                CALL => |_, _| {
+                    // Call __init__ which is the constructor
                 }
             }
 
@@ -140,7 +144,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
     }
 
     fn register_builtin_fun(&mut self, name: String, fun: BuiltinFunPtr) -> Binding {
-        let binding = self.ctx.bindings_mut().create_binding(name.clone());
+        let binding = self.ctx.bindings_mut().create_builtin_binding(name.clone());
         let builtin_fun = BuiltinFun::new(binding, fun);
         self.ctx
             .builtins_mut()
@@ -153,7 +157,7 @@ impl<'t, 'ctx> CollectBuiltins<'t, 'ctx> {
         name: String,
         members: HashMap<String, BuiltinFunPtr>,
     ) -> Binding {
-        let binding = self.ctx.bindings_mut().create_binding(name.clone());
+        let binding = self.ctx.bindings_mut().create_builtin_binding(name.clone());
         let builtin_type = BuiltinType::new(binding, members);
         self.ctx
             .builtins_mut()

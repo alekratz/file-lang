@@ -91,6 +91,14 @@ impl<'t> IrCtx<'t> {
         Rc::clone(&self.ir)
     }
 
+    pub fn builtins(&self) -> &Builtins {
+        &self.builtins
+    }
+
+    pub fn builtins_mut(&mut self) -> &mut Builtins {
+        &mut self.builtins
+    }
+
     pub fn bindings(&self) -> &BindingStack {
         &self.bindings
     }

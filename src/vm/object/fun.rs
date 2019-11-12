@@ -1,26 +1,26 @@
-use crate::vm::{fun::BuiltinFun, object::*, value::*};
+use crate::vm::{fun::*, object::*, value::*};
 use std::any::Any;
 
 #[derive(Debug, Clone)]
-pub struct BuiltinFunObject {
+pub struct CallableObject {
     base_object: BaseObject,
-    builtin_fun: BuiltinFun,
+    fun: Fun,
 }
 
-impl BuiltinFunObject {
-    pub fn new(base_object: BaseObject, builtin_fun: BuiltinFun) -> Self {
-        BuiltinFunObject {
+impl CallableObject {
+    pub fn new(base_object: BaseObject, fun: Fun) -> Self {
+        CallableObject {
             base_object,
-            builtin_fun,
+            fun,
         }
     }
 
-    pub fn builtin_fun(&self) -> &BuiltinFun {
-        &self.builtin_fun
+    pub fn fun(&self) -> &Fun {
+        &self.fun
     }
 }
 
-impl Object for BuiltinFunObject {
+impl Object for CallableObject {
     fn get_attr(&self, name: &StringObject) -> Option<StackValue> {
         self.base_object.get_attr(name)
     }

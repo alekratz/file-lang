@@ -22,12 +22,14 @@ fn unary_op_binding_name(op: &[OpKind]) -> String {
 #[derive(Debug)]
 pub struct BindingStack {
     stack: Vec<Bindings>,
+    builtin_bindings: Bindings,
     all: Vec<String>,
 }
 
 impl Default for BindingStack {
     fn default() -> Self {
         BindingStack {
+            builtin_bindings: Default::default(),
             stack: vec![Default::default()],
             all: Vec::new(),
         }
@@ -77,12 +79,15 @@ impl BindingStack {
         binding
     }
 
+    pub fn create_builtin_binding(&mut self, name: String) -> Binding {
+        let binding = Binding(self.all.len());
+        self.all.push(name.clone());
+        self.builtin_bindings.insert(name, binding);
+        binding
+    }
+
     pub fn get_or_create_binding(&mut self, name: &str) -> Binding {
-        self.stack
-            .iter()
-            .rev()
-            .filter_map(|layer| layer.get(name).copied())
-            .next()
+        self.get_binding(name)
             .unwrap_or_else(|| self.create_binding(name.to_string()))
     }
 
@@ -107,6 +112,11 @@ impl BindingStack {
             .rev()
             .filter_map(|layer| layer.get(name).copied())
             .next()
+            .or_else(|| self.builtin_bindings.get(name).copied())
+    }
+
+    pub fn get_builtin_binding(&self, name: &str) -> Option<Binding> {
+        self.builtin_bindings.get(name).copied()
     }
 
     pub fn get_bin_op_binding(&self, op: &[OpKind]) -> Option<Binding> {

@@ -10,12 +10,9 @@ use std::{collections::HashMap, rc::Rc};
 
 pub fn ast_to_ir<'t>(text: &'t str) -> Result<IrCtx<'t>> {
     let ast = Parser::new(text)?.next_body()?;
-    let ctx = {
-        let mut ctx = SynCtx::new(text, ast);
-        collect::collect_builtins(&mut ctx);
-        collect::collect_ast(&mut ctx);
-        ctx
-    };
+    let mut ctx = SynCtx::new(text, ast);
+    collect::collect_builtins(&mut ctx);
+    collect::collect_ast(&mut ctx);
     AstToIr::new(ctx).translate()
 }
 
