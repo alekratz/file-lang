@@ -1,8 +1,9 @@
-use crate::vm::{object::*, value::*};
+use crate::vm::{object::*, value::*, storage::*};
 use derivative::Derivative;
 
 use std::{
     any::Any,
+    borrow::Cow,
     fmt::{self, Debug, Display, Formatter},
 };
 
@@ -26,12 +27,8 @@ impl StringObject {
         }
     }
 
-    pub fn string(&self) -> &String {
-        &self.string
-    }
-
-    pub fn string_mut(&mut self) -> &mut String {
-        &mut self.string
+    pub fn string(&self) -> Cow<String> {
+        Cow::Borrowed(&self.string)
     }
 }
 
