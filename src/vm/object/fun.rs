@@ -21,15 +21,15 @@ impl CallableObject {
 }
 
 impl Object for CallableObject {
-    fn get_attr(&self, name: &StringObject) -> Option<StackValue> {
+    fn get_attr(&self, name: &str) -> Option<StackValue> {
         self.base_object.get_attr(name)
     }
 
-    fn set_attr(&self, name: StringObject, value: StackValue) {
+    fn set_attr(&self, name: String, value: StackValue) {
         self.base_object.set_attr(name, value)
     }
 
-    fn attrs(&self) -> Vec<StringObject> {
+    fn attrs(&self) -> Vec<String> {
         self.base_object.attrs()
     }
 

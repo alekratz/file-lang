@@ -1,5 +1,16 @@
 mod ast;
-mod builtins;
 
 pub use self::ast::*;
-pub use self::builtins::*;
+
+use crate::compile::{
+    context::SynCtx,
+    builtins::BUILTIN_TYPES,
+};
+
+pub fn collect_builtins<'t>(ctx: &mut SynCtx<'t>) {
+    for (name, _) in BUILTIN_TYPES.iter() {
+        ctx.bindings_mut().create_builtin_binding(name.to_string());
+    }
+
+    // TODO : Collect builtin functions
+}

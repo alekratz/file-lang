@@ -28,17 +28,17 @@ impl BaseObject {
 }
 
 impl Object for BaseObject {
-    fn get_attr(&self, name: &StringObject) -> Option<StackValue> {
+    fn get_attr(&self, name: &str) -> Option<StackValue> {
         let members = self.members.borrow();
-        members.get(&name).copied()
+        members.get(name).copied()
     }
 
-    fn set_attr(&self, name: StringObject, value: StackValue) {
+    fn set_attr(&self, name: String, value: StackValue) {
         let mut members = self.members.borrow_mut();
         members.insert(name, value);
     }
 
-    fn attrs(&self) -> Vec<StringObject> {
+    fn attrs(&self) -> Vec<String> {
         let members = self.members.borrow();
         members.keys().cloned().collect()
     }

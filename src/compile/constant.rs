@@ -1,14 +1,15 @@
 use crate::{
     compile::builtins::*,
-    vm::fun::*,
+    vm::{fun::*, value::ConstRef},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ConstValue {
     String(String),
-    BuiltinFun(BuiltinFun),
+    BuiltinFun(BuiltinFunPtr),
     BuiltinType(BuiltinType),
     UserFun(UserFun),
+    Placeholder,
 }
 
 impl From<String> for ConstValue {
@@ -20,5 +21,11 @@ impl From<String> for ConstValue {
 impl From<&'_ str> for ConstValue {
     fn from(other: &'_ str) -> Self {
         ConstValue::String(other.to_string())
+    }
+}
+
+impl From<BuiltinFunPtr> for ConstValue {
+    fn from(other: BuiltinFunPtr) -> Self {
+        ConstValue::BuiltinFun(other)
     }
 }

@@ -1,6 +1,12 @@
 pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
 
-use crate::{compile::binding::*, syn::op::*, vm::object::Object};
+use crate::{
+    compile::{binding::*, constant::*},
+    syn::op::*,
+    vm::{object::Object, value::ConstRef},
+};
+use lazy_static::lazy_static;
+use maplit::hashmap;
 use std::{
     any::{self, TypeId},
     collections::HashMap,
@@ -23,11 +29,7 @@ impl Builtins {
 
     pub fn insert_un_op(&mut self, op: OpList, binding: Binding) {
         let previous = self.un_ops.insert(op.clone(), binding);
-        assert!(
-            previous.is_none(),
-            "un op {} already registered",
-            op
-        );
+        assert!(previous.is_none(), "un op {} already registered", op);
     }
 
     pub fn bin_ops(&self) -> &HashMap<OpList, Binding> {
@@ -36,11 +38,7 @@ impl Builtins {
 
     pub fn insert_bin_op(&mut self, op: OpList, binding: Binding) {
         let previous = self.bin_ops.insert(op.clone(), binding);
-        assert!(
-            previous.is_none(),
-            "bin op {} already registered",
-            op
-        );
+        assert!(previous.is_none(), "bin op {} already registered", op);
     }
 
     pub fn functions(&self) -> &HashMap<Binding, BuiltinFun> {
@@ -77,16 +75,20 @@ impl Builtins {
 #[derive(Debug, Clone)]
 pub struct BuiltinType {
     binding: Binding,
-    members: HashMap<String, BuiltinFunPtr>,
+    members: HashMap<String, ConstRef>,
 }
 
 impl BuiltinType {
-    pub fn new(binding: Binding, members: HashMap<String, BuiltinFunPtr>) -> Self {
+    pub fn new(binding: Binding, members: HashMap<String, ConstRef>) -> Self {
         BuiltinType { binding, members }
     }
 
-    pub fn members(&self) -> &HashMap<String, BuiltinFunPtr> {
+    pub fn members(&self) -> &HashMap<String, ConstRef> {
         &self.members
+    }
+
+    pub fn members_mut(&mut self) -> &mut HashMap<String, ConstRef> {
+        &mut self.members
     }
 }
 
@@ -96,3 +98,54 @@ pub const INIT: &str = "__init__";
 pub const REPR: &str = "__repr__";
 pub const STR: &str = "__str__";
 pub const CALL: &str = "__call__";
+pub const TYPE: &str = "__type__";
+
+macro_rules! builtin_types {
+    ($(
+            $name:expr => {
+                $(
+                    $member:expr => $value:expr
+                ),* $(,)?
+            }
+    ),* $(,)?
+    ) => {{
+        hashmap! {
+            $(
+                $name => hashmap! {
+                    $(
+                        $member => $value
+                    ),*
+                }
+            ),*
+        }
+    }}
+}
+
+macro_rules! builtin_fun {
+    ($expr:expr) => {{
+        ConstValue::BuiltinFun(BuiltinFunPtr::new($expr))
+    }};
+}
+
+pub const BUILTIN_OBJECT_TYPE: &str = "#*BuiltinObject*#";
+pub const CALLABLE_TYPE: &str = "Callable";
+pub const TYPE_TYPE: &str = "Type";
+pub const STR_TYPE: &str = "Str";
+
+lazy_static! {
+    pub static ref BUILTIN_TYPES: HashMap<&'static str, HashMap<&'static str, ConstValue>> = builtin_types! {
+        BUILTIN_OBJECT_TYPE => {
+            GETATTR => builtin_fun!(|_, _| {}),
+            SETATTR => builtin_fun!(|_, _| {}),
+        },
+        CALLABLE_TYPE => {
+            CALL => builtin_fun!(|_, _| {}),
+        },
+        TYPE_TYPE => {
+            INIT => builtin_fun!(|_, _| {}),
+        },
+        STR_TYPE => {
+            INIT => builtin_fun!(|_, _| {}),
+        },
+    };
+}

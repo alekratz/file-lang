@@ -1,5 +1,5 @@
 use crate::{
-    compile::{builtins::*, constant::*, context::*, error::*, ir::*, thunk::*},
+    compile::{builtins::*, constant::*, context::*, error::*, ir::*, thunk::*, translate},
     vm::{artifact::*, fun::UserFun, inst::Inst, value::*},
 };
 use std::collections::HashMap;
@@ -32,14 +32,13 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
     fn translate(mut self) -> Artifact {
         // Translate functions
         // TODO : register builtin functions as constants
-        // TODO : register builtin types as constants
         // TODO : delve into user functions, register them
         for (_, fun) in self.ctx.functions().iter() {
-            let _user_fun = self.translate_fun(fun);
+            //let _user_fun = self.translate_fun(fun);
         }
         // TODO : delve into user types, register them
         for (_, ty) in self.ctx.types().iter() {
-            self.translate_type(ty);
+            //self.translate_type(ty);
         }
         let main_thunk = self.translate_body(&self.ctx.ir());
         let main_binding = self.ctx.bindings_mut().create_binding("__main__".to_string());
@@ -50,8 +49,9 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
             .map(|(_, binding)| *binding)
             .collect();
         let main_fun = UserFun::new(main_binding, main_bindings, main_thunk.into(), 0);
-        let _main_fun_ref = self.ctx.register_constant(ConstValue::UserFun(main_fun));
-        todo!("TODO : convert constant values into live object values")
+        let main_fun_ref = self.ctx.register_constant(ConstValue::UserFun(main_fun));
+        let constants = translate::translate_constants(self.ctx, main_fun_ref);
+        Artifact::new(main_fun_ref, constants)
     }
 
     fn translate_type(&mut self, _type_def: &TypeDef) {

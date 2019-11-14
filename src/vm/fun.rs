@@ -51,10 +51,24 @@ impl UserFun {
     pub fn binding(&self) -> Binding {
         self.binding
     }
+
+    pub fn bindings(&self) -> &BTreeMap<Binding, StackValue> {
+        &self.bindings
+    }
+
+    pub fn bindings_mut(&mut self) -> &mut BTreeMap<Binding, StackValue> {
+        &mut self.bindings
+    }
 }
 
 #[derive(Shrinkwrap)]
 pub struct BuiltinFunPtr(pub Box<fn(&mut State, Vec<StackValue>)>);
+
+impl From<fn(&mut State, Vec<StackValue>)> for BuiltinFunPtr {
+    fn from(other: fn(&mut State, Vec<StackValue>)) -> Self {
+        BuiltinFunPtr::new(*&other)
+    }
+}
 
 impl BuiltinFunPtr {
     pub fn new(ptr: fn(&mut State, Vec<StackValue>)) -> Self {

@@ -1,5 +1,5 @@
 use crate::{
-    compile::{binding::*, builtins::*, constant::*, ir},
+    compile::{binding::*, constant::*, ir},
     syn::ast,
     vm::{object::*, value::*},
 };
@@ -9,7 +9,6 @@ use std::{collections::HashMap, mem, rc::Rc};
 pub struct SynCtx<'t> {
     text: &'t str,
     bindings: BindingStack,
-    builtins: Builtins,
     ast: Rc<Vec<ast::Stmt>>,
 }
 
@@ -18,7 +17,6 @@ impl<'t> SynCtx<'t> {
         SynCtx {
             text,
             bindings: Default::default(),
-            builtins: Default::default(),
             ast: Rc::new(ast),
         }
     }
@@ -44,14 +42,6 @@ impl<'t> SynCtx<'t> {
     pub fn bindings_mut(&mut self) -> &mut BindingStack {
         &mut self.bindings
     }
-
-    pub fn builtins(&self) -> &Builtins {
-        &self.builtins
-    }
-
-    pub fn builtins_mut(&mut self) -> &mut Builtins {
-        &mut self.builtins
-    }
     
     pub fn text(&self) -> &'t str {
         self.text
@@ -61,17 +51,16 @@ impl<'t> SynCtx<'t> {
 #[derive(Debug)]
 pub struct IrCtx<'t> {
     text: &'t str,
-    constants: Vec<ConstValue>,
+    constants: Rc<Vec<ConstValue>>,
     bindings: BindingStack,
     functions: Rc<HashMap<Binding, ir::FunDef>>,
     types: Rc<HashMap<Binding, ir::TypeDef>>,
-    builtins: Builtins,
     ir: Rc<Vec<ir::Stmt>>,
 }
 
 impl<'t> IrCtx<'t> {
     pub fn new(
-        SynCtx { text, bindings, builtins, .. }: SynCtx<'t>,
+        SynCtx { text, bindings, .. }: SynCtx<'t>,
         functions: HashMap<Binding, ir::FunDef>,
         types: HashMap<Binding, ir::TypeDef>,
         ir: Vec<ir::Stmt>,
@@ -82,21 +71,12 @@ impl<'t> IrCtx<'t> {
             bindings,
             functions: functions.into(),
             types: types.into(),
-            builtins,
             ir: ir.into(),
         }
     }
 
     pub fn ir(&self) -> Rc<Vec<ir::Stmt>> {
         Rc::clone(&self.ir)
-    }
-
-    pub fn builtins(&self) -> &Builtins {
-        &self.builtins
-    }
-
-    pub fn builtins_mut(&mut self) -> &mut Builtins {
-        &mut self.builtins
     }
 
     pub fn bindings(&self) -> &BindingStack {
@@ -107,12 +87,23 @@ impl<'t> IrCtx<'t> {
         &mut self.bindings
     }
 
-    pub fn constants(&self) -> &Vec<ConstValue> {
-        &self.constants
+    pub fn constants(&self) -> Rc<Vec<ConstValue>> {
+        Rc::clone(&self.constants)
     }
 
-    pub fn constants_mut(&mut self) -> &mut Vec<ConstValue> {
-        &mut self.constants
+    pub fn set_constant(&mut self, const_ref: ConstRef, value: ConstValue) {
+        let constants = Rc::get_mut(&mut self.constants).unwrap();
+        constants[*const_ref] = value;
+    }
+
+    pub fn with_constant_mut<F, B>(&mut self, const_ref: ConstRef, with: F) -> B
+        where F: FnOnce(&mut ConstValue) -> B
+    {
+        let constants = Rc::get_mut(&mut self.constants)
+            .unwrap();
+        let constant = constants.get_mut(*const_ref)
+            .unwrap();
+        (with)(constant)
     }
 
     pub fn register_constant_with<F>(&mut self, fun: F) -> ConstRef
@@ -120,8 +111,15 @@ impl<'t> IrCtx<'t> {
         F: FnOnce(&mut IrCtx, ConstRef) -> ConstValue,
     {
         let ref_id = self.constants.len();
+        {
+            let constants = Rc::get_mut(&mut self.constants)
+                .unwrap();
+            constants.push(ConstValue::Placeholder);
+        }
         let value = (fun)(self, ConstRef(ref_id));
-        self.constants.push(value);
+        let constants = Rc::get_mut(&mut self.constants)
+            .unwrap();
+        constants[ref_id] = value;
         ConstRef(ref_id)
     }
 
