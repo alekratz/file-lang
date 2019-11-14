@@ -1,7 +1,7 @@
 pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
 
 use crate::{
-    compile::{binding::*, constant::*},
+    compile::{binding::*},
     syn::op::*,
     vm::{object::*, value::*},
 };
@@ -229,7 +229,7 @@ lazy_static! {
             }),
             MAKE => builtin_fun!(|state, args| {
                 let this_type = args[0].to_value_ref().unwrap();
-                let mut base_object = state.storage()
+                let base_object = state.storage()
                     .with_object(this_type, |object| object.base_object().clone());
                 base_object.set_attr(TYPE.to_string(), StackValue::ValueRef(this_type));
                 let value_ref = state.storage_mut()
@@ -240,9 +240,9 @@ lazy_static! {
             INIT => builtin_fun!(|_, _| {}),
         },
         STR_TYPE => {
-            INIT => builtin_fun!(|state, mut args| {
-                let this = args[0].to_value_ref().unwrap();
-                let string_value = if args.len() == 1 {
+            INIT => builtin_fun!(|state, args| {
+                let _this = args[0].to_value_ref().unwrap();
+                let _string_value = if args.len() == 1 {
                     String::new()
                 } else if args.len() == 2 {
                     let value = args[1];

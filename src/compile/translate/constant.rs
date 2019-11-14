@@ -3,7 +3,7 @@ use crate::{
     compile::{builtins::*, constant::ConstValue, context::IrCtx},
     vm::{fun::*, object::*, value::*},
 };
-use std::rc::Rc;
+
 
 pub fn translate_constants<'t>(ctx: &mut IrCtx<'t>, main_fun_ref: ValueRef) -> Vec<ObjectValue> {
     TranslateConstants::new(ctx, main_fun_ref).translate()
@@ -180,7 +180,7 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
     where
         F: FnMut(&mut IrCtx, Binding, Mapping<String, ValueRef>) -> BuiltinType,
     {
-        let const_ref = self.ctx.register_constant_with(|ctx, const_ref| {
+        let const_ref = self.ctx.register_constant_with(|ctx, _const_ref| {
             let type_binding = ctx.bindings().get_binding(name).unwrap();
             let type_members = BUILTIN_TYPES
                 .get(name)

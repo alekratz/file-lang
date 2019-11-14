@@ -1,6 +1,6 @@
 use crate::{
     compile::builtins::*,
-    vm::{fun::*, value::ValueRef},
+    vm::{fun::*},
 };
 
 #[derive(Debug, Clone)]

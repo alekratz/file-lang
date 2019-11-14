@@ -61,7 +61,7 @@ impl From<Vec<OpKind>> for OpList {
 }
 
 impl Display for OpList {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, _fmt: &mut Formatter) -> fmt::Result {
         //write!(fmt, "{}", self.to_char())
         unimplemented!()
     }

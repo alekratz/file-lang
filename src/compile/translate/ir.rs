@@ -1,5 +1,5 @@
 use crate::{
-    compile::{builtins::*, constant::*, context::*, error::*, ir::*, thunk::*, translate},
+    compile::{builtins::*, constant::*, context::*, ir::*, thunk::*, translate},
     vm::{artifact::*, fun::UserFun, inst::Inst, value::*},
 };
 use std::collections::HashMap;
@@ -33,11 +33,11 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
         // Translate functions
         // TODO : register builtin functions as constants
         // TODO : delve into user functions, register them
-        for (_, fun) in self.ctx.functions().iter() {
+        for (_, _fun) in self.ctx.functions().iter() {
             //let _user_fun = self.translate_fun(fun);
         }
         // TODO : delve into user types, register them
-        for (_, ty) in self.ctx.types().iter() {
+        for (_, _ty) in self.ctx.types().iter() {
             //self.translate_type(ty);
         }
         let main_thunk = self.translate_body(&self.ctx.ir());
@@ -65,7 +65,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
     }
 
     fn translate_fun(&mut self, fun_def: &FunDef) -> UserFun {
-        let body = {
+        let _body = {
             let mut translator = IrToInst::new(self.ctx);
             translator.translate_body(&fun_def.body)
         };
