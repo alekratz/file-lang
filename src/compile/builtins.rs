@@ -189,8 +189,8 @@ lazy_static! {
                     };
 
                 let object = state
-                    .storage()
-                    .deref_stack_value(object_value)
+                    .storage_mut()
+                    .deref_stack_value_mut(object_value)
                     .expect("tried to call __setattr__ on a non-object value");
 
                 object.set_attr(name, value);
@@ -204,11 +204,10 @@ lazy_static! {
                 let this_type = args[0].to_value_ref()
                     .expect("tried to call __call__ on a non-object value");
                 let make: ValueRef = state.storage()
-                    .with_object(this_type, |object| {
-                        object.get_attr(MAKE)
-                            .and_then(|value| value.to_value_ref())
-                            .unwrap()
-                    });
+                    .deref(this_type)
+                    .get_attr(MAKE)
+                    .and_then(|value| value.to_value_ref())
+                    .unwrap();
                 // allocate
                 state.call(make, vec![StackValue::ValueRef(this_type)]);
                 let this_object = state.storage_mut()
@@ -217,11 +216,10 @@ lazy_static! {
                     .expect("__make__ did not produce a value reference");
                 // init
                 let init: ValueRef = state.storage()
-                    .with_object(this_type, |object| {
-                        object.get_attr(INIT)
-                            .and_then(|value| value.to_value_ref())
-                            .unwrap()
-                    });
+                    .deref(this_type)
+                    .get_attr(INIT)
+                    .and_then(|value| value.to_value_ref())
+                    .unwrap();
                 args[0] = StackValue::ValueRef(this_object);
                 state.call(init, args);
                 state.storage_mut()
@@ -229,8 +227,10 @@ lazy_static! {
             }),
             MAKE => builtin_fun!(|state, args| {
                 let this_type = args[0].to_value_ref().unwrap();
-                let base_object = state.storage()
-                    .with_object(this_type, |object| object.base_object().clone());
+                let mut base_object = state.storage()
+                    .deref(this_type)
+                    .base_object()
+                    .clone();
                 base_object.set_attr(TYPE.to_string(), StackValue::ValueRef(this_type));
                 let value_ref = state.storage_mut()
                     .allocate(base_object);
@@ -249,9 +249,8 @@ lazy_static! {
                     match value {
                         StackValue::ValueRef(value_ref) => {
                             let value_ref_str = state.storage()
-                                .with_object(value_ref, |object| {
-                                    object.get_attr(STR)
-                                });
+                                .deref(value_ref)
+                                .get_attr(STR);
                             if let Some(str_fun_ref) = value_ref_str.and_then(|value| value.to_value_ref()) {
                                 state.call(str_fun_ref, vec![StackValue::ValueRef(value_ref)]);
                             } else {

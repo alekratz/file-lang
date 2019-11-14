@@ -31,7 +31,7 @@ impl Object for BaseObject {
         members.get(name).copied()
     }
 
-    fn set_attr(&self, name: String, value: StackValue) {
+    fn set_attr(&mut self, name: String, value: StackValue) {
         let mut members = self.members.borrow_mut();
         members.insert(name, value);
     }

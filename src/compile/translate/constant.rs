@@ -47,7 +47,6 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
                     .bindings_mut()
                     .insert(binding, StackValue::ValueRef(*value_ref));
             }
-            println!("{:#?}", main_fun.bindings());
         }
 
         // Translate constants

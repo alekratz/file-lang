@@ -14,7 +14,7 @@ use std::{any::Any, fmt::Debug};
 
 pub trait Object: Debug {
     fn get_attr(&self, name: &str) -> Option<StackValue>;
-    fn set_attr(&self, name: String, value: StackValue);
+    fn set_attr(&mut self, name: String, value: StackValue);
     fn attrs(&self) -> Vec<String>;
     fn as_any(&self) -> &dyn Any;
     fn base_object(&self) -> &BaseObject;

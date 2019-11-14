@@ -22,7 +22,7 @@ impl Object for CallableObject {
         self.base_object.get_attr(name)
     }
 
-    fn set_attr(&self, name: String, value: StackValue) {
+    fn set_attr(&mut self, name: String, value: StackValue) {
         self.base_object.set_attr(name, value)
     }
 

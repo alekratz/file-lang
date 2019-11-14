@@ -1,4 +1,4 @@
-use crate::vm::{object::*, value::*, stack_frame::*};
+use crate::{common::prelude::*, vm::{object::*, value::*, stack_frame::*}};
 use std::mem;
 
 pub type HeapSlot = Option<ObjectValue>;
@@ -34,6 +34,16 @@ impl Storage {
             constants_end,
             return_register: None,
         }
+    }
+
+    pub fn stack_frame(&self) -> &StackFrame {
+        self.stack_frames.last()
+            .expect("no stack frame")
+    }
+
+    pub fn stack_frame_mut(&mut self) -> &mut StackFrame {
+        self.stack_frames.last_mut()
+            .expect("no stack frame")
     }
 
     pub fn take_return_register(&mut self) -> Option<StackValue> {
@@ -96,13 +106,6 @@ impl Storage {
         );
     }
 
-    pub fn with_object<F, B>(&self, value_ref: ValueRef, with: F) -> B
-        where F: Fn(&dyn Object) -> B
-    {
-        let value = self.deref(value_ref);
-        (with)(value)
-    }
-
     /// Attempts to dereference and downcast a stack value to a more concrete object type.
     pub fn downcast_stack_value<O: Object + 'static>(&self, stack_value: StackValue) -> Option<&O> {
         self.deref_stack_value(stack_value)?
@@ -118,11 +121,24 @@ impl Storage {
         }
     }
 
+    /// Attempts to mutably dereference a stack value ValueRef.
+    pub fn deref_stack_value_mut(&mut self, stack_value: StackValue) -> Option<&mut dyn Object> {
+        match stack_value {
+            StackValue::ValueRef(h) => Some(self.deref_mut(h)),
+            _ => None,
+        }
+    }
+
     /// Gets the object behind a ValueRef.
     pub fn deref(&self, value_ref: ValueRef) -> &dyn Object {
         let value: &Box<dyn Object> = self.heap[*value_ref].as_ref().expect("heap ref");
         // the deref story here is a little weird but whatever
         &**value
+    }
+
+    pub fn deref_mut(&mut self, value_ref: ValueRef) -> &mut dyn Object {
+        let value: &mut Box<dyn Object> = self.heap[*value_ref].as_mut().expect("heap ref");
+        &mut **value
     }
 
     /// Pushes a value to the stack.
@@ -139,5 +155,29 @@ impl Storage {
     pub fn pop_n(&mut self, n: usize) -> Vec<StackValue> {
         let split_index = self.stack().len() - n;
         self.stack_mut().split_off(split_index)
+    }
+
+    pub fn peek_stack(&self) -> Option<StackValue> {
+        self.stack().last().copied()
+    }
+
+    /// Loads the closest binding from the stack frame stack with the given binding.
+    pub fn load_binding(&self, binding: Binding) -> Option<StackValue> {
+        self.stack_frames.iter()
+            .rev()
+            .filter_map(|frame| frame.bindings.get(&binding))
+            .next()
+            .copied()
+    }
+
+    /// Loads the closest binding from the stack frame stack with the given binding.
+    pub fn store_binding(&mut self, binding: Binding, value: StackValue) {
+        for frame in self.stack_frames.iter_mut() {
+            if let Some(slot) = frame.bindings.get_mut(&binding) {
+                *slot = value;
+                return;
+            }
+        }
+        panic!("Binding {:?} not found", binding);
     }
 }

@@ -1,4 +1,4 @@
-use crate::vm::{object::*, value::*};
+use crate::vm::{object::*, value::*, state::State};
 
 pub struct Artifact {
     main_function_ref: ValueRef,
@@ -25,3 +25,4 @@ impl Artifact {
         &*self.constants[*self.main_function_ref()]
     }
 }
+

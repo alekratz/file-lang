@@ -22,9 +22,6 @@ pub enum Inst {
     /// Pop the top value off of the stack and store it in a variable binding.
     Store(Binding),
 
-    /// Duplicates the top value of the stack.
-    Dupe,
-
     /// Pop a value followed by a storage target off of the stack, and store the value in the
     /// target.
     PopStore,
