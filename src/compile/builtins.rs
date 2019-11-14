@@ -124,7 +124,7 @@ macro_rules! builtin_types {
 
 macro_rules! builtin_fun {
     ($expr:expr) => {{
-        ConstValue::BuiltinFun(BuiltinFunPtr::new($expr))
+        BuiltinFunPtr::new($expr)
     }};
 }
 
@@ -134,7 +134,7 @@ pub const TYPE_TYPE: &str = "Type";
 pub const STR_TYPE: &str = "Str";
 
 lazy_static! {
-    pub static ref BUILTIN_TYPES: HashMap<&'static str, HashMap<&'static str, ConstValue>> = builtin_types! {
+    pub static ref BUILTIN_TYPES: HashMap<&'static str, HashMap<&'static str, BuiltinFunPtr>> = builtin_types! {
         BUILTIN_OBJECT_TYPE => {
             GETATTR => builtin_fun!(|state, mut args| {
                 if args.len() != 2 {

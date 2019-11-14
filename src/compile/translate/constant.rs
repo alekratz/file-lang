@@ -187,7 +187,7 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
                 .unwrap()
                 .iter()
                 .map(|(name, value)| {
-                    let value_ref = ctx.register_constant(value.clone());
+                    let value_ref = ctx.register_constant(ConstValue::BuiltinFun(value.clone()));
                     (name.to_string(), value_ref)
                 })
                 .collect();

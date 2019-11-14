@@ -1,4 +1,5 @@
 use crate::vm::{inst::Inst, value::StackValue};
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct StackFrame {
@@ -9,7 +10,7 @@ pub struct StackFrame {
     ip: usize,
 
     /// The code executing in this stack frame.
-    code: Vec<Inst>,
+    code: Rc<Vec<Inst>>,
 
     /// The return value for this stack frame.
     return_value: Option<StackValue>,

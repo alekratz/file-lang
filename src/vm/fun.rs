@@ -7,6 +7,7 @@ use std::{
     collections::BTreeMap,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
+    rc::Rc,
 };
 
 #[derive(Debug, Clone)]
@@ -15,17 +16,11 @@ pub enum Fun {
     Builtin(BuiltinFunPtr),
 }
 
-impl Fun {
-    pub fn call(&self, state: &mut State, args: Vec<StackValue>) {
-        todo!()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct UserFun {
     binding: Binding,
     bindings: BTreeMap<Binding, StackValue>,
-    code: Vec<Inst>,
+    code: Rc<Vec<Inst>>,
     arity: usize,
 }
 
@@ -37,7 +32,7 @@ impl UserFun {
                 .into_iter()
                 .map(|b| (b, StackValue::Empty))
                 .collect(),
-            code,
+            code: code.into(),
             arity,
         }
     }

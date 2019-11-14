@@ -1,4 +1,4 @@
-use crate::vm::{object::*, value::*};
+use crate::vm::{object::*, value::*, stack_frame::*};
 use std::mem;
 
 pub type HeapSlot = Option<ObjectValue>;
@@ -15,6 +15,7 @@ const HEAP_INITIAL_SIZE: usize = 64;
 const HEAP_GROWTH_FACTOR: f64 = 2.0;
 
 pub struct Storage {
+    stack_frames: Vec<StackFrame>,
     stack: Vec<StackValue>,
     heap: Vec<HeapSlot>,
     constants_end: usize,
@@ -27,6 +28,7 @@ impl Storage {
         let mut heap: Vec<HeapSlot> = constant_pool.into_iter().map(From::from).collect();
         heap.resize_with(HEAP_INITIAL_SIZE + constants_end, Default::default);
         Storage {
+            stack_frames: Default::default(),
             stack: Default::default(),
             heap,
             constants_end,

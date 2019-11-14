@@ -16,4 +16,7 @@ impl State {
     pub fn storage_mut(&mut self) -> &mut Storage {
         &mut self.storage
     }
+
+    fn execute(&mut self) {
+    }
 }
