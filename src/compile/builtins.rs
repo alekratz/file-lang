@@ -3,7 +3,7 @@ pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
 use crate::{
     compile::{binding::*, constant::*},
     syn::op::*,
-    vm::{object::Object, value::ValueRef},
+    vm::{object::*, value::ValueRef},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -135,8 +135,66 @@ pub const STR_TYPE: &str = "Str";
 lazy_static! {
     pub static ref BUILTIN_TYPES: HashMap<&'static str, HashMap<&'static str, ConstValue>> = builtin_types! {
         BUILTIN_OBJECT_TYPE => {
-            GETATTR => builtin_fun!(|_, _| {}),
-            SETATTR => builtin_fun!(|_, _| {}),
+            GETATTR => builtin_fun!(|state, mut args| {
+                if args.len() != 2 {
+                    // TODO(exception)
+                    // Turn all of these panics and expects into exceptions
+                    panic!(
+                        "{}: incorrect function arity; expected 3 but got {} instead",
+                        GETATTR,
+                        args.len()
+                    );
+                }
+                let name_value = args.pop().unwrap();
+                let object_value = args.pop().unwrap();
+
+                let name = if let Some(name) =
+                    state.storage().downcast_stack_value::<StringObject>(name_value)
+                    {
+                        name.string()
+                    } else {
+                        panic!("{}: name must be a string", GETATTR);
+                    };
+
+                let object = state
+                    .storage()
+                    .deref_stack_value(object_value)
+                    .expect("tried to call __getattr__ on a non-object value");
+                let attr_value = object.get_attr(&name)
+                    .expect(&name);
+                state.storage_mut()
+                    .stack_mut()
+                    .push(attr_value);
+            }),
+            SETATTR => builtin_fun!(|state, mut args| {
+                if args.len() != 3 {
+                    // TODO(exception)
+                    // Turn all of these panics and expects into exceptions
+                    panic!(
+                        "{}: incorrect function arity; expected 3 but got {} instead",
+                        SETATTR,
+                        args.len()
+                    );
+                }
+                let value = args.pop().unwrap();
+                let name_value = args.pop().unwrap();
+                let object_value = args.pop().unwrap();
+
+                let name = if let Some(name) =
+                    state.storage().downcast_stack_value::<StringObject>(name_value)
+                    {
+                        name.to_string()
+                    } else {
+                        panic!("{}: name must be a string", SETATTR);
+                    };
+
+                let object = state
+                    .storage()
+                    .deref_stack_value(object_value)
+                    .expect("tried to call __setattr__ on a non-object value");
+
+                object.set_attr(name, value);
+            }),
         },
         CALLABLE_TYPE => {
             CALL => builtin_fun!(|_, _| {}),
