@@ -12,19 +12,12 @@ use std::{
 #[derive(Debug, Clone)]
 pub enum Fun {
     User(UserFun),
-    Builtin(BuiltinFun),
+    Builtin(BuiltinFunPtr),
 }
 
 impl Fun {
     pub fn call(&self, state: &mut State, args: Vec<StackValue>) {
         todo!()
-    }
-
-    pub fn binding(&self) -> Binding {
-        match self {
-            Fun::User(u) => u.binding(),
-            Fun::Builtin(b) => b.binding(),
-        }
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     common::prelude::*,
     compile::{builtins::*, constant::ConstValue, context::IrCtx},
-    vm::{object::*, value::*},
+    vm::{fun::*, object::*, value::*},
 };
 use std::rc::Rc;
 
@@ -25,27 +25,107 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
     }
 
     fn translate(mut self) -> Vec<ObjectValue> {
-        let mut _constants = Vec::new();
+        // Create types
         self.bootstrap_types();
-        for (const_ref, constant) in self.ctx.constants().iter().enumerate() {
-            let const_ref = ValueRef(const_ref);
+
+        // Update the main function's bindings to use builtin constants
+        {
+            let type_bindings = self
+                .type_refs
+                .iter()
+                .map(|(name, v)| (self.ctx.bindings().get_binding(name).unwrap(), v))
+                .collect::<Vec<_>>();
+            let main_fun = if let ConstValue::UserFun(ref mut main_fun) =
+                self.ctx.get_constant_mut(self.main_fun_ref).unwrap()
+            {
+                main_fun
+            } else {
+                panic!("main function ref supplied does not point at a user-defined function");
+            };
+            for (binding, value_ref) in type_bindings {
+                main_fun
+                    .bindings_mut()
+                    .insert(binding, StackValue::ValueRef(*value_ref));
+            }
+            println!("{:#?}", main_fun.bindings());
+        }
+
+        // Translate constants
+        let mut constants: Vec<ObjectValue> = Vec::new();
+        for (index, constant) in self.ctx.constants().iter().enumerate() {
+            assert_eq!(constants.len(), index);
             match constant {
-                ConstValue::String(_) => {
-                    // todo!("TODO : make string object"),
+                ConstValue::String(value) => {
+                    let string_object = self.make_string(value.to_string());
+                    constants.push(Box::new(string_object));
                 }
-                ConstValue::BuiltinFun(_) => {
-                    //todo!("TODO : make builtin fun object"),
+                ConstValue::BuiltinFun(fun) => {
+                    let fun_object = self.make_callable(Fun::Builtin(fun.clone()));
+                    constants.push(Box::new(fun_object));
                 }
-                ConstValue::BuiltinType(_) => {
-                    //todo!("TODO : make builtin type object"),
+                ConstValue::BuiltinType(ty) => {
+                    let type_object = self.make_type(ty.clone());
+                    constants.push(Box::new(type_object));
                 }
-                ConstValue::UserFun(_) => {
-                    //todo!("TODO : make user fun object"),
+                ConstValue::UserFun(fun) => {
+                    let fun_object = self.make_callable(Fun::User(fun.clone()));
+                    constants.push(Box::new(fun_object));
                 }
                 ConstValue::Placeholder => panic!("Attempted to translate placeholder value"),
             }
         }
-        _constants
+        constants
+    }
+
+    fn make_string(&self, value: String) -> StringObject {
+        let str_ref = *self.type_refs.get(STR_TYPE).unwrap();
+        let constants = self.ctx.constants();
+        let str_type = if let ConstValue::BuiltinType(ty) = &constants[*str_ref] {
+            ty
+        } else {
+            panic!(
+                "{} type does not point at a BuiltinType, but at {:?} instead",
+                STR, &constants[*str_ref]
+            );
+        };
+        let mut members: Mapping<_, _> = str_type
+            .members()
+            .iter()
+            .map(|(name, value)| (name.to_string(), StackValue::ValueRef(*value)))
+            .collect();
+        members.insert(TYPE.to_string(), StackValue::ValueRef(str_ref));
+        StringObject::new(BaseObject::new(members), value)
+    }
+
+    fn make_callable(&self, fun: Fun) -> CallableObject {
+        let callable_ref = *self.type_refs.get(CALLABLE_TYPE).unwrap();
+        let constants = self.ctx.constants();
+        let callable_type = if let ConstValue::BuiltinType(ty) = &constants[*callable_ref] {
+            ty
+        } else {
+            panic!(
+                "{} type does not point at a BuiltinType, but at {:?} instead",
+                CALLABLE_TYPE, &constants[*callable_ref]
+            );
+        };
+        let mut members: Mapping<_, _> = callable_type
+            .members()
+            .iter()
+            .map(|(name, value)| (name.to_string(), StackValue::ValueRef(*value)))
+            .collect();
+        members.insert(TYPE.to_string(), StackValue::ValueRef(callable_ref));
+        CallableObject::new(BaseObject::new(members), fun)
+    }
+
+    fn make_type(&self, builtin_type: BuiltinType) -> TypeObject {
+        let type_ref = *self.type_refs.get(TYPE_TYPE).unwrap();
+        let mut members: Mapping<_, _> = builtin_type
+            .members()
+            .iter()
+            .map(|(name, value)| (name.to_string(), StackValue::ValueRef(*value)))
+            .collect();
+        members.insert(TYPE.to_string(), StackValue::ValueRef(type_ref));
+        TypeObject::new(BaseObject::new(members))
     }
 
     fn bootstrap_types(&mut self) {
@@ -60,14 +140,13 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
 
     fn register_type_member(&mut self, type_name: &str, member: &str, value: ValueRef) {
         let type_ref = *self.type_refs.get(type_name).expect(type_name);
-        self.ctx.with_constant_mut(type_ref, |builtin| {
-            let builtin_type = if let ConstValue::BuiltinType(ty) = builtin {
-                ty
-            } else {
-                panic!("{} is not a builtin type", type_name);
-            };
-            builtin_type.members_mut().insert(member.to_string(), value);
-        });
+        let builtin = self.ctx.get_constant_mut(type_ref).unwrap();
+        let builtin_type = if let ConstValue::BuiltinType(ty) = builtin {
+            ty
+        } else {
+            panic!("{} is not a builtin type", type_name);
+        };
+        builtin_type.members_mut().insert(member.to_string(), value);
     }
 
     fn register_type(&mut self, name: &str) -> ValueRef {

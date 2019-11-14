@@ -91,18 +91,12 @@ impl<'t> IrCtx<'t> {
         Rc::clone(&self.constants)
     }
 
-    pub fn set_constant(&mut self, const_ref: ValueRef, value: ConstValue) {
-        let constants = Rc::get_mut(&mut self.constants).unwrap();
-        constants[*const_ref] = value;
+    pub fn get_constant(&self, value_ref: ValueRef) -> &ConstValue {
+        &self.constants[*value_ref]
     }
 
-    pub fn with_constant_mut<F, B>(&mut self, const_ref: ValueRef, with: F) -> B
-    where
-        F: FnOnce(&mut ConstValue) -> B,
-    {
-        let constants = Rc::get_mut(&mut self.constants).unwrap();
-        let constant = constants.get_mut(*const_ref).unwrap();
-        (with)(constant)
+    pub fn get_constant_mut(&mut self, value_ref: ValueRef) -> Option<&mut ConstValue> {
+        Rc::get_mut(&mut self.constants).map(|c| &mut c[*value_ref])
     }
 
     pub fn register_constant_with<F>(&mut self, fun: F) -> ValueRef
