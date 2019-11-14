@@ -542,7 +542,7 @@ mod test {
             "this is a string"
             "this is an \"escaped\" string"
             "this is a
-multiline string"
+            multiline string"
             "#,
         );
         verify! {
@@ -550,7 +550,7 @@ multiline string"
             r#""this is a string""#,
             r#""this is an \"escaped\" string""#,
             r#""this is a
-        multiline string""#,
+            multiline string""#,
         }
         verify_eof!(lexer);
     }

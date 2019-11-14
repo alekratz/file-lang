@@ -499,42 +499,42 @@ mod test {
             parser, next_stmt;
             expr_stmt!(
                 un_expr!(
-                    ast!(Op { kind: vec![OpKind::Plus] }),
+                    ast!(Op { kind: vec![OpKind::Plus].into() }),
                     atom_expr!(AtomKind::DecInt)
                 )
             ),
 
             expr_stmt!(
                 un_expr!(
-                    ast!(Op { kind: vec![OpKind::Minus] }),
+                    ast!(Op { kind: vec![OpKind::Minus].into() }),
                     atom_expr!(AtomKind::Real)
                 )
             ),
 
             expr_stmt!(
                 un_expr!(
-                    ast!(Op { kind: vec![OpKind::Plus] }),
+                    ast!(Op { kind: vec![OpKind::Plus].into() }),
                     atom_expr!(AtomKind::OctInt)
                 )
             ),
 
             expr_stmt!(
                 un_expr!(
-                    ast!(Op { kind: vec![OpKind::Minus, OpKind::Minus] }),
+                    ast!(Op { kind: vec![OpKind::Minus, OpKind::Minus].into() }),
                     atom_expr!(AtomKind::BinInt)
                 )
             ),
 
             expr_stmt!(
                 un_expr!(
-                    ast!(Op { kind: vec![OpKind::Tilde] }),
+                    ast!(Op { kind: vec![OpKind::Tilde].into() }),
                     atom_expr!(AtomKind::HexInt)
                 )
             ),
 
             expr_stmt!(
                 un_expr!(
-                    ast!(Op { kind: vec![OpKind::Caret] }),
+                    ast!(Op { kind: vec![OpKind::Caret].into() }),
                     atom_expr!(AtomKind::Ident)
                 )
             )
@@ -558,35 +558,35 @@ mod test {
         verify!(parser, next_bin_expr;
             bin_expr! {
                 atom_expr!(AtomKind::DecInt),
-                ast!(Op { kind: vec![OpKind::Plus] }),
+                ast!(Op { kind: vec![OpKind::Plus].into() }),
                 atom_expr!(AtomKind::DecInt)
             },
             bin_expr! {
                 atom_expr!(AtomKind::Real),
-                ast!(Op { kind: vec![OpKind::Plus] }),
+                ast!(Op { kind: vec![OpKind::Plus].into() }),
                 un_expr!(
-                    ast!(Op { kind: vec![OpKind::Minus] }),
+                    ast!(Op { kind: vec![OpKind::Minus].into() }),
                     atom_expr!(AtomKind::Real)
                 )
             },
             bin_expr! {
                 atom_expr!(AtomKind::OctInt),
-                ast!(Op { kind: vec![OpKind::Amp] }),
+                ast!(Op { kind: vec![OpKind::Amp].into() }),
                 un_expr! {
-                    ast!(Op { kind: vec![OpKind::Tilde] }),
+                    ast!(Op { kind: vec![OpKind::Tilde].into() }),
                     atom_expr!(AtomKind::Ident)
                 }
             },
             bin_expr! {
                 atom_expr!(AtomKind::BinInt),
-                ast!(Op { kind: vec![OpKind::Minus, OpKind::Minus] }),
+                ast!(Op { kind: vec![OpKind::Minus, OpKind::Minus].into() }),
                 atom_expr!(AtomKind::BinInt)
             },
             bin_expr! {
                 atom_expr!(AtomKind::BinInt),
-                ast!(Op { kind: vec![OpKind::Minus] }),
+                ast!(Op { kind: vec![OpKind::Minus].into() }),
                 un_expr! {
-                    ast!(Op { kind: vec![OpKind::Minus] }),
+                    ast!(Op { kind: vec![OpKind::Minus].into() }),
                     atom_expr!(AtomKind::BinInt)
                 }
             },
@@ -634,7 +634,7 @@ mod test {
                 Assign {
                     lhs: atom_expr!(AtomKind::Ident),
                     op: ast! {
-                        AssignOp { kind: vec![OpKind::Plus, OpKind::Eq] }
+                        AssignOp { kind: vec![OpKind::Plus, OpKind::Eq].into() }
                     },
                     rhs: atom_expr!(AtomKind::Ident)
                 }
@@ -644,7 +644,7 @@ mod test {
                 Assign {
                     lhs: atom_expr!(AtomKind::Ident),
                     op: ast! {
-                        AssignOp { kind: vec![OpKind::Minus, OpKind::Eq] }
+                        AssignOp { kind: vec![OpKind::Minus, OpKind::Eq].into() }
                     },
                     rhs: atom_expr!(AtomKind::Ident)
                 }
@@ -654,7 +654,7 @@ mod test {
                 Assign {
                     lhs: atom_expr!(AtomKind::Ident),
                     op: ast! {
-                        AssignOp { kind: vec![OpKind::Eq] }
+                        AssignOp { kind: vec![OpKind::Eq].into() }
                     },
                     rhs: atom_expr!(AtomKind::Ident)
                 }
@@ -682,7 +682,7 @@ mod test {
                         retn_stmt! {
                             bin_expr!(
                                 atom_expr!(AtomKind::Ident),
-                                ast!(Op{ kind: vec![OpKind::Plus] }),
+                                ast!(Op{ kind: vec![OpKind::Plus].into() }),
                                 atom_expr!(AtomKind::Ident)
                             )
                         }
