@@ -1,6 +1,6 @@
 use crate::{
     common::binding::Binding,
-    vm::value::{ConstRef, StackValue},
+    vm::value::{ValueRef, StackValue},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -17,7 +17,7 @@ pub enum Inst {
     /// Loads a named attribute from the top value of the stack.
     ///
     /// This does not pop the top value off of the stack.
-    GetAttr(ConstRef),
+    GetAttr(ValueRef),
 
     /// Pop the top value off of the stack and store it in a variable binding.
     Store(Binding),

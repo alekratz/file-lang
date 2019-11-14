@@ -2,12 +2,12 @@ use crate::vm::{object::*, value::*};
 
 #[derive(Debug)]
 pub struct TypeObject {
-    type_name: ConstRef,
+    type_name: ValueRef,
     base_object: BaseObject,
 }
 
 impl TypeObject {
-    pub fn new(type_name: ConstRef, base_object: BaseObject) -> Self {
+    pub fn new(type_name: ValueRef, base_object: BaseObject) -> Self {
         TypeObject {
             type_name,
             base_object,

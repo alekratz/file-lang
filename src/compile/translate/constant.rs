@@ -5,18 +5,18 @@ use crate::{
 };
 use std::rc::Rc;
 
-pub fn translate_constants<'t>(ctx: &mut IrCtx<'t>, main_fun_ref: ConstRef) -> Vec<ObjectValue> {
+pub fn translate_constants<'t>(ctx: &mut IrCtx<'t>, main_fun_ref: ValueRef) -> Vec<ObjectValue> {
     TranslateConstants::new(ctx, main_fun_ref).translate()
 }
 
 struct TranslateConstants<'t, 'ctx> {
-    type_refs: Mapping<String, ConstRef>,
+    type_refs: Mapping<String, ValueRef>,
     ctx: &'ctx mut IrCtx<'t>,
-    main_fun_ref: ConstRef,
+    main_fun_ref: ValueRef,
 }
 
 impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
-    fn new(ctx: &'ctx mut IrCtx<'t>, main_fun_ref: ConstRef) -> Self {
+    fn new(ctx: &'ctx mut IrCtx<'t>, main_fun_ref: ValueRef) -> Self {
         TranslateConstants {
             type_refs: Default::default(),
             ctx,
@@ -28,7 +28,7 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         let mut _constants = Vec::new();
         self.bootstrap_types();
         for (const_ref, constant) in self.ctx.constants().iter().enumerate() {
-            let const_ref = ConstRef(const_ref);
+            let const_ref = ValueRef(const_ref);
             match constant {
                 ConstValue::String(_) => {
                     // todo!("TODO : make string object"),
@@ -58,7 +58,7 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         self.register_type_member(TYPE_TYPE, TYPE, type_type_ref);
     }
 
-    fn register_type_member(&mut self, type_name: &str, member: &str, value: ConstRef) {
+    fn register_type_member(&mut self, type_name: &str, member: &str, value: ValueRef) {
         let type_ref = *self.type_refs.get(type_name).expect(type_name);
         self.ctx.with_constant_mut(type_ref, |builtin| {
             let builtin_type = if let ConstValue::BuiltinType(ty) = builtin {
@@ -70,13 +70,13 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         });
     }
 
-    fn register_type(&mut self, name: &str) -> ConstRef {
+    fn register_type(&mut self, name: &str) -> ValueRef {
         self.register_type_with(name, |_ctx, binding, members| {
             BuiltinType::new(binding, members)
         })
     }
 
-    fn register_type_with_base(&mut self, name: &str, base_name: &str) -> ConstRef {
+    fn register_type_with_base(&mut self, name: &str, base_name: &str) -> ValueRef {
         let base_ref = *self.type_refs.get(base_name).expect(&format!(
             "no base type named {} (for type definition of {})",
             base_name, name
@@ -97,9 +97,9 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         })
     }
 
-    fn register_type_with<F>(&mut self, name: &str, mut with: F) -> ConstRef
+    fn register_type_with<F>(&mut self, name: &str, mut with: F) -> ValueRef
     where
-        F: FnMut(&mut IrCtx, Binding, Mapping<String, ConstRef>) -> BuiltinType,
+        F: FnMut(&mut IrCtx, Binding, Mapping<String, ValueRef>) -> BuiltinType,
     {
         let const_ref = self.ctx.register_constant_with(|ctx, const_ref| {
             let type_binding = ctx.bindings().get_binding(name).unwrap();

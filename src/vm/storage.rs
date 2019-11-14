@@ -17,17 +17,18 @@ const HEAP_GROWTH_FACTOR: f64 = 2.0;
 pub struct Storage {
     stack: Vec<StackValue>,
     heap: Vec<HeapSlot>,
-    constant_pool: Vec<ObjectValue>,
+    constants_end: usize,
 }
 
 impl Storage {
     pub fn new(constant_pool: Vec<ObjectValue>) -> Self {
-        let mut heap = Vec::with_capacity(HEAP_INITIAL_SIZE);
-        heap.resize_with(HEAP_INITIAL_SIZE, Default::default);
+        let constants_end = constant_pool.len();
+        let mut heap: Vec<HeapSlot> = constant_pool.into_iter().map(From::from).collect();
+        heap.resize_with(HEAP_INITIAL_SIZE + constants_end, Default::default);
         Storage {
             stack: Default::default(),
             heap,
-            constant_pool,
+            constants_end,
         }
     }
 
@@ -39,7 +40,7 @@ impl Storage {
         &mut self.stack
     }
 
-    pub fn allocate(&mut self, value: impl Object + 'static) -> HeapRef {
+    pub fn allocate(&mut self, value: impl Object + 'static) -> ValueRef {
         // TODO : faster allocation method
         // Find next open slot in the heap
         let first = self
@@ -59,15 +60,19 @@ impl Storage {
         };
         assert!(self.heap[index].is_none());
         self.heap[index] = Some(Box::new(value));
-        HeapRef(index)
+        ValueRef(index)
     }
 
-    pub fn free(&mut self, heap_ref: HeapRef) {
-        let old_value = mem::replace(&mut self.heap[*heap_ref], None);
+    pub fn free(&mut self, value_ref: ValueRef) {
+        let index: usize = *value_ref;
+        if index < self.constants_end {
+            panic!("attempted to free a constant value");
+        }
+        let old_value = mem::replace(&mut self.heap[*value_ref], None);
         assert!(
             old_value.is_some(),
             "attempted to free already-freed heap memory, ref: {:?}",
-            heap_ref
+            value_ref
         );
     }
 
@@ -78,25 +83,19 @@ impl Storage {
             .downcast_ref::<O>()
     }
 
-    /// Attempts to dereference a stack value ConstRef or HeapRef.
+    /// Attempts to dereference a stack value ValueRef.
     pub fn deref_stack_value(&self, stack_value: StackValue) -> Option<&dyn Object> {
         match stack_value {
-            StackValue::ConstRef(c) => Some(self.deref_const(c)),
-            StackValue::HeapRef(h) => Some(self.deref_heap(h)),
+            StackValue::ValueRef(h) => Some(self.deref(h)),
             _ => None,
         }
     }
 
-    /// Gets the object behind a HeapRef.
-    pub fn deref_heap(&self, heap_ref: HeapRef) -> &dyn Object {
-        let value: &Box<dyn Object> = self.heap[*heap_ref].as_ref().expect("heap ref");
+    /// Gets the object behind a ValueRef.
+    pub fn deref(&self, value_ref: ValueRef) -> &dyn Object {
+        let value: &Box<dyn Object> = self.heap[*value_ref].as_ref().expect("heap ref");
         // the deref story here is a little weird but whatever
         &**value
-    }
-
-    /// Gets the object behind a ConstRef.
-    pub fn deref_const(&self, const_ref: ConstRef) -> &dyn Object {
-        &*self.constant_pool[*const_ref]
     }
 
     /// Pushes a value to the stack.

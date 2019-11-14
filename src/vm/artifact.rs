@@ -1,19 +1,19 @@
 use crate::vm::{object::*, value::*};
 
 pub struct Artifact {
-    main_function_ref: ConstRef,
+    main_function_ref: ValueRef,
     constants: Vec<ObjectValue>,
 }
 
 impl Artifact {
-    pub fn new(main_function_ref: ConstRef, constants: Vec<ObjectValue>) -> Self {
+    pub fn new(main_function_ref: ValueRef, constants: Vec<ObjectValue>) -> Self {
         Artifact {
             main_function_ref,
             constants,
         }
     }
 
-    pub fn main_function_ref(&self) -> ConstRef {
+    pub fn main_function_ref(&self) -> ValueRef {
         self.main_function_ref
     }
 

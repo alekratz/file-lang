@@ -91,12 +91,12 @@ impl<'t> IrCtx<'t> {
         Rc::clone(&self.constants)
     }
 
-    pub fn set_constant(&mut self, const_ref: ConstRef, value: ConstValue) {
+    pub fn set_constant(&mut self, const_ref: ValueRef, value: ConstValue) {
         let constants = Rc::get_mut(&mut self.constants).unwrap();
         constants[*const_ref] = value;
     }
 
-    pub fn with_constant_mut<F, B>(&mut self, const_ref: ConstRef, with: F) -> B
+    pub fn with_constant_mut<F, B>(&mut self, const_ref: ValueRef, with: F) -> B
     where
         F: FnOnce(&mut ConstValue) -> B,
     {
@@ -105,22 +105,22 @@ impl<'t> IrCtx<'t> {
         (with)(constant)
     }
 
-    pub fn register_constant_with<F>(&mut self, fun: F) -> ConstRef
+    pub fn register_constant_with<F>(&mut self, fun: F) -> ValueRef
     where
-        F: FnOnce(&mut IrCtx, ConstRef) -> ConstValue,
+        F: FnOnce(&mut IrCtx, ValueRef) -> ConstValue,
     {
         let ref_id = self.constants.len();
         {
             let constants = Rc::get_mut(&mut self.constants).unwrap();
             constants.push(ConstValue::Placeholder);
         }
-        let value = (fun)(self, ConstRef(ref_id));
+        let value = (fun)(self, ValueRef(ref_id));
         let constants = Rc::get_mut(&mut self.constants).unwrap();
         constants[ref_id] = value;
-        ConstRef(ref_id)
+        ValueRef(ref_id)
     }
 
-    pub fn register_constant(&mut self, value: ConstValue) -> ConstRef {
+    pub fn register_constant(&mut self, value: ConstValue) -> ValueRef {
         self.register_constant_with(|_, _| value)
     }
 

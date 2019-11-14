@@ -1,28 +1,7 @@
 use shrinkwraprs::Shrinkwrap;
 
 #[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, Clone, Copy, Default)]
-pub struct ConstRef(pub usize);
-
-#[derive(Shrinkwrap, Debug, Hash, PartialEq, Eq, Clone, Copy, Default)]
-pub struct HeapRef(pub usize);
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub enum ValueRef {
-    Const(ConstRef),
-    Heap(HeapRef),
-}
-
-impl From<ConstRef> for ValueRef {
-    fn from(other: ConstRef) -> ValueRef {
-        ValueRef::Const(other)
-    }
-}
-
-impl From<HeapRef> for ValueRef {
-    fn from(other: HeapRef) -> ValueRef {
-        ValueRef::Heap(other)
-    }
-}
+pub struct ValueRef(pub usize);
 
 /// A value that lives on the stack.
 ///
@@ -30,8 +9,7 @@ impl From<HeapRef> for ValueRef {
 /// numbers, an empty ("unset") value, a heap reference, or a constant value reference.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StackValue {
-    ConstRef(ConstRef),
-    HeapRef(HeapRef),
+    ValueRef(ValueRef),
     Int(i64),
     Float(f64),
     Empty,
@@ -40,22 +18,15 @@ pub enum StackValue {
 impl StackValue {
     pub fn to_value_ref(&self) -> Option<ValueRef> {
         match self {
-            StackValue::ConstRef(c) => Some((*c).into()),
-            StackValue::HeapRef(h) => Some((*h).into()),
+            StackValue::ValueRef(c) => Some((*c).into()),
             _ => None,
         }
     }
 }
 
-impl From<ConstRef> for StackValue {
-    fn from(other: ConstRef) -> Self {
-        StackValue::ConstRef(other)
-    }
-}
-
-impl From<HeapRef> for StackValue {
-    fn from(other: HeapRef) -> Self {
-        StackValue::HeapRef(other)
+impl From<ValueRef> for StackValue {
+    fn from(other: ValueRef) -> Self {
+        StackValue::ValueRef(other)
     }
 }
 

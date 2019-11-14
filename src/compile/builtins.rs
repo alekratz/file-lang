@@ -3,7 +3,7 @@ pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
 use crate::{
     compile::{binding::*, constant::*},
     syn::op::*,
-    vm::{object::Object, value::ConstRef},
+    vm::{object::Object, value::ValueRef},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -75,19 +75,19 @@ impl Builtins {
 #[derive(Debug, Clone)]
 pub struct BuiltinType {
     binding: Binding,
-    members: HashMap<String, ConstRef>,
+    members: HashMap<String, ValueRef>,
 }
 
 impl BuiltinType {
-    pub fn new(binding: Binding, members: HashMap<String, ConstRef>) -> Self {
+    pub fn new(binding: Binding, members: HashMap<String, ValueRef>) -> Self {
         BuiltinType { binding, members }
     }
 
-    pub fn members(&self) -> &HashMap<String, ConstRef> {
+    pub fn members(&self) -> &HashMap<String, ValueRef> {
         &self.members
     }
 
-    pub fn members_mut(&mut self) -> &mut HashMap<String, ConstRef> {
+    pub fn members_mut(&mut self) -> &mut HashMap<String, ValueRef> {
         &mut self.members
     }
 }
