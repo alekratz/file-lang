@@ -88,4 +88,3 @@ impl<'t, 'ctx> CollectBindings<'t, 'ctx> {
         self.collect_body(&loop_.body);
     }
 }
-

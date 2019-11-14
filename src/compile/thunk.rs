@@ -27,8 +27,7 @@ impl Default for Thunk {
 
 impl Thunk {
     pub fn flatten(self) -> Vec<Inst> {
-        FlattenThunk::default()
-            .flatten(self)
+        FlattenThunk::default().flatten(self)
     }
 
     pub fn extend(&mut self, other: impl Into<Thunk>) {
@@ -74,14 +73,18 @@ impl Thunk {
         match self {
             Thunk::Block(block) => block.len(),
             Thunk::Chain(thunks) => thunks.iter().map(Thunk::len).sum(),
-            Thunk::Condition { condition, thunk_true, thunk_false } => {
-                condition.len() + 
+            Thunk::Condition {
+                condition,
+                thunk_true,
+                thunk_false,
+            } => {
+                condition.len() +
                     2 + // PopCmp, JumpFalse
                     thunk_true.len() +
                     1 + // Jump
                     thunk_false.len()
             }
-                // TODO(branch) add the number of instructions needed to jump
+            // TODO(branch) add the number of instructions needed to jump
             Thunk::Loop { condition, thunk } => condition
                 .as_ref()
                 .map(|c| c.len())
@@ -132,12 +135,15 @@ impl FlattenThunk {
                 self.address += body.len();
                 body
             }
-            Thunk::Chain(thunks) => {
-                thunks.into_iter()
-                    .flat_map(|thunk| self.flatten(thunk))
-                    .collect()
-            }
-            Thunk::Condition { condition, thunk_true, thunk_false } => {
+            Thunk::Chain(thunks) => thunks
+                .into_iter()
+                .flat_map(|thunk| self.flatten(thunk))
+                .collect(),
+            Thunk::Condition {
+                condition,
+                thunk_true,
+                thunk_false,
+            } => {
                 let old_exit_address = self.exit_address;
                 if self.condition_depth == 0 {
                     self.exit_address = self.address + thunk_len;
@@ -160,7 +166,7 @@ impl FlattenThunk {
                 self.condition_depth -= 1;
                 body
             }
-            Thunk::Loop { condition, thunk, } => {
+            Thunk::Loop { condition, thunk } => {
                 let old_exit_address = self.exit_address;
                 let old_break_address = self.break_address;
                 let old_entry_address = self.entry_address;
@@ -194,13 +200,12 @@ impl FlattenThunk {
             Thunk::Continue => {
                 self.address += 1;
                 vec![Inst::Jump(self.entry_address)]
-            },
+            }
             Thunk::Break => {
                 self.address += 1;
                 vec![Inst::Jump(self.break_address)]
-            },
+            }
             Thunk::Nop => vec![],
         }
     }
 }
-

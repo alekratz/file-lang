@@ -36,4 +36,3 @@ impl Object for TypeObject {
         self
     }
 }
-

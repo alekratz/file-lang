@@ -41,8 +41,13 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
             //self.translate_type(ty);
         }
         let main_thunk = self.translate_body(&self.ctx.ir());
-        let main_binding = self.ctx.bindings_mut().create_binding("__main__".to_string());
-        let main_bindings: Vec<_> = self.ctx.bindings()
+        let main_binding = self
+            .ctx
+            .bindings_mut()
+            .create_binding("__main__".to_string());
+        let main_bindings: Vec<_> = self
+            .ctx
+            .bindings()
             .last_layer()
             .unwrap()
             .iter()
@@ -65,7 +70,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
             translator.translate_body(&fun_def.body)
         };
         todo!()
-        //UserFun::new(fun_def.binding, 
+        //UserFun::new(fun_def.binding,
     }
 
     fn translate_body(&mut self, body: &Vec<Stmt>) -> Thunk {
@@ -110,23 +115,18 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
                 }
                 LValue::Access(access) => {
                     // TODO : Keep track of anonymous variables so that they may be reclaimed
-                    let setattr_binding = self.ctx
-                        .bindings_mut()
-                        .create_anonymous_binding();
+                    let setattr_binding = self.ctx.bindings_mut().create_anonymous_binding();
                     let setattr_ref = self.get_or_register_string_constant(SETATTR);
                     let attr_ref = self.get_or_register_string_constant(&access.tail);
                     thunk.extend(self.translate_expr(&access.head, ExprCtx::Push));
                     thunk.extend(vec![
-                                 Inst::GetAttr(setattr_ref),
-                                 Inst::Store(setattr_binding),
-                                 Inst::PushValue(attr_ref.into()),
+                        Inst::GetAttr(setattr_ref),
+                        Inst::Store(setattr_binding),
+                        Inst::PushValue(attr_ref.into()),
                     ]);
                     // RHS
                     thunk.extend(self.translate_expr(rhs, ExprCtx::Push));
-                    thunk.extend(vec![
-                                 Inst::Load(setattr_binding),
-                                 Inst::PopCall(3),
-                    ]);
+                    thunk.extend(vec![Inst::Load(setattr_binding), Inst::PopCall(3)]);
                 }
                 LValue::Complex(expr) => {
                     thunk.extend(self.translate_expr(expr, ExprCtx::Push));
@@ -165,11 +165,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
         thunk
     }
 
-    fn translate_un_expr(
-        &mut self,
-        UnExpr { op, expr, .. }: &UnExpr,
-        ctx: ExprCtx,
-    ) -> Thunk {
+    fn translate_un_expr(&mut self, UnExpr { op, expr, .. }: &UnExpr, ctx: ExprCtx) -> Thunk {
         // TODO : consider translating this to a function call in the IR, instead of here
         let mut thunk = self.translate_expr(expr, ExprCtx::Push);
         thunk.extend(vec![Inst::Load(*op), Inst::PopCall(1)]);
@@ -182,11 +178,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
         thunk
     }
 
-    fn translate_access(
-        &mut self,
-        Access { head, tail, .. }: &Access,
-        ctx: ExprCtx,
-    ) -> Thunk {
+    fn translate_access(&mut self, Access { head, tail, .. }: &Access, ctx: ExprCtx) -> Thunk {
         // TODO : consider translating this to a function call in the IR, instead of here
         let mut thunk = self.translate_expr(head, ExprCtx::Push);
         let name_ref = self.get_or_register_string_constant(tail);
@@ -204,11 +196,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
         thunk
     }
 
-    fn translate_fun_call(
-        &mut self,
-        FunCall { fun, args, .. }: &FunCall,
-        ctx: ExprCtx,
-    ) -> Thunk {
+    fn translate_fun_call(&mut self, FunCall { fun, args, .. }: &FunCall, ctx: ExprCtx) -> Thunk {
         let arg_count = args.len();
         let mut thunk = self.translate_expr(&fun, ExprCtx::Push);
         for arg in args.iter() {

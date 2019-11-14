@@ -59,9 +59,7 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
     }
 
     fn register_type_member(&mut self, type_name: &str, member: &str, value: ConstRef) {
-        let type_ref = *self.type_refs
-            .get(type_name)
-            .expect(type_name);
+        let type_ref = *self.type_refs.get(type_name).expect(type_name);
         self.ctx.with_constant_mut(type_ref, |builtin| {
             let builtin_type = if let ConstValue::BuiltinType(ty) = builtin {
                 ty

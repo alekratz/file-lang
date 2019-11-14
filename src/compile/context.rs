@@ -42,7 +42,7 @@ impl<'t> SynCtx<'t> {
     pub fn bindings_mut(&mut self) -> &mut BindingStack {
         &mut self.bindings
     }
-    
+
     pub fn text(&self) -> &'t str {
         self.text
     }
@@ -97,12 +97,11 @@ impl<'t> IrCtx<'t> {
     }
 
     pub fn with_constant_mut<F, B>(&mut self, const_ref: ConstRef, with: F) -> B
-        where F: FnOnce(&mut ConstValue) -> B
+    where
+        F: FnOnce(&mut ConstValue) -> B,
     {
-        let constants = Rc::get_mut(&mut self.constants)
-            .unwrap();
-        let constant = constants.get_mut(*const_ref)
-            .unwrap();
+        let constants = Rc::get_mut(&mut self.constants).unwrap();
+        let constant = constants.get_mut(*const_ref).unwrap();
         (with)(constant)
     }
 
@@ -112,21 +111,17 @@ impl<'t> IrCtx<'t> {
     {
         let ref_id = self.constants.len();
         {
-            let constants = Rc::get_mut(&mut self.constants)
-                .unwrap();
+            let constants = Rc::get_mut(&mut self.constants).unwrap();
             constants.push(ConstValue::Placeholder);
         }
         let value = (fun)(self, ConstRef(ref_id));
-        let constants = Rc::get_mut(&mut self.constants)
-            .unwrap();
+        let constants = Rc::get_mut(&mut self.constants).unwrap();
         constants[ref_id] = value;
         ConstRef(ref_id)
     }
 
     pub fn register_constant(&mut self, value: ConstValue) -> ConstRef {
-        self.register_constant_with(|_, _| {
-            value
-        })
+        self.register_constant_with(|_, _| value)
     }
 
     pub fn functions(&self) -> Rc<HashMap<Binding, ir::FunDef>> {

@@ -2,10 +2,7 @@ mod ast;
 
 pub use self::ast::*;
 
-use crate::compile::{
-    context::SynCtx,
-    builtins::BUILTIN_TYPES,
-};
+use crate::compile::{builtins::BUILTIN_TYPES, context::SynCtx};
 
 pub fn collect_builtins<'t>(ctx: &mut SynCtx<'t>) {
     for (name, _) in BUILTIN_TYPES.iter() {

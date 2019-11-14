@@ -52,7 +52,6 @@ fn unescape_string(s: &str) -> std::result::Result<String, char> {
     Ok(built)
 }
 
-
 struct AstToIr<'t> {
     ctx: SynCtx<'t>,
     functions: HashMap<Binding, FunDef>,

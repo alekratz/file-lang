@@ -1,7 +1,7 @@
 mod ast;
-mod ir;
 mod constant;
+mod ir;
 
 pub use self::ast::*;
-pub use self::ir::*;
 pub use self::constant::*;
+pub use self::ir::*;

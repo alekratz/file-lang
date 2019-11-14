@@ -40,7 +40,8 @@ impl UserFun {
     pub fn new(binding: Binding, bindings: Vec<Binding>, code: Vec<Inst>, arity: usize) -> Self {
         UserFun {
             binding,
-            bindings: bindings.into_iter()
+            bindings: bindings
+                .into_iter()
                 .map(|b| (b, StackValue::Empty))
                 .collect(),
             code,
@@ -122,8 +123,7 @@ impl BuiltinFun {
 
 impl PartialEq for BuiltinFun {
     fn eq(&self, other: &Self) -> bool {
-        self.binding == other.binding
-            && (self.fun.fun_address() == other.fun.fun_address())
+        self.binding == other.binding && (self.fun.fun_address() == other.fun.fun_address())
     }
 }
 

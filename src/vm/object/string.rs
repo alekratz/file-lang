@@ -1,4 +1,4 @@
-use crate::vm::{object::*, value::*, storage::*};
+use crate::vm::{object::*, storage::*, value::*};
 use derivative::Derivative;
 
 use std::{
@@ -11,8 +11,8 @@ use std::{
 #[derivative(Hash)]
 #[derivative(PartialEq)]
 pub struct StringObject {
-    #[derivative(Hash="ignore")]
-    #[derivative(PartialEq="ignore")]
+    #[derivative(Hash = "ignore")]
+    #[derivative(PartialEq = "ignore")]
     base_object: BaseObject,
     string: String,
 }

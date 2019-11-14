@@ -9,10 +9,7 @@ pub struct CallableObject {
 
 impl CallableObject {
     pub fn new(base_object: BaseObject, fun: Fun) -> Self {
-        CallableObject {
-            base_object,
-            fun,
-        }
+        CallableObject { base_object, fun }
     }
 
     pub fn fun(&self) -> &Fun {

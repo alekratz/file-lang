@@ -1,13 +1,13 @@
-use std::{any::{TypeId}, collections::HashMap, hash::Hash};
+use std::{any::TypeId, collections::HashMap, hash::Hash};
 
 pub struct TypeMap<V: Hash> {
-    mapping: HashMap<TypeId, V>
+    mapping: HashMap<TypeId, V>,
 }
 
 impl<V: Hash> Default for TypeMap<V> {
     fn default() -> Self {
         TypeMap {
-            mapping: Default::default()
+            mapping: Default::default(),
         }
     }
 }

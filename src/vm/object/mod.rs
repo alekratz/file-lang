@@ -8,10 +8,7 @@ pub use self::fun::*;
 pub use self::string::*;
 pub use self::ty::*;
 
-use crate::{
-    common::types::Mapping,
-    vm::{value::*},
-};
+use crate::{common::types::Mapping, vm::value::*};
 
 use std::{any::Any, fmt::Debug};
 

@@ -1,7 +1,4 @@
-use crate::vm::{
-    storage::*,
-    value::*,
-};
+use crate::vm::{storage::*, value::*};
 
 pub struct State {
     storage: Storage,
