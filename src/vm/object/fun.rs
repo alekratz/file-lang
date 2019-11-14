@@ -30,11 +30,11 @@ impl Object for CallableObject {
         self.base_object.attrs()
     }
 
-    fn value_ref(&self) -> ValueRef {
-        self.base_object.value_ref()
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn base_object(&self) -> &BaseObject {
+        &self.base_object
     }
 }

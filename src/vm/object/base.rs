@@ -7,14 +7,12 @@ use std::{any::Any, cell::RefCell, fmt::Debug};
 /// of backing object storage.
 #[derive(Debug, Clone)]
 pub struct BaseObject {
-    value_ref: ValueRef,
     members: RefCell<ObjectMembers>,
 }
 
 impl BaseObject {
-    pub fn new(value_ref: ValueRef, members: ObjectMembers) -> Self {
+    pub fn new(members: ObjectMembers) -> Self {
         BaseObject {
-            value_ref,
             members: members.into(),
         }
     }
@@ -43,11 +41,11 @@ impl Object for BaseObject {
         members.keys().cloned().collect()
     }
 
-    fn value_ref(&self) -> ValueRef {
-        self.value_ref
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn base_object(&self) -> &BaseObject {
+        &self
     }
 }

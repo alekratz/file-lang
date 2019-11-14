@@ -3,7 +3,7 @@ pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
 use crate::{
     compile::{binding::*, constant::*},
     syn::op::*,
-    vm::{object::*, value::ValueRef},
+    vm::{object::*, value::*},
 };
 use lazy_static::lazy_static;
 use maplit::hashmap;
@@ -94,6 +94,7 @@ impl BuiltinType {
 
 pub const GETATTR: &str = "__getattr__";
 pub const SETATTR: &str = "__setattr__";
+pub const MAKE: &str = "__make__";
 pub const INIT: &str = "__init__";
 pub const REPR: &str = "__repr__";
 pub const STR: &str = "__str__";
@@ -163,8 +164,7 @@ lazy_static! {
                 let attr_value = object.get_attr(&name)
                     .expect(&name);
                 state.storage_mut()
-                    .stack_mut()
-                    .push(attr_value);
+                    .set_return_register(attr_value);
             }),
             SETATTR => builtin_fun!(|state, mut args| {
                 if args.len() != 3 {
@@ -200,10 +200,84 @@ lazy_static! {
             CALL => builtin_fun!(|_, _| {}),
         },
         TYPE_TYPE => {
+            CALL => builtin_fun!(|state, mut args| {
+                let this_type = args[0].to_value_ref()
+                    .expect("tried to call __call__ on a non-object value");
+                let make: ValueRef = state.storage()
+                    .with_object(this_type, |object| {
+                        object.get_attr(MAKE)
+                            .and_then(|value| value.to_value_ref())
+                            .unwrap()
+                    });
+                // allocate
+                state.call(make, vec![StackValue::ValueRef(this_type)]);
+                let this_object = state.storage_mut()
+                    .take_return_register()
+                    .and_then(|value| value.to_value_ref())
+                    .expect("__make__ did not produce a value reference");
+                // init
+                let init: ValueRef = state.storage()
+                    .with_object(this_type, |object| {
+                        object.get_attr(INIT)
+                            .and_then(|value| value.to_value_ref())
+                            .unwrap()
+                    });
+                args[0] = StackValue::ValueRef(this_object);
+                state.call(init, args);
+                state.storage_mut()
+                    .set_return_register(StackValue::ValueRef(this_object));
+            }),
+            MAKE => builtin_fun!(|state, args| {
+                let this_type = args[0].to_value_ref().unwrap();
+                let mut base_object = state.storage()
+                    .with_object(this_type, |object| object.base_object().clone());
+                base_object.set_attr(TYPE.to_string(), StackValue::ValueRef(this_type));
+                let value_ref = state.storage_mut()
+                    .allocate(base_object);
+                state.storage_mut()
+                    .set_return_register(StackValue::ValueRef(value_ref));
+            }),
             INIT => builtin_fun!(|_, _| {}),
         },
         STR_TYPE => {
-            INIT => builtin_fun!(|_, _| {}),
+            INIT => builtin_fun!(|state, mut args| {
+                let this = args[0].to_value_ref().unwrap();
+                let string_value = if args.len() == 1 {
+                    String::new()
+                } else if args.len() == 2 {
+                    let value = args[1];
+                    match value {
+                        StackValue::ValueRef(value_ref) => {
+                            let value_ref_str = state.storage()
+                                .with_object(value_ref, |object| {
+                                    object.get_attr(STR)
+                                });
+                            if let Some(str_fun_ref) = value_ref_str.and_then(|value| value.to_value_ref()) {
+                                state.call(str_fun_ref, vec![StackValue::ValueRef(value_ref)]);
+                            } else {
+                                panic!("Cannot convert {:?} to a string value", value_ref);
+                            }
+                            let returned = state.storage_mut()
+                                .take_return_register()
+                                .unwrap();
+                            let string_object: &StringObject = state.storage()
+                                .downcast_stack_value(returned)
+                                .unwrap();
+                            string_object.string().to_string()
+                        }
+                        StackValue::Int(i) => i.to_string(),
+                        StackValue::Float(f) => f.to_string(),
+                        StackValue::Empty => panic!("Attempted to use empty value"),
+                    }
+                } else {
+                    panic!("Strings can only take one argument");
+                };
+            }),
+            STR => builtin_fun!(|state, args| {
+                assert!(args.len() == 1);
+                state.storage_mut()
+                    .set_return_register(args[0]);
+            }),
         },
     };
 }

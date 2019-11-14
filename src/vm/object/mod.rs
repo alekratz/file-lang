@@ -16,8 +16,8 @@ pub trait Object: Debug {
     fn get_attr(&self, name: &str) -> Option<StackValue>;
     fn set_attr(&self, name: String, value: StackValue);
     fn attrs(&self) -> Vec<String>;
-    fn value_ref(&self) -> ValueRef;
     fn as_any(&self) -> &dyn Any;
+    fn base_object(&self) -> &BaseObject;
 }
 
 /// A boxed, "live" object value.

@@ -18,6 +18,7 @@ pub struct Storage {
     stack: Vec<StackValue>,
     heap: Vec<HeapSlot>,
     constants_end: usize,
+    return_register: Option<StackValue>,
 }
 
 impl Storage {
@@ -29,7 +30,24 @@ impl Storage {
             stack: Default::default(),
             heap,
             constants_end,
+            return_register: None,
         }
+    }
+
+    pub fn take_return_register(&mut self) -> Option<StackValue> {
+        mem::replace(&mut self.return_register, None)
+    }
+    
+    pub fn return_register(&self) -> Option<StackValue> {
+        self.return_register
+    }
+
+    pub fn set_return_register(&mut self, return_register: StackValue) {
+        self.return_register = Some(return_register);
+    }
+
+    pub fn unset_return_register(&mut self) {
+        self.return_register = None;
     }
 
     pub fn stack(&self) -> &Vec<StackValue> {
@@ -74,6 +92,13 @@ impl Storage {
             "attempted to free already-freed heap memory, ref: {:?}",
             value_ref
         );
+    }
+
+    pub fn with_object<F, B>(&self, value_ref: ValueRef, with: F) -> B
+        where F: Fn(&dyn Object) -> B
+    {
+        let value = self.deref(value_ref);
+        (with)(value)
     }
 
     /// Attempts to dereference and downcast a stack value to a more concrete object type.
