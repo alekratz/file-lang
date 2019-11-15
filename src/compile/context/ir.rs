@@ -1,9 +1,8 @@
 use crate::{
     compile::{binding::*, constant::*, ir, context::*},
-    syn::ast,
     vm::value::*,
 };
-use std::{collections::HashMap, mem, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug)]
 pub struct IrCtx<'t> {

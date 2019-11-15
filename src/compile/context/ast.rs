@@ -3,7 +3,7 @@ use crate::{
     syn::ast,
     vm::value::*,
 };
-use std::{collections::HashMap, mem, rc::Rc};
+use std::{mem, rc::Rc};
 
 #[derive(Debug)]
 pub struct AstCtx<'t> {
