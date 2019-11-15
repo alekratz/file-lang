@@ -46,6 +46,14 @@ impl Storage {
             .expect("no stack frame")
     }
 
+    pub fn stack_frames(&self) -> &Vec<StackFrame> {
+        &self.stack_frames
+    }
+
+    pub fn stack_frames_mut(&mut self) -> &mut Vec<StackFrame> {
+        &mut self.stack_frames
+    }
+
     pub fn take_return_register(&mut self) -> Option<StackValue> {
         mem::replace(&mut self.return_register, None)
     }
@@ -178,6 +186,9 @@ impl Storage {
                 return;
             }
         }
-        panic!("Binding {:?} not found", binding);
+
+        // otherwise, make a local binding
+        let frame = self.stack_frame_mut();
+        frame.bindings.insert(binding, value);
     }
 }

@@ -7,6 +7,14 @@ pub struct State {
 }
 
 impl State {
+    pub fn new(constants: Vec<ObjectValue>) -> Self {
+        State {
+            storage: Storage::new(constants),
+            halt: false,
+            compare_flag: false,
+        }
+    }
+
     pub fn call(&mut self, _fun_ref: ValueRef, _args: Vec<StackValue>) {
         unimplemented!()
     }
@@ -58,7 +66,7 @@ impl State {
                     let value = self.storage_mut()
                         .pop_stack()
                         .expect("Store - expected stack value");
-
+                    self.storage_mut().store_binding(binding, value);
                 }
                 Inst::PopStore => {
                     let target = self.storage_mut()
