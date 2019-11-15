@@ -127,6 +127,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
                     // RHS
                     thunk.extend(self.translate_expr(rhs, ExprCtx::Push));
                     thunk.extend(vec![Inst::Load(setattr_binding), Inst::PopCall(3)]);
+                    self.ctx.bindings_mut().free_anonymous_binding(setattr_binding);
                 }
                 LValue::Complex(expr) => {
                     thunk.extend(self.translate_expr(expr, ExprCtx::Push));
@@ -198,11 +199,21 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
 
     fn translate_fun_call(&mut self, FunCall { fun, args, .. }: &FunCall, ctx: ExprCtx) -> Thunk {
         let arg_count = args.len();
+        // This is where we get the __call__ attribute from a function
+        // . evaluate function ref
+        // . GetAttr(__call__)
+        //
+        let fun_binding = self.ctx.bindings_mut().create_anonymous_binding();
         let mut thunk = self.translate_expr(&fun, ExprCtx::Push);
+        thunk.push(Inst::StoreLocal(fun_binding));
         for arg in args.iter() {
             thunk.extend(self.translate_expr(arg, ExprCtx::Push));
         }
-        thunk.push(Inst::PopCall(arg_count));
+        thunk.extend(vec![
+                     Inst::Load(fun_binding),
+                     Inst::PopCall(arg_count)
+        ]);
+        self.ctx.bindings_mut().free_anonymous_binding(fun_binding);
 
         match ctx {
             ExprCtx::Push => thunk.push(Inst::PushReturn),

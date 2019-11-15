@@ -23,6 +23,7 @@ fn unary_op_binding_name(op: &[OpKind]) -> String {
 pub struct BindingStack {
     stack: Vec<Bindings>,
     builtin_bindings: Bindings,
+    free_anon_bindings: Vec<Binding>,
     all: Vec<String>,
 }
 
@@ -31,6 +32,7 @@ impl Default for BindingStack {
         BindingStack {
             builtin_bindings: Default::default(),
             stack: vec![Default::default()],
+            free_anon_bindings: Default::default(),
             all: Vec::new(),
         }
     }
@@ -66,8 +68,16 @@ impl BindingStack {
     }
 
     pub fn create_anonymous_binding(&mut self) -> Binding {
-        let name = format!("#*anonymous variable {}*#", self.all.len());
-        self.create_binding(name)
+        if let Some(binding) = self.free_anon_bindings.pop() {
+            binding
+        } else {
+            let name = format!("#*anonymous variable {}*#", self.all.len());
+            self.create_binding(name)
+        }
+    }
+
+    pub fn free_anonymous_binding(&mut self, binding: Binding) {
+        self.free_anon_bindings.push(binding);
     }
 
     pub fn create_binding(&mut self, name: String) -> Binding {
