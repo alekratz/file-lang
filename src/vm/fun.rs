@@ -14,13 +14,13 @@ use std::{
 pub enum Fun {
     User(UserFun),
     Builtin(BuiltinFunPtr),
-    Partial(Vec<StackValue>, ValueRef),
+    Partial(Vec<Value>, ValueRef),
 }
 
 #[derive(Debug, Clone)]
 pub struct UserFun {
     binding: Binding,
-    bindings: BTreeMap<Binding, StackValue>,
+    bindings: BTreeMap<Binding, Value>,
     code: Rc<Vec<Inst>>,
     arity: usize,
 }
@@ -31,7 +31,7 @@ impl UserFun {
             binding,
             bindings: bindings
                 .into_iter()
-                .map(|b| (b, StackValue::Empty))
+                .map(|b| (b, Value::Empty))
                 .collect(),
             code: code.into(),
             arity,
@@ -42,11 +42,11 @@ impl UserFun {
         self.binding
     }
 
-    pub fn bindings(&self) -> &BTreeMap<Binding, StackValue> {
+    pub fn bindings(&self) -> &BTreeMap<Binding, Value> {
         &self.bindings
     }
 
-    pub fn bindings_mut(&mut self) -> &mut BTreeMap<Binding, StackValue> {
+    pub fn bindings_mut(&mut self) -> &mut BTreeMap<Binding, Value> {
         &mut self.bindings
     }
 
@@ -60,16 +60,16 @@ impl UserFun {
 }
 
 #[derive(Shrinkwrap)]
-pub struct BuiltinFunPtr(pub Box<fn(&mut State, Vec<StackValue>)>);
+pub struct BuiltinFunPtr(pub Box<fn(&mut State, Vec<Value>)>);
 
-impl From<fn(&mut State, Vec<StackValue>)> for BuiltinFunPtr {
-    fn from(other: fn(&mut State, Vec<StackValue>)) -> Self {
+impl From<fn(&mut State, Vec<Value>)> for BuiltinFunPtr {
+    fn from(other: fn(&mut State, Vec<Value>)) -> Self {
         BuiltinFunPtr::new(*&other)
     }
 }
 
 impl BuiltinFunPtr {
-    pub fn new(ptr: fn(&mut State, Vec<StackValue>)) -> Self {
+    pub fn new(ptr: fn(&mut State, Vec<Value>)) -> Self {
         BuiltinFunPtr(Box::new(ptr))
     }
 

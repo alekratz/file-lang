@@ -44,7 +44,7 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
             for (binding, value_ref) in type_bindings {
                 main_fun
                     .bindings_mut()
-                    .insert(binding, StackValue::ValueRef(*value_ref));
+                    .insert(binding, Value::ValueRef(*value_ref));
             }
         }
 
@@ -89,9 +89,9 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         let mut members: Mapping<_, _> = str_type
             .members()
             .iter()
-            .map(|(name, value)| (name.to_string(), StackValue::ValueRef(*value)))
+            .map(|(name, value)| (name.to_string(), Value::ValueRef(*value)))
             .collect();
-        members.insert(TYPE.to_string(), StackValue::ValueRef(str_ref));
+        members.insert(TYPE.to_string(), Value::ValueRef(str_ref));
         StringObject::new(BaseObject::new(members), value)
     }
 
@@ -109,9 +109,9 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         let mut members: Mapping<_, _> = callable_type
             .members()
             .iter()
-            .map(|(name, value)| (name.to_string(), StackValue::ValueRef(*value)))
+            .map(|(name, value)| (name.to_string(), Value::ValueRef(*value)))
             .collect();
-        members.insert(TYPE.to_string(), StackValue::ValueRef(callable_ref));
+        members.insert(TYPE.to_string(), Value::ValueRef(callable_ref));
         CallableObject::new(BaseObject::new(members), fun)
     }
 
@@ -120,9 +120,9 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         let mut members: Mapping<_, _> = builtin_type
             .members()
             .iter()
-            .map(|(name, value)| (name.to_string(), StackValue::ValueRef(*value)))
+            .map(|(name, value)| (name.to_string(), Value::ValueRef(*value)))
             .collect();
-        members.insert(TYPE.to_string(), StackValue::ValueRef(type_ref));
+        members.insert(TYPE.to_string(), Value::ValueRef(type_ref));
         TypeObject::new(BaseObject::new(members))
     }
 

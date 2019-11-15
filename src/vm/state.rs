@@ -19,7 +19,7 @@ impl State {
         }
     }
 
-    pub fn call(&mut self, fun_ref: ValueRef, args: Vec<StackValue>) {
+    pub fn call(&mut self, fun_ref: ValueRef, args: Vec<Value>) {
         let fun = self.storage()
             .downcast_ref::<CallableObject>(fun_ref)
             .expect("expected CallableObject")
@@ -29,7 +29,7 @@ impl State {
         self.call_fun(&fun, args)
     }
 
-    pub fn call_fun(&mut self, fun: &Fun, args: Vec<StackValue>) {
+    pub fn call_fun(&mut self, fun: &Fun, args: Vec<Value>) {
         match fun {
             Fun::User(fun) => self.call_user_fun(fun, args),
             Fun::Builtin(fun) => self.call_builtin_fun(fun, args),
@@ -41,7 +41,7 @@ impl State {
         }
     }
 
-    pub fn call_user_fun(&mut self, fun: &UserFun, args: Vec<StackValue>) {
+    pub fn call_user_fun(&mut self, fun: &UserFun, args: Vec<Value>) {
         let base = self.storage().stack().len();
         let stack_frame = StackFrame {
             base,
@@ -54,7 +54,7 @@ impl State {
             .push(stack_frame);
     }
 
-    pub fn call_builtin_fun(&mut self, fun: &BuiltinFunPtr, args: Vec<StackValue>) {
+    pub fn call_builtin_fun(&mut self, fun: &BuiltinFunPtr, args: Vec<Value>) {
         (fun)(self, args)
     }
 

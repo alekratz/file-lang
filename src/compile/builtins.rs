@@ -216,7 +216,7 @@ lazy_static! {
                     .and_then(|value| value.to_value_ref())
                     .unwrap();
                 // allocate
-                state.call(make, vec![StackValue::ValueRef(this_type)]);
+                state.call(make, vec![Value::ValueRef(this_type)]);
                 let this_object = state.storage_mut()
                     .take_return_register()
                     .and_then(|value| value.to_value_ref())
@@ -227,10 +227,10 @@ lazy_static! {
                     .get_attr(INIT)
                     .and_then(|value| value.to_value_ref())
                     .unwrap();
-                args[0] = StackValue::ValueRef(this_object);
+                args[0] = Value::ValueRef(this_object);
                 state.call(init, args);
                 state.storage_mut()
-                    .set_return_register(StackValue::ValueRef(this_object));
+                    .set_return_register(Value::ValueRef(this_object));
             }),
             MAKE => builtin_fun!(|state, args| {
                 let this_type = args[0].to_value_ref().unwrap();
@@ -243,11 +243,11 @@ lazy_static! {
                 // there should probably be two types of object value: vtable and members. vtable
                 // is copied over, while members are not. Members may be mutated at runtime, while
                 // the vtable members may not be.
-                base_object.set_attr(TYPE.to_string(), StackValue::ValueRef(this_type));
+                base_object.set_attr(TYPE.to_string(), Value::ValueRef(this_type));
                 let value_ref = state.storage_mut()
                     .allocate(base_object);
                 state.storage_mut()
-                    .set_return_register(StackValue::ValueRef(value_ref));
+                    .set_return_register(Value::ValueRef(value_ref));
             }),
             INIT => builtin_fun!(|_, _| {}),
         },
@@ -259,12 +259,12 @@ lazy_static! {
                 } else if args.len() == 2 {
                     let value = args[1];
                     match value {
-                        StackValue::ValueRef(value_ref) => {
+                        Value::ValueRef(value_ref) => {
                             let value_ref_str = state.storage()
                                 .deref(value_ref)
                                 .get_attr(STR);
                             if let Some(str_fun_ref) = value_ref_str.and_then(|value| value.to_value_ref()) {
-                                state.call(str_fun_ref, vec![StackValue::ValueRef(value_ref)]);
+                                state.call(str_fun_ref, vec![Value::ValueRef(value_ref)]);
                             } else {
                                 panic!("Cannot convert {:?} to a string value", value_ref);
                             }
@@ -276,9 +276,9 @@ lazy_static! {
                                 .unwrap();
                             string_object.string().to_string()
                         }
-                        StackValue::Int(i) => i.to_string(),
-                        StackValue::Float(f) => f.to_string(),
-                        StackValue::Empty => panic!("Attempted to use empty value"),
+                        Value::Int(i) => i.to_string(),
+                        Value::Float(f) => f.to_string(),
+                        Value::Empty => panic!("Attempted to use empty value"),
                     }
                 } else {
                     panic!("Strings can only take one argument");

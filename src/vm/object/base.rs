@@ -26,12 +26,12 @@ impl BaseObject {
 }
 
 impl Object for BaseObject {
-    fn get_attr(&self, name: &str) -> Option<StackValue> {
+    fn get_attr(&self, name: &str) -> Option<Value> {
         let members = self.members.borrow();
         members.get(name).copied()
     }
 
-    fn set_attr(&mut self, name: String, value: StackValue) {
+    fn set_attr(&mut self, name: String, value: Value) {
         let mut members = self.members.borrow_mut();
         members.insert(name, value);
     }

@@ -1,6 +1,6 @@
 use crate::{
     common::binding::Binding,
-    vm::value::{StackValue, ValueRef},
+    vm::value::{Value, ValueRef},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -9,7 +9,7 @@ pub enum Inst {
     Pop(usize),
 
     /// Push a constant value to the stack.
-    PushValue(StackValue),
+    PushValue(Value),
 
     /// Load a variable binding and push it to the stack.
     Load(Binding),

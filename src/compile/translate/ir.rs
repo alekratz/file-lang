@@ -185,7 +185,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
         let name_ref = self.get_or_register_string_constant(tail);
         let getattr_ref = self.get_or_register_string_constant(GETATTR);
         thunk.extend(vec![
-            Inst::PushValue(StackValue::ValueRef(name_ref)),
+            Inst::PushValue(Value::ValueRef(name_ref)),
             Inst::GetAttr(getattr_ref),
             Inst::PopCall(2),
         ]);
@@ -234,11 +234,11 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
             AtomKind::Ident(binding) => body.push(Inst::Load(*binding)),
             AtomKind::String(s) => {
                 let ref_id = { self.get_or_register_string_constant(s) };
-                body.push(Inst::PushValue(StackValue::ValueRef(ref_id)));
+                body.push(Inst::PushValue(Value::ValueRef(ref_id)));
             }
             AtomKind::TaggedString { .. } => todo!("TODO(string) Tagged string behavior"),
-            AtomKind::Int(i) => body.push(Inst::PushValue(StackValue::Int(*i as i64))),
-            AtomKind::Real(f) => body.push(Inst::PushValue(StackValue::Float(*f))),
+            AtomKind::Int(i) => body.push(Inst::PushValue(Value::Int(*i as i64))),
+            AtomKind::Real(f) => body.push(Inst::PushValue(Value::Float(*f))),
         }
         match ctx {
             ExprCtx::Push => { /* no-op - expression should remain on the stack */ }

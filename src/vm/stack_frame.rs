@@ -1,6 +1,6 @@
 use crate::{
     common::prelude::*,
-    vm::{inst::Inst, value::StackValue},
+    vm::{inst::Inst, value::Value},
 };
 use std::{collections::BTreeMap, rc::Rc};
 
@@ -16,7 +16,7 @@ pub struct StackFrame {
     pub code: Rc<Vec<Inst>>,
 
     // TODO(exception) stack frame exception object
-    pub bindings: BTreeMap<Binding, StackValue>,
+    pub bindings: BTreeMap<Binding, Value>,
 }
 
 impl StackFrame {

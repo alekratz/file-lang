@@ -19,10 +19,10 @@ const HEAP_GROWTH_FACTOR: f64 = 2.0;
 
 pub struct Storage {
     stack_frames: Vec<StackFrame>,
-    stack: Vec<StackValue>,
+    stack: Vec<Value>,
     heap: Vec<HeapSlot>,
     constants_end: usize,
-    return_register: Option<StackValue>,
+    return_register: Option<Value>,
 }
 
 impl Storage {
@@ -55,15 +55,15 @@ impl Storage {
         &mut self.stack_frames
     }
 
-    pub fn take_return_register(&mut self) -> Option<StackValue> {
+    pub fn take_return_register(&mut self) -> Option<Value> {
         mem::replace(&mut self.return_register, None)
     }
 
-    pub fn return_register(&self) -> Option<StackValue> {
+    pub fn return_register(&self) -> Option<Value> {
         self.return_register
     }
 
-    pub fn set_return_register(&mut self, return_register: StackValue) {
+    pub fn set_return_register(&mut self, return_register: Value) {
         self.return_register = Some(return_register);
     }
 
@@ -71,11 +71,11 @@ impl Storage {
         self.return_register = None;
     }
 
-    pub fn stack(&self) -> &Vec<StackValue> {
+    pub fn stack(&self) -> &Vec<Value> {
         &self.stack
     }
 
-    pub fn stack_mut(&mut self) -> &mut Vec<StackValue> {
+    pub fn stack_mut(&mut self) -> &mut Vec<Value> {
         &mut self.stack
     }
 
@@ -116,7 +116,7 @@ impl Storage {
     }
 
     /// Attempts to dereference and downcast a stack value to a more concrete object type.
-    pub fn downcast_stack_value<O: Object + 'static>(&self, stack_value: StackValue) -> Option<&O> {
+    pub fn downcast_stack_value<O: Object + 'static>(&self, stack_value: Value) -> Option<&O> {
         self.deref_stack_value(stack_value)?
             .as_any()
             .downcast_ref::<O>()
@@ -127,17 +127,17 @@ impl Storage {
     }
 
     /// Attempts to dereference a stack value ValueRef.
-    pub fn deref_stack_value(&self, stack_value: StackValue) -> Option<&dyn Object> {
+    pub fn deref_stack_value(&self, stack_value: Value) -> Option<&dyn Object> {
         match stack_value {
-            StackValue::ValueRef(h) => Some(self.deref(h)),
+            Value::ValueRef(h) => Some(self.deref(h)),
             _ => None,
         }
     }
 
     /// Attempts to mutably dereference a stack value ValueRef.
-    pub fn deref_stack_value_mut(&mut self, stack_value: StackValue) -> Option<&mut dyn Object> {
+    pub fn deref_stack_value_mut(&mut self, stack_value: Value) -> Option<&mut dyn Object> {
         match stack_value {
-            StackValue::ValueRef(h) => Some(self.deref_mut(h)),
+            Value::ValueRef(h) => Some(self.deref_mut(h)),
             _ => None,
         }
     }
@@ -155,27 +155,27 @@ impl Storage {
     }
 
     /// Pushes a value to the stack.
-    pub fn push_stack(&mut self, value: StackValue) {
+    pub fn push_stack(&mut self, value: Value) {
         self.stack_mut().push(value);
     }
 
     /// Attempts to pop a value from the stack.
-    pub fn pop_stack(&mut self) -> Option<StackValue> {
+    pub fn pop_stack(&mut self) -> Option<Value> {
         self.stack_mut().pop()
     }
 
     /// Pops the last N values from the stack.
-    pub fn pop_n(&mut self, n: usize) -> Vec<StackValue> {
+    pub fn pop_n(&mut self, n: usize) -> Vec<Value> {
         let split_index = self.stack().len() - n;
         self.stack_mut().split_off(split_index)
     }
 
-    pub fn peek_stack(&self) -> Option<StackValue> {
+    pub fn peek_stack(&self) -> Option<Value> {
         self.stack().last().copied()
     }
 
     /// Loads the closest binding from the stack frame stack with the given binding.
-    pub fn load_binding(&self, binding: Binding) -> Option<StackValue> {
+    pub fn load_binding(&self, binding: Binding) -> Option<Value> {
         self.stack_frames
             .iter()
             .rev()
@@ -185,7 +185,7 @@ impl Storage {
     }
 
     /// Stores the given value in the closest present binding in any stack frame.
-    pub fn store_binding(&mut self, binding: Binding, value: StackValue) {
+    pub fn store_binding(&mut self, binding: Binding, value: Value) {
         for frame in self.stack_frames.iter_mut() {
             if let Some(slot) = frame.bindings.get_mut(&binding) {
                 *slot = value;
@@ -199,7 +199,7 @@ impl Storage {
 
     /// Stores the given value in the stack frame, either updating the given binding or creating
     /// it.
-    pub fn store_binding_local(&mut self, binding: Binding, value: StackValue) {
+    pub fn store_binding_local(&mut self, binding: Binding, value: Value) {
         let frame = self.stack_frame_mut();
         frame.bindings.insert(binding, value);
     }

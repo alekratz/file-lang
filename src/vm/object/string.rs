@@ -39,11 +39,11 @@ impl Display for StringObject {
 }
 
 impl Object for StringObject {
-    fn get_attr(&self, name: &str) -> Option<StackValue> {
+    fn get_attr(&self, name: &str) -> Option<Value> {
         self.base_object.get_attr(name)
     }
 
-    fn set_attr(&mut self, name: String, value: StackValue) {
+    fn set_attr(&mut self, name: String, value: Value) {
         self.base_object.set_attr(name, value)
     }
 

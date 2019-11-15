@@ -13,8 +13,8 @@ use crate::{common::types::Mapping, vm::value::*};
 use std::{any::Any, fmt::Debug};
 
 pub trait Object: Debug {
-    fn get_attr(&self, name: &str) -> Option<StackValue>;
-    fn set_attr(&mut self, name: String, value: StackValue);
+    fn get_attr(&self, name: &str) -> Option<Value>;
+    fn set_attr(&mut self, name: String, value: Value);
     fn attrs(&self) -> Vec<String>;
     fn as_any(&self) -> &dyn Any;
     fn base_object(&self) -> &BaseObject;
@@ -22,4 +22,4 @@ pub trait Object: Debug {
 
 /// A boxed, "live" object value.
 pub type ObjectValue = Box<dyn Object>;
-pub type ObjectMembers = Mapping<String, StackValue>;
+pub type ObjectMembers = Mapping<String, Value>;
