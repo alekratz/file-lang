@@ -1,4 +1,4 @@
-use crate::vm::{object::*, value::*, state::State};
+use crate::vm::{object::*, state::State, value::*};
 
 pub struct Artifact {
     main_function_ref: ValueRef,
@@ -27,10 +27,14 @@ impl Artifact {
 }
 
 impl From<Artifact> for State {
-    fn from(Artifact { main_function_ref, constants }: Artifact) -> Self {
+    fn from(
+        Artifact {
+            main_function_ref,
+            constants,
+        }: Artifact,
+    ) -> Self {
         let mut state = State::new(constants);
         state.call(main_function_ref, vec![]);
         state
     }
 }
-

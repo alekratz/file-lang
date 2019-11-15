@@ -4,7 +4,6 @@ use crate::{
     vm::{fun::*, object::*, value::*},
 };
 
-
 pub fn translate_constants<'t>(ctx: &mut IrCtx<'t>, main_fun_ref: ValueRef) -> Vec<ObjectValue> {
     TranslateConstants::new(ctx, main_fun_ref).translate()
 }

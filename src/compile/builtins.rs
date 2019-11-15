@@ -1,7 +1,7 @@
 pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
 
 use crate::{
-    compile::{binding::*},
+    compile::binding::*,
     syn::op::*,
     vm::{object::*, value::*},
 };
@@ -206,7 +206,7 @@ lazy_static! {
                 // Solution: maybe RC function objects? Or clone function objects, since they
                 // probably aren't very big (16-48 bytes? they should be just a bunch of references
                 // and numbers)
-                // 
+                //
                 //let fun_ref = args.remove(0)
                     //.and_then(|value| value))
                     //.expect("expected value ref value");

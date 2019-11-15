@@ -8,10 +8,7 @@ mod ir;
 mod thunk;
 mod translate;
 
-use crate::{
-    compile::error::*,
-    vm::artifact::Artifact,
-};
+use crate::{compile::error::*, vm::artifact::Artifact};
 
 pub fn compile(text: &str) -> Result<Artifact> {
     let mut ir_ctx = translate::ast_to_ir(text)?;

@@ -1,7 +1,7 @@
 use crate::{
     compile::{binding::*, constant::*, ir},
     syn::ast,
-    vm::{value::*},
+    vm::value::*,
 };
 use std::{collections::HashMap, mem, rc::Rc};
 

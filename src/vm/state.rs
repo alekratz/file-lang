@@ -44,52 +44,59 @@ impl State {
                     self.storage_mut().push_stack(stack_value);
                 }
                 Inst::Load(binding) => {
-                    let value = self.storage().load_binding(binding)
+                    let value = self
+                        .storage()
+                        .load_binding(binding)
                         .expect("Load - unknown binding");
-                    self.storage_mut()
-                        .push_stack(value);
+                    self.storage_mut().push_stack(value);
                 }
                 Inst::GetAttr(_attr) => {
-                    let tos = self.storage_mut()
+                    let tos = self
+                        .storage_mut()
                         .pop_stack()
-                        .and_then(|value| self.storage().downcast_stack_value::<StringObject>(value))
+                        .and_then(|value| {
+                            self.storage().downcast_stack_value::<StringObject>(value)
+                        })
                         .expect("GetAttr - expected Str value reference on stack");
-                    let peek = self.storage()
+                    let peek = self
+                        .storage()
                         .peek_stack()
                         .and_then(|value| value.to_value_ref())
                         .expect("GetAttr - expected value reference value on stack");
-                    let _attr = self.storage()
-                        .deref(peek)
-                        .get_attr(&tos.string());
+                    let _attr = self.storage().deref(peek).get_attr(&tos.string());
                 }
                 Inst::Store(binding) => {
-                    let value = self.storage_mut()
+                    let value = self
+                        .storage_mut()
                         .pop_stack()
                         .expect("Store - expected stack value");
                     self.storage_mut().store_binding(binding, value);
                 }
                 Inst::PopStore => {
-                    let target = self.storage_mut()
+                    let target = self
+                        .storage_mut()
                         .pop_stack()
                         .and_then(|value| value.to_value_ref())
                         .expect("PopStore - expected value reference value on stack");
                     // TODO : protect constant/readonly values, somehow
-                    let _value = self.storage_mut()
+                    let _value = self
+                        .storage_mut()
                         .pop_stack()
                         .expect("PopStore - expected stack value");
-                    let _target = self.storage_mut()
-                        .deref_mut(target);
+                    let _target = self.storage_mut().deref_mut(target);
                     // TODO : store stack values in target
                     todo!()
                 }
                 Inst::StoreReturn => {
-                    let value = self.storage_mut()
+                    let value = self
+                        .storage_mut()
                         .pop_stack()
                         .expect("StoreReturn - expected stack value");
                     self.storage_mut().set_return_register(value);
                 }
                 Inst::PushReturn => {
-                    let value = self.storage_mut()
+                    let value = self
+                        .storage_mut()
                         .take_return_register()
                         .expect("PushReturn - expected return value");
                     self.storage_mut().push_stack(value);

@@ -1,7 +1,4 @@
-use crate::{
-    compile::builtins::*,
-    vm::{fun::*},
-};
+use crate::{compile::builtins::*, vm::fun::*};
 
 #[derive(Debug, Clone)]
 pub enum ConstValue {

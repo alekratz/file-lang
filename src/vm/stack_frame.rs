@@ -1,8 +1,8 @@
-use crate::{common::prelude::*, vm::{inst::Inst, value::StackValue}};
-use std::{
-    collections::BTreeMap,
-    rc::Rc,
+use crate::{
+    common::prelude::*,
+    vm::{inst::Inst, value::StackValue},
 };
+use std::{collections::BTreeMap, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub struct StackFrame {
@@ -16,7 +16,6 @@ pub struct StackFrame {
     pub code: Rc<Vec<Inst>>,
 
     // TODO(exception) stack frame exception object
-    
     pub bindings: BTreeMap<Binding, StackValue>,
 }
 

@@ -1,4 +1,7 @@
-use crate::{common::prelude::*, vm::{object::*, value::*, stack_frame::*}};
+use crate::{
+    common::prelude::*,
+    vm::{object::*, stack_frame::*, value::*},
+};
 use std::mem;
 
 pub type HeapSlot = Option<ObjectValue>;
@@ -37,13 +40,11 @@ impl Storage {
     }
 
     pub fn stack_frame(&self) -> &StackFrame {
-        self.stack_frames.last()
-            .expect("no stack frame")
+        self.stack_frames.last().expect("no stack frame")
     }
 
     pub fn stack_frame_mut(&mut self) -> &mut StackFrame {
-        self.stack_frames.last_mut()
-            .expect("no stack frame")
+        self.stack_frames.last_mut().expect("no stack frame")
     }
 
     pub fn stack_frames(&self) -> &Vec<StackFrame> {
@@ -57,7 +58,7 @@ impl Storage {
     pub fn take_return_register(&mut self) -> Option<StackValue> {
         mem::replace(&mut self.return_register, None)
     }
-    
+
     pub fn return_register(&self) -> Option<StackValue> {
         self.return_register
     }
@@ -171,7 +172,8 @@ impl Storage {
 
     /// Loads the closest binding from the stack frame stack with the given binding.
     pub fn load_binding(&self, binding: Binding) -> Option<StackValue> {
-        self.stack_frames.iter()
+        self.stack_frames
+            .iter()
             .rev()
             .filter_map(|frame| frame.bindings.get(&binding))
             .next()

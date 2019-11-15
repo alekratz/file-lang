@@ -1,6 +1,6 @@
 use crate::{
     common::binding::Binding,
-    vm::value::{ValueRef, StackValue},
+    vm::value::{StackValue, ValueRef},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]

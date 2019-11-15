@@ -5,10 +5,7 @@ mod syn;
 mod compile;
 mod vm;
 
-use crate::{
-    common::span::*,
-    vm::state::State,
-};
+use crate::{common::span::*, vm::state::State};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 use syn::prelude::*;

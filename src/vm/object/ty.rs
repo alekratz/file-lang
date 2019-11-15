@@ -7,9 +7,7 @@ pub struct TypeObject {
 
 impl TypeObject {
     pub fn new(base_object: BaseObject) -> Self {
-        TypeObject {
-            base_object,
-        }
+        TypeObject { base_object }
     }
 }
 
