@@ -1,5 +1,5 @@
 use crate::{
-    compile::{binding::*, constant::*, ir, context::*},
+    compile::{binding::*, constant::*, ir::*, context::*},
     vm::value::*,
 };
 use std::{collections::HashMap, rc::Rc};
@@ -9,17 +9,17 @@ pub struct IrCtx<'t> {
     text: &'t str,
     constants: Rc<Vec<ConstValue>>,
     bindings: BindingStack,
-    functions: Rc<HashMap<Binding, ir::FunDef>>,
-    types: Rc<HashMap<Binding, ir::TypeDef>>,
-    ir: Rc<Vec<ir::Stmt>>,
+    functions: Rc<HashMap<Binding, FunDef>>,
+    types: Rc<HashMap<Binding, TypeDef>>,
+    ir: Rc<Vec<Stmt>>,
 }
 
 impl<'t> IrCtx<'t> {
     pub fn new(
         AstCtx { text, bindings, .. }: AstCtx<'t>,
-        functions: HashMap<Binding, ir::FunDef>,
-        types: HashMap<Binding, ir::TypeDef>,
-        ir: Vec<ir::Stmt>,
+        functions: HashMap<Binding, FunDef>,
+        types: HashMap<Binding, TypeDef>,
+        ir: Vec<Stmt>,
     ) -> Self {
         IrCtx {
             text,
@@ -31,7 +31,7 @@ impl<'t> IrCtx<'t> {
         }
     }
 
-    pub fn ir(&self) -> Rc<Vec<ir::Stmt>> {
+    pub fn ir(&self) -> Rc<Vec<Stmt>> {
         Rc::clone(&self.ir)
     }
 
@@ -74,11 +74,11 @@ impl<'t> IrCtx<'t> {
         self.register_constant_with(|_, _| value)
     }
 
-    pub fn functions(&self) -> Rc<HashMap<Binding, ir::FunDef>> {
+    pub fn functions(&self) -> Rc<HashMap<Binding, FunDef>> {
         Rc::clone(&self.functions)
     }
 
-    pub fn types(&self) -> Rc<HashMap<Binding, ir::TypeDef>> {
+    pub fn types(&self) -> Rc<HashMap<Binding, TypeDef>> {
         Rc::clone(&self.types)
     }
 
