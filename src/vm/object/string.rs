@@ -47,10 +47,6 @@ impl Object for StringObject {
         self.base_object.set_attr(name, value)
     }
 
-    fn attrs(&self) -> Vec<String> {
-        self.base_object.attrs()
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }

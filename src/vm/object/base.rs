@@ -36,11 +36,6 @@ impl Object for BaseObject {
         members.insert(name, value);
     }
 
-    fn attrs(&self) -> Vec<String> {
-        let members = self.members.borrow();
-        members.keys().cloned().collect()
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
