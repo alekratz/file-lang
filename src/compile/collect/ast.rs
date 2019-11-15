@@ -1,15 +1,15 @@
 use crate::{common::span::*, compile::context::*, syn::ast};
 
-pub fn collect_ast<'t, 'ctx>(ctx: &'ctx mut SynCtx<'t>) {
+pub fn collect_ast<'t, 'ctx>(ctx: &'ctx mut AstCtx<'t>) {
     CollectBindings::new(ctx).collect_bindings();
 }
 
 struct CollectBindings<'t, 'ctx> {
-    ctx: &'ctx mut SynCtx<'t>,
+    ctx: &'ctx mut AstCtx<'t>,
 }
 
 impl<'t, 'ctx> CollectBindings<'t, 'ctx> {
-    pub fn new(ctx: &'ctx mut SynCtx<'t>) -> Self {
+    pub fn new(ctx: &'ctx mut AstCtx<'t>) -> Self {
         CollectBindings { ctx }
     }
 

@@ -10,7 +10,7 @@ use std::{collections::HashMap, rc::Rc};
 
 pub fn ast_to_ir<'t>(text: &'t str) -> Result<IrCtx<'t>> {
     let ast = Parser::new(text)?.next_body()?;
-    let mut ctx = SynCtx::new(text, ast);
+    let mut ctx = AstCtx::new(text, ast);
     collect::collect_builtins(&mut ctx);
     collect::collect_ast(&mut ctx);
     AstToIr::new(ctx).translate()
@@ -53,13 +53,13 @@ fn unescape_string(s: &str) -> std::result::Result<String, char> {
 }
 
 struct AstToIr<'t> {
-    ctx: SynCtx<'t>,
+    ctx: AstCtx<'t>,
     functions: HashMap<Binding, FunDef>,
     types: HashMap<Binding, TypeDef>,
 }
 
 impl<'t> AstToIr<'t> {
-    pub fn new(ctx: SynCtx<'t>) -> Self {
+    pub fn new(ctx: AstCtx<'t>) -> Self {
         AstToIr {
             ctx,
             functions: Default::default(),
