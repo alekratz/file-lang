@@ -197,21 +197,12 @@ lazy_static! {
             }),
         },
         CALLABLE_TYPE => {
-            CALL => builtin_fun!(|_state, args| {
+            CALL => builtin_fun!(|state, mut args| {
                 assert!(args.len() >= 1, "__call__ requires at least 1 argument");
-                todo!()
-                // TODO - do callable.fun.call()
-                // main problem to overcome is that the function shares a lifetime with the state
-                // and can't be borrowed mutably in tandem with the function.
-                // Solution: maybe RC function objects? Or clone function objects, since they
-                // probably aren't very big (16-48 bytes? they should be just a bunch of references
-                // and numbers)
-                //
-                //let fun_ref = args.remove(0)
-                    //.and_then(|value| value))
-                    //.expect("expected value ref value");
-                //let fun_obj = state.storage().downcast_stack_value::<CallableObject>(
-                //state.call(fun_ref, args);
+                let callable = args.remove(0)
+                    .to_value_ref()
+                    .expect("tried to call __call__ on a non-object value");
+                state.call(callable, args)
             }),
         },
         TYPE_TYPE => {

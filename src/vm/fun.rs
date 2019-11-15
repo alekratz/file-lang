@@ -48,6 +48,14 @@ impl UserFun {
     pub fn bindings_mut(&mut self) -> &mut BTreeMap<Binding, StackValue> {
         &mut self.bindings
     }
+
+    pub fn code(&self) -> Rc<Vec<Inst>> {
+        Rc::clone(&self.code)
+    }
+
+    pub fn arity(&self) -> usize {
+        self.arity
+    }
 }
 
 #[derive(Shrinkwrap)]

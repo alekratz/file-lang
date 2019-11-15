@@ -1,4 +1,5 @@
-use crate::vm::{inst::*, object::*, storage::*, value::*};
+use crate::vm::{fun::*, inst::*, object::*, stack_frame::*, storage::*, value::*};
+use std::rc::Rc;
 
 pub struct State {
     storage: Storage,
@@ -15,8 +16,38 @@ impl State {
         }
     }
 
-    pub fn call(&mut self, _fun_ref: ValueRef, _args: Vec<StackValue>) {
-        unimplemented!()
+    pub fn call(&mut self, fun_ref: ValueRef, args: Vec<StackValue>) {
+        let fun = self.storage()
+            .downcast_ref::<CallableObject>(fun_ref)
+            .expect("expected CallableObject")
+            .fun()
+            .clone();
+        // NOTE: cloning a Fun should be pretty cheap.
+        self.call_fun(&fun, args)
+    }
+
+    pub fn call_fun(&mut self, fun: &Fun, args: Vec<StackValue>) {
+        match fun {
+            Fun::User(fun) => self.call_user_fun(fun, args),
+            Fun::Builtin(fun) => self.call_builtin_fun(fun, args),
+        }
+    }
+
+    pub fn call_user_fun(&mut self, fun: &UserFun, args: Vec<StackValue>) {
+        let base = self.storage().stack().len();
+        let stack_frame = StackFrame {
+            base,
+            ip: 0,
+            code: fun.code(),
+            bindings: fun.bindings().clone(),
+        };
+        self.storage_mut()
+            .stack_frames_mut()
+            .push(stack_frame);
+    }
+
+    pub fn call_builtin_fun(&mut self, fun: &BuiltinFunPtr, args: Vec<StackValue>) {
+        (fun)(self, args)
     }
 
     pub fn storage(&self) -> &Storage {
@@ -128,7 +159,12 @@ impl State {
                         self.jump(address);
                     }
                 }
-                Inst::Return => {}
+                Inst::Return => {
+                    self.storage_mut()
+                        .stack_frames_mut()
+                        .pop()
+                        .expect("no stack frame to return");
+                }
                 Inst::Halt => {
                     self.halt = true;
                 }
@@ -140,7 +176,13 @@ impl State {
         todo!()
     }
 
-    fn pop_call(&mut self, _argc: usize) {
-        todo!()
+    fn pop_call(&mut self, argc: usize) {
+        let callable = self.storage_mut()
+            .pop_stack()
+            .and_then(|value| value.to_value_ref())
+            .expect("expected value ref value on stack");
+        let args = self.storage_mut()
+            .pop_n(argc);
+        self.call(callable, args);
     }
 }

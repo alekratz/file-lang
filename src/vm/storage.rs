@@ -122,6 +122,12 @@ impl Storage {
             .downcast_ref::<O>()
     }
 
+    pub fn downcast_ref<O: Object + 'static>(&self, value_ref: ValueRef) -> Option<&O> {
+        self.deref(value_ref)
+            .as_any()
+            .downcast_ref::<O>()
+    }
+
     /// Attempts to dereference a stack value ValueRef.
     pub fn deref_stack_value(&self, stack_value: StackValue) -> Option<&dyn Object> {
         match stack_value {
