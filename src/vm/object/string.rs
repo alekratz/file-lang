@@ -7,7 +7,7 @@ use std::{
     fmt::{self, Debug, Display, Formatter},
 };
 
-#[derive(Debug, Clone, Derivative)]
+#[derive(Debug, Derivative)]
 #[derivative(Hash)]
 #[derivative(PartialEq)]
 pub struct StringObject {
@@ -45,6 +45,10 @@ impl Object for StringObject {
 
     fn set_attr(&mut self, name: String, value: Value) {
         self.base_object.set_attr(name, value)
+    }
+
+    fn members(&self) -> &ObjectMembers {
+        self.base_object.members()
     }
 
     fn as_any(&self) -> &dyn Any {

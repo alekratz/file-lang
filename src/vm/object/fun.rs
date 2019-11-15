@@ -1,7 +1,7 @@
 use crate::vm::{fun::*, object::*, value::*};
 use std::any::Any;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct CallableObject {
     base_object: BaseObject,
     fun: Fun,
@@ -24,6 +24,10 @@ impl Object for CallableObject {
 
     fn set_attr(&mut self, name: String, value: Value) {
         self.base_object.set_attr(name, value)
+    }
+
+    fn members(&self) -> &ObjectMembers {
+        self.base_object.members()
     }
 
     fn as_any(&self) -> &dyn Any {

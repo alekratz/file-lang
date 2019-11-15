@@ -1,5 +1,5 @@
 use crate::vm::{object::*, value::*};
-use std::{any::Any, cell::RefCell, fmt::Debug};
+use std::{any::Any, fmt::Debug};
 
 /// The base object type.
 ///
@@ -7,7 +7,7 @@ use std::{any::Any, cell::RefCell, fmt::Debug};
 /// of backing object storage.
 #[derive(Debug, Clone)]
 pub struct BaseObject {
-    members: RefCell<ObjectMembers>,
+    members: ObjectMembers,
 }
 
 impl BaseObject {
@@ -16,24 +16,19 @@ impl BaseObject {
             members: members.into(),
         }
     }
-
-    pub fn with_members<B, F>(&self, fun: F) -> B
-    where
-        F: Fn(&ObjectMembers) -> B,
-    {
-        (fun)(&self.members.borrow())
-    }
 }
 
 impl Object for BaseObject {
     fn get_attr(&self, name: &str) -> Option<Value> {
-        let members = self.members.borrow();
-        members.get(name).copied()
+        self.members.get(name).copied()
     }
 
     fn set_attr(&mut self, name: String, value: Value) {
-        let mut members = self.members.borrow_mut();
-        members.insert(name, value);
+        self.members.insert(name, value);
+    }
+
+    fn members(&self) -> &ObjectMembers {
+        &self.members
     }
 
     fn as_any(&self) -> &dyn Any {
