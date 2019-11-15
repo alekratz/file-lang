@@ -180,7 +180,7 @@ impl Storage {
             .copied()
     }
 
-    /// Loads the closest binding from the stack frame stack with the given binding.
+    /// Stores the given value in the closest present binding in any stack frame.
     pub fn store_binding(&mut self, binding: Binding, value: StackValue) {
         for frame in self.stack_frames.iter_mut() {
             if let Some(slot) = frame.bindings.get_mut(&binding) {
@@ -190,6 +190,12 @@ impl Storage {
         }
 
         // otherwise, make a local binding
+        self.store_binding_local(binding, value);
+    }
+
+    /// Stores the given value in the stack frame, either updating the given binding or creating
+    /// it.
+    pub fn store_binding_local(&mut self, binding: Binding, value: StackValue) {
         let frame = self.stack_frame_mut();
         frame.bindings.insert(binding, value);
     }

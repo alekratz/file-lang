@@ -121,7 +121,7 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
                     thunk.extend(self.translate_expr(&access.head, ExprCtx::Push));
                     thunk.extend(vec![
                         Inst::GetAttr(setattr_ref),
-                        Inst::Store(setattr_binding),
+                        Inst::StoreLocal(setattr_binding),
                         Inst::PushValue(attr_ref.into()),
                     ]);
                     // RHS

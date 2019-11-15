@@ -22,6 +22,11 @@ pub enum Inst {
     /// Pop the top value off of the stack and store it in a variable binding.
     Store(Binding),
 
+    /// Pop the top value off of the stack and store it in a local variable binding.
+    ///
+    /// If that binding has not been created at the local level, it is created.
+    StoreLocal(Binding),
+
     /// Pop a value followed by a storage target off of the stack, and store the value in the
     /// target.
     PopStore,

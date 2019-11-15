@@ -72,6 +72,13 @@ impl State {
                         .expect("Store - expected stack value");
                     self.storage_mut().store_binding(binding, value);
                 }
+                Inst::StoreLocal(binding) => {
+                    let value = self
+                        .storage_mut()
+                        .pop_stack()
+                        .expect("Store - expected stack value");
+                    self.storage_mut().store_binding_local(binding, value);
+                }
                 Inst::PopStore => {
                     let target = self
                         .storage_mut()
