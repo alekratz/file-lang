@@ -27,7 +27,7 @@ impl State {
         &mut self.storage
     }
 
-    fn execute(&mut self) {
+    pub fn execute(&mut self) {
         while !self.halt {
             let inst = {
                 let stack_frame = self.storage_mut().stack_frame_mut();

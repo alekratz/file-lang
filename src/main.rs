@@ -5,7 +5,10 @@ mod syn;
 mod compile;
 mod vm;
 
-use crate::common::span::*;
+use crate::{
+    common::span::*,
+    vm::state::State,
+};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 use syn::prelude::*;
@@ -47,6 +50,13 @@ fn dump_tree(text: &str) -> Result<()> {
     Ok(())
 }
 
+fn run_text(text: &str) -> Result<()> {
+    let artifact = compile::compile(&text)?;
+    let mut vm_state = State::from(artifact);
+    vm_state.execute();
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
@@ -59,7 +69,5 @@ fn main() -> Result<()> {
         bad => println!("WARNING: unknown dump option '{}'", bad),
     }
 
-    compile::compile(&text)?;
-
-    Ok(())
+    run_text(&text)
 }
