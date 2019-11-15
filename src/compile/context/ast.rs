@@ -1,7 +1,6 @@
 use crate::{
-    compile::{binding::*, constant::*, ir},
-    syn::ast,
-    vm::value::*,
+    compile::binding::*,
+    syn::ast::Stmt,
 };
 use std::{mem, rc::Rc};
 
@@ -9,11 +8,11 @@ use std::{mem, rc::Rc};
 pub struct AstCtx<'t> {
     pub (in super) text: &'t str,
     pub (in super) bindings: BindingStack,
-    pub (in super) ast: Rc<Vec<ast::Stmt>>,
+    pub (in super) ast: Rc<Vec<Stmt>>,
 }
 
 impl<'t> AstCtx<'t> {
-    pub fn new(text: &'t str, ast: Vec<ast::Stmt>) -> Self {
+    pub fn new(text: &'t str, ast: Vec<Stmt>) -> Self {
         AstCtx {
             text,
             bindings: Default::default(),
@@ -21,12 +20,12 @@ impl<'t> AstCtx<'t> {
         }
     }
 
-    pub fn ast(&self) -> Rc<Vec<ast::Stmt>> {
+    pub fn ast(&self) -> Rc<Vec<Stmt>> {
         Rc::clone(&self.ast)
     }
 
     /// This will use the same syntax context, while replacing the current AST with the given AST.
-    pub fn with_ast<B, F>(&mut self, ast: Rc<Vec<ast::Stmt>>, mut fun: F)
+    pub fn with_ast<B, F>(&mut self, ast: Rc<Vec<Stmt>>, mut fun: F)
     where
         F: FnMut(&mut Self) -> B,
     {
