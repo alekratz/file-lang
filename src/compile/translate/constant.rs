@@ -179,7 +179,7 @@ impl<'t, 'ctx> TranslateConstants<'t, 'ctx> {
         F: FnMut(&mut IrCtx, Binding, Mapping<String, ValueRef>) -> BuiltinType,
     {
         let const_ref = self.ctx.register_constant_with(|ctx, _const_ref| {
-            let type_binding = ctx.bindings().get_binding(name).unwrap();
+            let type_binding = ctx.bindings().get_builtin_binding(name).unwrap();
             let type_members = BUILTIN_TYPES
                 .get(name)
                 .unwrap()
