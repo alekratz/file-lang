@@ -1,6 +1,6 @@
 use crate::{
     common::binding::Binding,
-    vm::{inst::Inst, state::State, value::StackValue},
+    vm::{inst::Inst, state::State, value::*},
 };
 use shrinkwraprs::Shrinkwrap;
 use std::{
@@ -14,6 +14,7 @@ use std::{
 pub enum Fun {
     User(UserFun),
     Builtin(BuiltinFunPtr),
+    Partial(Vec<StackValue>, ValueRef),
 }
 
 #[derive(Debug, Clone)]

@@ -123,9 +123,7 @@ impl Storage {
     }
 
     pub fn downcast_ref<O: Object + 'static>(&self, value_ref: ValueRef) -> Option<&O> {
-        self.deref(value_ref)
-            .as_any()
-            .downcast_ref::<O>()
+        self.deref(value_ref).as_any().downcast_ref::<O>()
     }
 
     /// Attempts to dereference a stack value ValueRef.

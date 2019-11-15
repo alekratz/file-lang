@@ -203,9 +203,13 @@ impl<'t, 'ctx> IrToInst<'t, 'ctx> {
         // . evaluate function ref
         // . GetAttr(__call__)
         //
+        let call_ref = self.get_or_register_string_constant(CALL);
         let fun_binding = self.ctx.bindings_mut().create_anonymous_binding();
         let mut thunk = self.translate_expr(&fun, ExprCtx::Push);
-        thunk.push(Inst::StoreLocal(fun_binding));
+        thunk.extend(vec![
+                     Inst::GetAttr(call_ref),
+                     Inst::StoreLocal(fun_binding),
+        ]);
         for arg in args.iter() {
             thunk.extend(self.translate_expr(arg, ExprCtx::Push));
         }

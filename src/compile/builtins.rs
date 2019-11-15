@@ -1,4 +1,4 @@
-pub use crate::vm::fun::{BuiltinFun, BuiltinFunPtr};
+pub use crate::vm::fun::*;
 
 use crate::{
     compile::binding::*,
@@ -74,13 +74,12 @@ impl Builtins {
 
 #[derive(Debug, Clone)]
 pub struct BuiltinType {
-    binding: Binding,
     members: HashMap<String, ValueRef>,
 }
 
 impl BuiltinType {
-    pub fn new(binding: Binding, members: HashMap<String, ValueRef>) -> Self {
-        BuiltinType { binding, members }
+    pub fn new(members: HashMap<String, ValueRef>) -> Self {
+        BuiltinType { members }
     }
 
     pub fn members(&self) -> &HashMap<String, ValueRef> {
@@ -147,7 +146,10 @@ lazy_static! {
                     );
                 }
                 let name_value = args.pop().unwrap();
-                let object_value = args.pop().unwrap();
+                let object_ref = args.pop()
+                    .unwrap()
+                    .to_value_ref()
+                    .expect("tried to call __getattr__ on a non-object value");
 
                 let name = if let Some(name) =
                     state.storage().downcast_stack_value::<StringObject>(name_value)
@@ -159,8 +161,7 @@ lazy_static! {
 
                 let object = state
                     .storage()
-                    .deref_stack_value(object_value)
-                    .expect("tried to call __getattr__ on a non-object value");
+                    .deref(object_ref);
                 let attr_value = object.get_attr(&name)
                     .expect(&name);
                 state.storage_mut()
@@ -237,6 +238,11 @@ lazy_static! {
                     .deref(this_type)
                     .base_object()
                     .clone();
+                // TODO : vtable versus members for types
+                // some parts of the type are not desirable to be made a member in an object. So
+                // there should probably be two types of object value: vtable and members. vtable
+                // is copied over, while members are not. Members may be mutated at runtime, while
+                // the vtable members may not be.
                 base_object.set_attr(TYPE.to_string(), StackValue::ValueRef(this_type));
                 let value_ref = state.storage_mut()
                     .allocate(base_object);

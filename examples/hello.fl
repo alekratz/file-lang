@@ -1,3 +1,4 @@
+#*
 a = 1234;
 b = 0x4567;
 println(a, b);
@@ -12,5 +13,5 @@ fn foo() {
     b = 8888;
     println(a, b);
 }
-
+*#
 println("hell world");

@@ -1,4 +1,7 @@
-use crate::vm::{fun::*, inst::*, object::*, stack_frame::*, storage::*, value::*};
+use crate::{
+    common::prelude::*,
+    vm::{fun::*, inst::*, object::*, stack_frame::*, storage::*, value::*},
+};
 use std::rc::Rc;
 
 pub struct State {
@@ -30,6 +33,11 @@ impl State {
         match fun {
             Fun::User(fun) => self.call_user_fun(fun, args),
             Fun::Builtin(fun) => self.call_builtin_fun(fun, args),
+            Fun::Partial(head, fun) => {
+                let mut head = head.clone();
+                head.extend(args);
+                self.call(*fun, head);
+            }
         }
     }
 
