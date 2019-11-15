@@ -49,7 +49,7 @@ impl State {
                     self.storage_mut()
                         .push_stack(value);
                 }
-                Inst::GetAttr(attr) => {
+                Inst::GetAttr(_attr) => {
                     let tos = self.storage_mut()
                         .pop_stack()
                         .and_then(|value| self.storage().downcast_stack_value::<StringObject>(value))
@@ -58,7 +58,7 @@ impl State {
                         .peek_stack()
                         .and_then(|value| value.to_value_ref())
                         .expect("GetAttr - expected value reference value on stack");
-                    let attr = self.storage()
+                    let _attr = self.storage()
                         .deref(peek)
                         .get_attr(&tos.string());
                 }
@@ -74,10 +74,10 @@ impl State {
                         .and_then(|value| value.to_value_ref())
                         .expect("PopStore - expected value reference value on stack");
                     // TODO : protect constant/readonly values, somehow
-                    let value = self.storage_mut()
+                    let _value = self.storage_mut()
                         .pop_stack()
                         .expect("PopStore - expected stack value");
-                    let target = self.storage_mut()
+                    let _target = self.storage_mut()
                         .deref_mut(target);
                     // TODO : store stack values in target
                     todo!()
@@ -122,11 +122,11 @@ impl State {
         }
     }
 
-    fn jump(&mut self, address: usize) {
+    fn jump(&mut self, _address: usize) {
         todo!()
     }
 
-    fn pop_call(&mut self, argc: usize) {
+    fn pop_call(&mut self, _argc: usize) {
         todo!()
     }
 }

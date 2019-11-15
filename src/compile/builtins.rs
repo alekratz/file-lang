@@ -197,7 +197,7 @@ lazy_static! {
             }),
         },
         CALLABLE_TYPE => {
-            CALL => builtin_fun!(|mut state, mut args| {
+            CALL => builtin_fun!(|_state, args| {
                 assert!(args.len() >= 1, "__call__ requires at least 1 argument");
                 todo!()
                 // TODO - do callable.fun.call()
