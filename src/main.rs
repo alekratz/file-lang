@@ -15,7 +15,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Debug, StructOpt)]
 #[structopt(about = "file language")]
 struct Opt {
-    #[structopt(skip)]
+    #[structopt(short = "d", long = "dump", default_value = "")]
     dump: String,
 
     #[structopt(parse(from_os_str))]
@@ -59,11 +59,13 @@ fn main() -> Result<()> {
 
     let text = fs::read_to_string(&opt.file)?;
 
-    match opt.dump.as_str() {
-        "" => {}
-        "tokens" => dump_tokens(&text)?,
-        "tree" => dump_tree(&text)?,
-        bad => println!("WARNING: unknown dump option '{}'", bad),
+    for dump in opt.dump.split(",") {
+        match dump {
+            "" => {}
+            "tokens" => dump_tokens(&text)?,
+            "tree" => dump_tree(&text)?,
+            bad => println!("WARNING: unknown dump option '{}'", bad),
+        }
     }
 
     run_text(&text)
